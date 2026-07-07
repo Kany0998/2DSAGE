@@ -118,7 +118,7 @@ conan profile detect --force
 
 ```powershell
 
-git clone REPOSITORY\_URL
+git clone https://github.com/Kany0998/2DSAGE.git
 
 cd 2DSAGE
 
