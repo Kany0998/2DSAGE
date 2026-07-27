@@ -9,14 +9,10 @@
 #include "../Components/SpriteComponent.h"
 
 
-class MovementSystem : public System
+class MovementSystem
 {
 	public:
-		MovementSystem()
-		{
-			RequireComponent<TransformComponent>();
-			RequireComponent<RigidBodyComponent>();
-		}
+		MovementSystem() = default;
 
 		void SubscribeToEvents(const std::unique_ptr<EventBus>& eventBus)
 		{
@@ -38,12 +34,14 @@ class MovementSystem : public System
 				OnEnemyHitsObstacle(b, a);
 			}
 		}
-		
-		void Update(double deltaTime)
+
+		void Update(Registry& registry, double deltaTime)
 		{
-			//Loop all entites that the system is intested in
-			for (auto entity : GetSystemEntities())
+			//Loop all entites that have Transform + RigidBody + Sprite
+			for (auto rawEntity : registry.Raw().view<TransformComponent, RigidBodyComponent, SpriteComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				auto& transform = entity.GetComponent<TransformComponent>();
 				const auto rigidbody = entity.GetComponent<RigidBodyComponent>();
 				auto sprite = entity.GetComponent<SpriteComponent>();

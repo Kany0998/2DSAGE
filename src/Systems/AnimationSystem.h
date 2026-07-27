@@ -6,19 +6,17 @@
 #include "../Components/AnimationComponent.h"
 #include <SDL.h>
 
-class AnimationSystem : public System
+class AnimationSystem
 {
 	public:
-		AnimationSystem()
-		{
-			RequireComponent<SpriteComponent>();
-			RequireComponent<AnimationComponent>();
-		}
+		AnimationSystem() = default;
 
-		void Update()
+		void Update(Registry& registry)
 		{
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<SpriteComponent, AnimationComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				auto& animation = entity.GetComponent<AnimationComponent>();
 				auto& sprite = entity.GetComponent<SpriteComponent>();
 

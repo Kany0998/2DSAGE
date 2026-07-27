@@ -11,12 +11,12 @@
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/HealthComponent.h"
 
-class RenderGUISystem : public System
+class RenderGUISystem
 {
 	public:
 		RenderGUISystem() = default;
 
-		void Update(const std::unique_ptr<Registry> &registry, const SDL_Rect& camera)
+		void Update(Registry& registry, const SDL_Rect& camera)
 		{
 			//Render GUI elements here
 			ImGui::NewFrame();
@@ -89,7 +89,7 @@ class RenderGUISystem : public System
 				if (ImGui::Button("Create new enemy"))
 				{
 					//Emit event on button click
-					Entity enemy = registry->CreateEntity();
+					Entity enemy = registry.CreateEntity();
 					enemy.Group("enemies");
 					enemy.AddComponent<TransformComponent>(glm::vec2(positionX, positionY), glm::vec2(scaleX, scaleY), glm::degrees(rotate));
 					enemy.AddComponent<RigidBodyComponent>(glm::vec2(velocityX, velocityY));

@@ -1,11 +1,9 @@
 #include "ECS.h"
 #include "../Logger/Logger.h"
 
-int IComponent::nextId = 0;
-
 int Entity::GetId() const
 {
-	return id;
+	return static_cast<int>(entt::to_integral(entityHandle));
 }
 
 void Entity::Kill()
@@ -33,113 +31,61 @@ bool Entity::BelongsToGroup(const std::string& group) const
 	return registry->EntityBelongsToGroup(*this, group);
 }
 
-void System::AddEntityToSystem(Entity entity)
-{
-	entities.push_back(entity);
-}
-
-void  System::RemoveEntityFromSystem(Entity entity)
-{
-	entities.erase(std::remove_if(entities.begin(), entities.end(), [&entity](Entity other)
-		{
-			return entity == other;
-		}), entities.end());
-}
-
-std::vector<Entity>  System::GetSystemEntities() const
-{
-	return entities;
-}
-
-const Signature& System::GetComponetsSignature() const
-{
-	return componentSignature;
-}
-
 Entity Registry::CreateEntity()
 {
-	int entityId;
+	entt::entity handle = enttRegistry.create();
+	Entity entity(handle, this);
 
-	if (freeIds.empty())
-	{	
-		//if there are no free id to be reused we expand vector
-		entityId = numberOfEntities++;
-		if (entityId >= entityComponentSignatures.size())
-		{
-			entityComponentSignatures.resize(entityId + 1);
-		}
-	}
-	else
-	{
-		//Reuse id from list of previosly removed entites
-		entityId = freeIds.front();
-		freeIds.pop_front();
-	}
-
-	Entity entity(entityId);
-	entity.registry = this;
-	entitiesToBeAdded.insert(entity);
-	
-	Logger::Log("Entity created with ID: " + std::to_string(entityId));
+	Logger::Log("Entity created with ID: " + std::to_string(entity.GetId()));
 
 	return entity;
 }
 
 void Registry::KillEntity(Entity entity)
 {
-	entitiesToBeKilled.insert(entity);
+	entitiesToBeKilled.push_back(entity.GetHandle());
 }
 
-void Registry::AddEntityToSystems(Entity entity)
+void Registry::Update()
 {
-	const auto entityId = entity.GetId();
-
-	const auto& entityComponentSignature = entityComponentSignatures[entityId];
-	//loop all the systems
-	for (auto& system : systems)
+	for (entt::entity handle : entitiesToBeKilled)
 	{
-		const auto& systemComponentSignature = system.second->GetComponetsSignature();
+		Entity entity(handle, this);
 
-		bool isIntrested = (entityComponentSignature & systemComponentSignature) == systemComponentSignature;
-		if (isIntrested)
-		{
-			system.second->AddEntityToSystem(entity);
-		}
+		//remove any traces of that entity from the tag/group maps before it is destroyed
+		RemoveEntityTag(entity);
+		RemoveEntityGroup(entity);
+
+		enttRegistry.destroy(handle);
+
+		Logger::Log("Entity destroyed with ID: " + std::to_string(entity.GetId()));
 	}
+	entitiesToBeKilled.clear();
 }
-
-void Registry::RemoveEntityFromSystems(Entity entity)
-{
-	for (auto system : systems) 
-	{
-		system.second->RemoveEntityFromSystem(entity);
-	}
-}
-
 
 void Registry::TagEntity(Entity entity, const std::string& tag)
 {
-	entityPerTag.emplace(tag, entity);
-	tagPerEntity.emplace(entity.GetId(), tag);
+	entityPerTag.emplace(tag, entity.GetHandle());
+	tagPerEntity.emplace(entity.GetHandle(), tag);
 }
 
 bool Registry::EntityHasTag(Entity entity, const std::string& tag) const
 {
-	if (tagPerEntity.find(entity.GetId()) == tagPerEntity.end())
+	if (tagPerEntity.find(entity.GetHandle()) == tagPerEntity.end())
 	{
 		return false;
 	}
-	return entityPerTag.find(tag)->second == entity;
+	return entityPerTag.find(tag)->second == entity.GetHandle();
 }
 
-Entity Registry::GetEntityByTag(const std::string& tag) const
+Entity Registry::GetEntityByTag(const std::string& tag)
 {
-	return entityPerTag.at(tag);
+	return Entity(entityPerTag.at(tag), this);
 }
 
 void Registry::RemoveEntityTag(Entity entity)
 {
-	auto taggedEntity = tagPerEntity.find(entity.GetId());
+	auto taggedEntity = tagPerEntity.find(entity.GetHandle());
 	if (taggedEntity != tagPerEntity.end())
 	{
 		auto tag = taggedEntity->second;
@@ -150,77 +96,44 @@ void Registry::RemoveEntityTag(Entity entity)
 
 void Registry::GroupEntity(Entity entity, const std::string& group)
 {
-	entitiesPerGroup.emplace(group, std::set<Entity>());
-	entitiesPerGroup[group].insert(entity);
-	groupPerEntity.emplace(entity.GetId(), group);
+	entitiesPerGroup.emplace(group, std::set<entt::entity>());
+	entitiesPerGroup[group].insert(entity.GetHandle());
+	groupPerEntity.emplace(entity.GetHandle(), group);
 }
 
 bool Registry::EntityBelongsToGroup(Entity entity, const std::string& group) const
 {
-	if (entitiesPerGroup.find(group) == entitiesPerGroup.end())
+	auto groupEntities = entitiesPerGroup.find(group);
+	if (groupEntities == entitiesPerGroup.end())
 	{
 		return false;
 	}
 
-	auto groupEntities = entitiesPerGroup.at(group);
-	return groupEntities.find(entity) != groupEntities.end();
+	return groupEntities->second.find(entity.GetHandle()) != groupEntities->second.end();
 }
 
-std::vector<Entity> Registry::GetEntitiesByGroup(const std::string& group) const
+std::vector<Entity> Registry::GetEntitiesByGroup(const std::string& group)
 {
 	auto& setOfEntities = entitiesPerGroup.at(group);
-	return std::vector<Entity>(setOfEntities.begin(), setOfEntities.end());
+	std::vector<Entity> result;
+	result.reserve(setOfEntities.size());
+	for (entt::entity handle : setOfEntities)
+	{
+		result.emplace_back(handle, this);
+	}
+	return result;
 }
 
 void Registry::RemoveEntityGroup(Entity entity)
 {
-	auto groupedEntity = groupPerEntity.find(entity.GetId());
+	auto groupedEntity = groupPerEntity.find(entity.GetHandle());
 	if (groupedEntity != groupPerEntity.end())
 	{
 		auto group = entitiesPerGroup.find(groupedEntity->second);
 		if(group != entitiesPerGroup.end())
 		{
-			auto entityInGroup = group->second.find(entity);
-			if (entityInGroup != group->second.end())
-			{
-				group->second.erase(entityInGroup);
-			}
+			group->second.erase(entity.GetHandle());
 		}
 		groupPerEntity.erase(groupedEntity);
 	}
-}
-
-void Registry::Update()
-{
-	//add entities that are waiting to be created to the actice systems
-	for (auto entity : entitiesToBeAdded)
-	{
-		AddEntityToSystems(entity);
-	}
-	entitiesToBeAdded.clear();
-	//remove entities that are waiting to be killed from the active systems
-	for (auto entity : entitiesToBeKilled)
-	{
-		RemoveEntityFromSystems(entity);
-		entityComponentSignatures[entity.GetId()].reset();
-
-		//Remove entity form component pools
-		for (auto pool : componentPools)
-		{
-			if (pool)
-			{
-				pool->RemoveEntityFromPool(entity.GetId());
-			}
-		}
-
-		//make sure that we can reuse that id
-		freeIds.push_back(entity.GetId());
-
-		//remove any traces of that entity from the tag/group map
-		RemoveEntityTag(entity);
-		RemoveEntityGroup(entity);
-
-	}
-	entitiesToBeKilled.clear();
-	entitiesToBeKilled.clear();
 }

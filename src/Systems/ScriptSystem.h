@@ -108,13 +108,10 @@ void SetProjectileVelocity(Entity entity, double x, double y)
 	}
 }
 
-class ScriptSystem : public System
+class ScriptSystem
 {
 	public:
-		ScriptSystem()
-		{
-			RequireComponent<ScriptComponent>();
-		}
+		ScriptSystem() = default;
 
 		void CreateLuaBindings(sol::state& lua)
 		{
@@ -137,11 +134,12 @@ class ScriptSystem : public System
 			lua.set_function("set_projectile_velocity", SetProjectileVelocity);
 		}
 
-		void Update(double deltaTime, int ellapsedTime)
+		void Update(Registry& registry, double deltaTime, int ellapsedTime)
 		{
 			//loop all the entites with script component and invoke their lua function
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<ScriptComponent>())
 			{
+				Entity entity(rawEntity, &registry);
 				const auto script = entity.GetComponent<ScriptComponent>();
 				script.func(entity, deltaTime, ellapsedTime);
 			}

@@ -4,16 +4,14 @@
 #include "../ECS/ECS.h"
 #include "../Components/ProjectileComponent.h"
 
-class ProjectileLifeCycleSystem : public System 
+class ProjectileLifeCycleSystem
 {
     public:
-        ProjectileLifeCycleSystem() 
-        {
-            RequireComponent<ProjectileComponent>();
-        }
+        ProjectileLifeCycleSystem() = default;
 
-        void Update() {
-            for (auto entity : GetSystemEntities()) {
+        void Update(Registry& registry) {
+            for (auto rawEntity : registry.Raw().view<ProjectileComponent>()) {
+                Entity entity(rawEntity, &registry);
                 auto projectile = entity.GetComponent<ProjectileComponent>();
 
                 // Kill projectiles after they reach their duration limit

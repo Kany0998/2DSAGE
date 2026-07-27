@@ -9,16 +9,10 @@
 #include "../Components/KeyBoardControlledComponent.h"
 #include "../Components/TransformComponent.h"
 
-class KeyboardControlSystem : public System
+class KeyboardControlSystem
 {
 public:
-	KeyboardControlSystem()
-	{
-		//No components required
-		RequireComponent<KeyBoardControlledComponent>();
-		RequireComponent<RigidBodyComponent>();
-		RequireComponent<SpriteComponent>();
-	}
+	KeyboardControlSystem() = default;
 
 	void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 	{
@@ -27,10 +21,10 @@ public:
 
 	void onPress(KeyPressedEvent& ev)
 	{
-		
+
 	}
 
-	void Update()
+	void Update(Registry& registry)
 	{
 		const Uint8* keystate = SDL_GetKeyboardState(NULL);
 		bool up = keystate[SDL_SCANCODE_W];
@@ -39,8 +33,10 @@ public:
 		bool left = keystate[SDL_SCANCODE_A];
 		bool usedDiagonal = false;
 		//chaning the sprite and speed of entity
-		for (auto entity : GetSystemEntities())
+		for (auto rawEntity : registry.Raw().view<KeyBoardControlledComponent, RigidBodyComponent, SpriteComponent, TransformComponent>())
 		{
+			Entity entity(rawEntity, &registry);
+
 			const auto keyboardControlled = entity.GetComponent<KeyBoardControlledComponent>();
 			auto& sprite = entity.GetComponent<SpriteComponent>();
 			auto& rigidBody = entity.GetComponent<RigidBodyComponent>();
@@ -117,7 +113,7 @@ public:
 					transform.rotation = 0.0;
 				}
 			}
-			
+
 		}
 	}
 };

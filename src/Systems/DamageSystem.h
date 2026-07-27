@@ -9,13 +9,10 @@
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 
-class DamageSystem : public System
+class DamageSystem
 {
 	public:
-		DamageSystem()
-		{
-			RequireComponent<BoxColliderComponent>();
-		}
+		DamageSystem() = default;
 
 		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
@@ -26,7 +23,7 @@ class DamageSystem : public System
 		{
 			Entity a = ev.a;
 			Entity b = ev.b;
-			
+
 			if (a.BelongsToGroup("projectiles") && b.HasTag("player"))
 			{
 				OnProjectileHitsPlayer(a, b); //a is projectile b is player
@@ -88,11 +85,6 @@ class DamageSystem : public System
 
 				projectile.Kill();
 			}
-		}
-
-		void Update()
-		{
-
 		}
 };
 

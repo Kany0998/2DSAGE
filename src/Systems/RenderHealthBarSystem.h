@@ -9,20 +9,17 @@
 
 #include <SDL.h>
 
-class RenderHealthBarSystem : public System
+class RenderHealthBarSystem
 {
 	public:
-		RenderHealthBarSystem()
-		{
-			RequireComponent<HealthComponent>();
-			RequireComponent<TransformComponent>();
-			RequireComponent<SpriteComponent>();
-		}
+		RenderHealthBarSystem() = default;
 
-		void Update(SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, const SDL_Rect& camera)
+		void Update(Registry& registry, SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, const SDL_Rect& camera)
 		{
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<HealthComponent, TransformComponent, SpriteComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				const auto transform = entity.GetComponent<TransformComponent>();
 				const auto sprite = entity.GetComponent<SpriteComponent>();
 				const auto health = entity.GetComponent<HealthComponent>();

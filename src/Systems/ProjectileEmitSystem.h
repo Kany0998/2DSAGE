@@ -13,27 +13,28 @@
 #include "../Components/CameraHollderComponent.h"
 #include <SDL.h>
 
-class ProjectileEmitSystem : public System
+class ProjectileEmitSystem
 {
 	public:
-		ProjectileEmitSystem()
-		{
-			RequireComponent<ProjectileEmitterComponent>();
-			RequireComponent<TransformComponent>();
-		}
+		// Needs a registry reference kept alive for OnKeyPressed, since that's an
+		// event-callback with a fixed (KeyPressedEvent&) signature and can't
+		// receive the registry as a call parameter like Update() does.
+		explicit ProjectileEmitSystem(Registry& registry) : registry(registry) {}
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus) 
+		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
             eventBus->SubscribeToEvent<KeyPressedEvent>(this, &ProjectileEmitSystem::OnKeyPressed);
         }
 
 
         void OnKeyPressed(KeyPressedEvent& event) {
-            if (event.symbol == SDLK_SPACE) 
+            if (event.symbol == SDLK_SPACE)
             {
-                for (auto entity : GetSystemEntities()) 
+                for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>())
                 {
-                    if (entity.HasComponent<CameraHollderComponent>()) 
+                    Entity entity(rawEntity, &registry);
+
+                    if (entity.HasComponent<CameraHollderComponent>())
                     {
                         const auto projectileEmitter = entity.GetComponent<ProjectileEmitterComponent>();
                         const auto transform = entity.GetComponent<TransformComponent>();
@@ -41,7 +42,7 @@ class ProjectileEmitSystem : public System
 
                         // If parent entity has sprite, start the projectile position in the middle of the entity
                         glm::vec2 projectilePosition = transform.position;
-                        if (entity.HasComponent<SpriteComponent>()) 
+                        if (entity.HasComponent<SpriteComponent>())
                         {
                             auto sprite = entity.GetComponent<SpriteComponent>();
                             projectilePosition.x += (transform.scale.x * sprite.width / 2);
@@ -72,10 +73,12 @@ class ProjectileEmitSystem : public System
             }
         }
 
-		void Update(std::unique_ptr<Registry>& registry)
+		void Update()
 		{
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				auto& projectileEmitter = entity.GetComponent<ProjectileEmitterComponent>();
 				const auto transform = entity.GetComponent<TransformComponent>();
 
@@ -95,7 +98,7 @@ class ProjectileEmitSystem : public System
 						projectilePosition.y += (transform.scale.y * sprite.height / 2);
 					}
 
-					Entity projectile = registry->CreateEntity();
+					Entity projectile = registry.CreateEntity();
 					projectile.Group("projectiles");
 					projectile.AddComponent<TransformComponent>(projectilePosition, glm::vec2(transform.scale.x, transform.scale.y), 0.0);
 					projectile.AddComponent<RigidBodyComponent>(projectileEmitter.projectileVelocity);
@@ -108,5 +111,8 @@ class ProjectileEmitSystem : public System
 				}
 			}
 		}
+
+	private:
+		Registry& registry;
 };
 #endif

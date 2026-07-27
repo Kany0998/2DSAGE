@@ -9,16 +9,12 @@
 #include <SDL.h>
 
 
-class RenderSystem : public System
+class RenderSystem
 {
 	public:
-		RenderSystem()
-		{
-			RequireComponent<TransformComponent>();
-			RequireComponent<SpriteComponent>();
-		}
+		RenderSystem() = default;
 
-		void Update(SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, SDL_Rect& camera)
+		void Update(Registry& registry, SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, SDL_Rect& camera)
 		{
 			//Create vector with sprite and transform component of all entites
 			struct RenderableEntity
@@ -29,8 +25,10 @@ class RenderSystem : public System
 
 			std::vector<RenderableEntity> renderableEntities;
 
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<TransformComponent, SpriteComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				RenderableEntity renderableEntity;
 				renderableEntity.spriteComponent = entity.GetComponent<SpriteComponent>();
 				renderableEntity.transformComponent = entity.GetComponent<TransformComponent>();
@@ -55,10 +53,10 @@ class RenderSystem : public System
 				return a.spriteComponent.layer < b.spriteComponent.layer;
 				});
 
-		
+
 			//Loop all entites that the system is intested in
 			for (auto entity : renderableEntities)
-			{ 
+			{
 				const auto transform = entity.transformComponent;
 				const auto sprite = entity.spriteComponent;
 

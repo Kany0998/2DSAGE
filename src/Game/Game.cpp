@@ -142,30 +142,29 @@ void Game::ProccessInput()
 
 void Game::Setup()
 {
-
-	//Add the system that need to be processed in the
-	registry->AddSystem<MovementSystem>();
-	registry->AddSystem<RenderSystem>();
-	registry->AddSystem<AnimationSystem>();
-	registry->AddSystem<CollisionSystem>();
-	registry->AddSystem<RenderCollisionSystem>();
-	registry->AddSystem<DamageSystem>();
-	registry->AddSystem<KeyboardControlSystem>();
-	registry->AddSystem<CameraMovementSystem>();
-	registry->AddSystem<ProjectileEmitSystem>();
-	registry->AddSystem<ProjectileLifeCycleSystem>();
-	registry->AddSystem<RenderTextSystem>();
-	registry->AddSystem<RenderHealthBarSystem>();
-	registry->AddSystem<RenderGUISystem>();
-	registry->AddSystem<ScriptSystem>();
+	//Construct the systems that need to be processed in the game loop
+	movementSystem = std::make_unique<MovementSystem>();
+	renderSystem = std::make_unique<RenderSystem>();
+	animationSystem = std::make_unique<AnimationSystem>();
+	collisionSystem = std::make_unique<CollisionSystem>();
+	renderCollisionSystem = std::make_unique<RenderCollisionSystem>();
+	damageSystem = std::make_unique<DamageSystem>();
+	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
+	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry);
+	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
+	renderTextSystem = std::make_unique<RenderTextSystem>();
+	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
+	renderGUISystem = std::make_unique<RenderGUISystem>();
+	scriptSystem = std::make_unique<ScriptSystem>();
 
 	//create bindings between c++ and lua
-	registry->GetSystem<ScriptSystem>().CreateLuaBindings(lua);
+	scriptSystem->CreateLuaBindings(lua);
 
 	//Load first level
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
-	loader.LoadLevel(lua, registry,enttRegistry, assetStore, renderer, 1);
+	loader.LoadLevel(lua, registry, assetStore, renderer, 1);
 }
 
 void Game::Update()
@@ -186,23 +185,23 @@ void Game::Update()
 	eventBus->Reset();
 
 	//perform subscribtion to events for all the systems
-	registry->GetSystem<MovementSystem>().SubscribeToEvents(eventBus);
-	registry->GetSystem<DamageSystem>().SubscribeToEvents(eventBus);
-	registry->GetSystem<KeyboardControlSystem>().SubscribeToEvents(eventBus);
-	registry->GetSystem<ProjectileEmitSystem>().SubscribeToEvents(eventBus);
+	movementSystem->SubscribeToEvents(eventBus);
+	damageSystem->SubscribeToEvents(eventBus);
+	keyboardControlSystem->SubscribeToEvents(eventBus);
+	projectileEmitSystem->SubscribeToEvents(eventBus);
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
 	// invoke all the systems to update
-	registry->GetSystem<KeyboardControlSystem>().Update();
-	registry->GetSystem<MovementSystem>().Update(deltaTime);
-	registry->GetSystem<AnimationSystem>().Update();
-	registry->GetSystem<CollisionSystem>().Update(eventBus);
-	registry->GetSystem<CameraMovementSystem>().Update(camera);
-	registry->GetSystem<ProjectileEmitSystem>().Update(registry);
-	registry->GetSystem<ProjectileLifeCycleSystem>().Update();
-	registry->GetSystem<ScriptSystem>().Update(deltaTime, SDL_GetTicks());
-	
+	keyboardControlSystem->Update(*registry);
+	movementSystem->Update(*registry, deltaTime);
+	animationSystem->Update(*registry);
+	collisionSystem->Update(*registry, eventBus);
+	cameraMovementSystem->Update(*registry, camera);
+	projectileEmitSystem->Update();
+	projectileLifeCycleSystem->Update(*registry);
+	scriptSystem->Update(*registry, deltaTime, SDL_GetTicks());
+
 }
 
 void Game::Render()
@@ -211,14 +210,14 @@ void Game::Render()
 	SDL_RenderClear(renderer);
 
 	//Invoke all the systems that need to render
-	registry->GetSystem<RenderSystem>().Update(renderer, assetStore, camera);
-	registry->GetSystem<RenderTextSystem>().Update(renderer,assetStore, camera);
-	registry->GetSystem<RenderHealthBarSystem>().Update(renderer, assetStore, camera);
+	renderSystem->Update(*registry, renderer, assetStore, camera);
+	renderTextSystem->Update(*registry, renderer, assetStore, camera);
+	renderHealthBarSystem->Update(*registry, renderer, assetStore, camera);
 	if (isDebug)
 	{
-		registry->GetSystem<RenderCollisionSystem>().Update(renderer, camera);
+		renderCollisionSystem->Update(*registry, renderer, camera);
 
-		registry->GetSystem<RenderGUISystem>().Update(registry, camera);
+		renderGUISystem->Update(*registry, camera);
 	}
 
 	SDL_RenderPresent(renderer);
@@ -241,5 +240,6 @@ void Game::Destroy()
 	ImGui::DestroyContext();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+	TTF_Quit();
 	SDL_Quit();
 }

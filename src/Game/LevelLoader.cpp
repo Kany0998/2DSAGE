@@ -14,7 +14,6 @@
 #include "../Components/ScriptComponent.h"
 #include <fstream>
 #include <sol/sol.hpp>
-#include <cstdint>
 #include <string>
 #include "../Logger/Logger.h"
 
@@ -28,7 +27,7 @@ LevelLoader::~LevelLoader()
 	Logger::Log("LevelLoader destructor called!");
 }
 
-void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& legacyRegistry,entt::registry& enttRegistry,
+void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
 	const std::unique_ptr<AssetStore>& assetStore,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
@@ -99,7 +98,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 			int srcRectX = std::atoi(&ch) * tileSize;
 			mapFile.ignore();
 
-			Entity tile = legacyRegistry->CreateEntity();
+			Entity tile = registry->CreateEntity();
 			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
 			tile.AddComponent<SpriteComponent>(mapTextureAssetId, tileSize, tileSize, layer, false, srcRectX, srcRectY);
 		}
@@ -121,12 +120,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 		}
 
 		sol::table entity = entites[i];
-		Entity newEntity = legacyRegistry->CreateEntity();
-		const entt::entity newEnttEntity = enttRegistry.create();
-		Logger::Log(
-			"[EnTT] Entity created with ID: " +
-			std::to_string(entt::to_integral(newEnttEntity))
-		);
+		Entity newEntity = registry->CreateEntity();
 
 		//Tags
 		sol::optional<std::string> tag = entity["tag"];
@@ -168,29 +162,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 					scale,
 					rotation
 				);
-
-				enttRegistry.emplace<TransformComponent>(
-					newEnttEntity,
-					position,
-					scale,
-					rotation
-				);
-				if (
-					enttRegistry.valid(newEnttEntity) &&
-					enttRegistry.all_of<TransformComponent>(newEnttEntity)
-					)
-				{
-					Logger::Log(
-						"[EnTT] Transform added to entity " +
-						std::to_string(entt::to_integral(newEnttEntity)) +
-						". Position: " +
-						std::to_string(position.x) + ", " +
-						std::to_string(position.y)
-					);
-				}
 			}
-
-
 
 			//RigidBody
 			sol::optional<sol::table> rigidbody = entity["components"]["rigidbody"];
@@ -310,19 +282,6 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 		}
 		i++;
 	}
-	std::size_t enttTransformCount = 0;
-
-	auto transformView = enttRegistry.view<TransformComponent>();
-
-	for (const entt::entity entity : transformView)
-	{
-		++enttTransformCount;
-	}
-
-	Logger::Log(
-		"[EnTT] Entities with TransformComponent: " +
-		std::to_string(enttTransformCount)
-	);
 
 	//Adding assets to asset Store
 	/*assetStore->AddTexture(renderer, "tank-image", "./assets/images/tank-panther-right.png");
@@ -354,7 +313,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 			int srcRectX = std::atoi(&ch) * tileSize;
 			mapFile.ignore();
 
-			Entity tile = legacyRegistry->CreateEntity();
+			Entity tile = registry->CreateEntity();
 			tile.Group("tiles");
 			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
 			tile.AddComponent<SpriteComponent>("tilemap-image", tileSize, tileSize, SpriteComponent::LAYER_TILEMAP, false, srcRectX, srcRectY);
@@ -365,7 +324,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 	Game::mapHeight = mapNumRows * tileSize * tileScale;
 
 	//entity creation example
-	Entity chopper = legacyRegistry->CreateEntity();
+	Entity chopper = registry->CreateEntity();
 	chopper.Tag("player");
 	chopper.AddComponent<TransformComponent>(glm::vec2(100.0, 100.0), glm::vec2(4.0, 4.0), 0.0);
 	chopper.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));// we dont have to put velocity here becuse we are cahnging it with keyboard input 
@@ -378,13 +337,13 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 	chopper.AddComponent<CameraHollderComponent>();
 	chopper.AddComponent<HealthComponent>(100);
 
-	Entity radar = legacyRegistry->CreateEntity();
+	Entity radar = registry->CreateEntity();
 	radar.AddComponent<TransformComponent>(glm::vec2(Game::windowWidth - 74, 10), glm::vec2(1.0, 1.0), 0.0);
 	radar.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
 	radar.AddComponent<SpriteComponent>("radar-image", 64, 64, SpriteComponent::LAYER_GUI, true);
 	radar.AddComponent<AnimationComponent>(8, 1, true);
 
-	Entity tank = legacyRegistry->CreateEntity();
+	Entity tank = registry->CreateEntity();
 	tank.Group("enemies");
 	tank.AddComponent<TransformComponent>(glm::vec2(1600.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
 	tank.AddComponent<RigidBodyComponent>(glm::vec2(50.0, 0.0));
@@ -393,7 +352,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 	tank.AddComponent<ProjectileEmitterComponent>(glm::vec2(0.0, 100.0), 3000, 3000, 10, false);
 	tank.AddComponent<HealthComponent>(100);
 
-	Entity truck = legacyRegistry->CreateEntity();
+	Entity truck = registry->CreateEntity();
 	truck.Group("enemies");
 	truck.AddComponent<TransformComponent>(glm::vec2(250.0, 980.0), glm::vec2(3.0, 3.0), 0.0);
 	truck.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
@@ -402,21 +361,21 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& leg
 	truck.AddComponent<ProjectileEmitterComponent>(glm::vec2(100.0, 0.0), 1000, 3000, 10, false);
 	truck.AddComponent<HealthComponent>(100);
 
-	Entity treeA = legacyRegistry->CreateEntity();
+	Entity treeA = registry->CreateEntity();
 	treeA.Group("obstacles");
 	treeA.AddComponent<TransformComponent>(glm::vec2(2000.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
 	treeA.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
 	treeA.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
 	treeA.AddComponent<BoxColliderComponent>(16, 32);
 
-	Entity treeB = legacyRegistry->CreateEntity();
+	Entity treeB = registry->CreateEntity();
 	treeB.Group("obstacles");
 	treeB.AddComponent<TransformComponent>(glm::vec2(1500.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
 	treeB.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
 	treeB.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
 	treeB.AddComponent<BoxColliderComponent>(16, 32);
 
-	Entity label = legacyRegistry->CreateEntity();
+	Entity label = registry->CreateEntity();
 	SDL_Color white = { 255,255,255 };
 	label.AddComponent<TextLabelComponent>(glm::vec2(400, 400), "Test Label String", "charriot-font", white, false);
 	*/
