@@ -16,6 +16,8 @@
 #include "../Systems/RenderHealthBarSystem.h"
 #include "../Systems/RenderGUISystem.h"
 #include "../Systems/ScriptSystem.h"
+#include "../Components/TransformComponent.h"
+#include "../Components/RigidBodyComponent.h"
 #include <iostream>
 #include <SDL.h>
 #include <glm/glm.hpp>
@@ -140,6 +142,7 @@ void Game::ProccessInput()
 
 void Game::Setup()
 {
+
 	//Add the system that need to be processed in the
 	registry->AddSystem<MovementSystem>();
 	registry->AddSystem<RenderSystem>();
@@ -162,7 +165,7 @@ void Game::Setup()
 	//Load first level
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
-	loader.LoadLevel(lua, registry, assetStore, renderer, 1);
+	loader.LoadLevel(lua, registry,enttRegistry, assetStore, renderer, 1);
 }
 
 void Game::Update()

@@ -1,6 +1,7 @@
 #ifndef GAME_H
 #define GAME_H
 #include <SDL.h>
+#include <entt/entt.hpp>
 #include "../ECS/ECS.h"
 #include "../AssetStore/AssetStore.h"
 #include "../EventBus/EventBus.h"
@@ -23,6 +24,8 @@ class Game
 		sol::state lua;
 
 		std::unique_ptr<Registry> registry; //Registry * registry
+		entt::registry enttRegistry; // Entt mitigation
+
 		std::unique_ptr<AssetStore> assetStore;
 		std::unique_ptr<EventBus> eventBus;
 

@@ -3,8 +3,11 @@
 
 #include "../ECS/ECS.h"
 #include "../AssetStore/AssetStore.h"
+
 #include <SDL.h>
+#include <entt/entt.hpp>
 #include <sol/sol.hpp>
+
 #include <memory>
 
 class LevelLoader
@@ -13,7 +16,14 @@ class LevelLoader
 		LevelLoader();
 		~LevelLoader();
 
-		void LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,const std::unique_ptr<AssetStore>& assetStore,SDL_Renderer* renderer, int levelNumber);
+        void LoadLevel(
+            sol::state& lua,
+            const std::unique_ptr<Registry>& legacyRegistry,
+            entt::registry& enttRegistry,
+            const std::unique_ptr<AssetStore>& assetStore,
+            SDL_Renderer* renderer,
+            int levelNumber
+        );
 };
 
 #endif
