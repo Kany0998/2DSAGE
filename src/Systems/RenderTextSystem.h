@@ -7,20 +7,18 @@
 #include <SDL.h>
 
 
-class RenderTextSystem : public System
+class RenderTextSystem
 {
 	public:
-		RenderTextSystem()
-		{
-			RequireComponent<TextLabelComponent>();
-		}
+		RenderTextSystem() = default;
 
-		void Update(SDL_Renderer* renderer,std::unique_ptr<AssetStore>& assetStore, const SDL_Rect& camera)
+		void Update(Registry& registry, SDL_Renderer* renderer,std::unique_ptr<AssetStore>& assetStore, const SDL_Rect& camera)
 		{
-			for(auto entity: GetSystemEntities())
+			for(auto rawEntity: registry.Raw().view<TextLabelComponent>())
 			{
+				Entity entity(rawEntity, &registry);
 				const auto textLabel = entity.GetComponent<TextLabelComponent>();
-				
+
 				SDL_Surface* surface = TTF_RenderText_Blended(assetStore->GetFont(textLabel.assetId), textLabel.text.c_str(), textLabel.color);
 				SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
 
@@ -39,6 +37,7 @@ class RenderTextSystem : public System
 				};
 
 				SDL_RenderCopy(renderer, texture, NULL, &dstRect);
+				SDL_DestroyTexture(texture);
 			}
 		}
 };
