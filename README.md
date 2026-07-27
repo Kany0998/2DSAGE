@@ -60,11 +60,11 @@ The project currently supports:
 
 \- dependency management with Conan 2
 
-\- EnTT dependency prepared for ECS migration
+\- ECS architecture fully migrated to EnTT (entt::registry-backed component storage, sparse-set views)
 
 
 
-The existing custom ECS will be gradually replaced with EnTT.
+The custom hand-rolled ECS has been fully replaced by EnTT.
 
 
 
@@ -403,8 +403,6 @@ cmake-conan-migration
 \## Planned development
 
 
-
-\- migration from the custom ECS to EnTT
 
 \- RPG character statistics
 
