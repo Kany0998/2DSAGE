@@ -146,6 +146,18 @@ conan install . --output-folder=build --build=missing -s build\_type=Debug -s co
 
 
 
+This installs the dependencies needed for the `windows-debug` preset. The `windows-release` preset needs its own install, run separately:
+
+
+
+```powershell
+
+conan install . --output-folder=build --build=missing -s build\_type=Release -s compiler.cppstd=20 -c tools.cmake.cmaketoolchain:generator=Ninja
+
+```
+
+
+
 Conan downloads and prepares the required dependencies.
 
 
@@ -181,6 +193,36 @@ The executable is generated in:
 ```text
 
 build/visual-studio-debug/Debug/2DSAGE.exe
+
+```
+
+
+
+\## Release build
+
+
+
+After running the Release `conan install` above:
+
+
+
+```powershell
+
+cmake --preset windows-release
+
+cmake --build --preset windows-release
+
+```
+
+
+
+The executable is generated in:
+
+
+
+```text
+
+build/visual-studio-release/Release/2DSAGE.exe
 
 ```
 
