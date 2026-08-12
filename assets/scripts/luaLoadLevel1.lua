@@ -3,7 +3,7 @@ local current_system_hour = os.date("*t").hour
 
 local map_texute_asset_id
 
-if current_system_hour >= 9 and current_system_hour < 19 then
+if current_system_hour >= 9 and current_system_hour < 23 then
 	map_texute_asset_id = "tilemap-texture-day"
 else
 	map_texute_asset_id = "tilemap-texture-night"
@@ -82,16 +82,31 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 5}
 				},
-				health = 
+				health =
 				{
-					health_percentage = 100
+					health_points = 10,
+					max_health_points = 1000
+				},
+				mana =
+				{
+					mana_percentage = 1000,
+					max_mana_points = 1000
+				},
+				attributes =
+				{
+					attack = 150,
+					defense = 100,
+					wisdom = 100,
+					vitality = 100,
+					speed = 10,
+					dexterity = 10
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 100},
 					projectile_duration = 10, --sec
 					repeat_frequency = 0,
-					hit_percentage_damage = 20,
+					projectile_damage = 15,
 					friendly = true
 				},
 				keyboard_controlled =
@@ -141,14 +156,62 @@ Level = {
 				},
 				health = 
 				{
-					health_percentage = 100
+					health_points = 100,
+					max_health_points = 100
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
+					friendly = false
+				},
+			}
+
+		},
+		{
+			--tank
+			group = "enemies",
+			components =
+			{
+				transform =
+				{
+					position = {x = 800, y = 400},
+					scale = {x = 6.0, y = 6.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = -100, y = 0}
+				},
+				sprite = 
+				{
+					texture_asset_id = "tank-texture",
+					width = 32,
+					height = 32,
+					layer  = 3,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 32,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				health = 
+				{
+					health_points = 100,
+					max_health_points = 100
+				},
+				projectile_emitter =
+				{
+					projectile_velocity = {x = 100, y = 0},
+					projectile_duration = 10, --sec
+					repeat_frequency = 3,
+					projectile_damage = 49,
 					friendly = false
 				},
 			}
@@ -161,7 +224,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 800, y = 400},
+					position = {x = 1600, y = 400},
 					scale = {x = 2.0, y = 2.0},
 					rotation = 0.0 --deg
 				},
@@ -222,14 +285,15 @@ Level = {
 				},
 				health = 
 				{
-					health_percentage = 100
+					health_points = 100,
+					max_health_points = 100
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
 					friendly = false
 				},
 				on_update_script =
@@ -263,7 +327,7 @@ Level = {
 
 		},
 		{
-			--tank
+			--tree
 			group = "enemies",
 			components =
 			{
@@ -295,14 +359,24 @@ Level = {
 				},
 				health = 
 				{
-					health_percentage = 100
+					health_points = 10000,
+					max_health_points = 10000
+				},
+				attributes =
+				{
+					attack = 15000000,
+					defense = 100,
+					wisdom = 10,
+					vitality = 10,
+					speed = 10,
+					dexterity = 10
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
 					friendly = false
 				},
 				on_update_script =

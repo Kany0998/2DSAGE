@@ -9,6 +9,8 @@
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/HealthComponent.h"
+#include "../Components/AttributesComponent.h"
+#include "../Components/ManaComponent.h"	
 #include "../Components/ProjectileComponent.h"
 #include "../Components/TextLabelComponent.h"
 #include "../Components/ScriptComponent.h"
@@ -220,10 +222,34 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			if (health != sol::nullopt)
 			{
 				newEntity.AddComponent<HealthComponent>(
-					static_cast<int>(entity["components"]["health"]["health_percentage"].get_or(100))
+					static_cast<int>(entity["components"]["health"]["health_points"].get_or(100)),
+					static_cast<int>(entity["components"]["health"]["max_health_points"].get_or(100))
 				);
 			}
-			
+
+			//Mana
+			sol::optional<sol::table> mana = entity["components"]["mana"];
+			if (mana != sol::nullopt)
+			{
+				newEntity.AddComponent<ManaComponent>(
+					static_cast<int>(entity["components"]["mana"]["mana_percentage"].get_or(100)),
+					static_cast<int>(entity["components"]["mana"]["max_mana_points"].get_or(100))
+				);
+			}
+			//Attributes
+			sol::optional<sol::table> attributes = entity["components"]["attributes"];
+			if(attributes != sol::nullopt)
+			{
+				newEntity.AddComponent<AttributesComponent>(
+					static_cast<int>(entity["components"]["attributes"]["attack"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["defense"].get_or(0)),
+					static_cast<int>(entity["components"]["attributes"]["wisdom"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["vitality"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["speed"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["dexterity"].get_or(10))
+				);
+			}
+
 			//ProjectileEmitter
 			sol::optional<sol::table> projectileEmitter = entity["components"]["projectile_emitter"];
 			if (projectileEmitter != sol::nullopt)
@@ -235,7 +261,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					),
 					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10) * 1000),
-					static_cast<int>(entity["components"]["projectile_emitter"]["hit_percentage_damage"].get_or(10)),
+					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
 				);
 			}

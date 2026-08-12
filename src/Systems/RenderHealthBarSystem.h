@@ -24,21 +24,28 @@ class RenderHealthBarSystem
 				const auto sprite = entity.GetComponent<SpriteComponent>();
 				const auto health = entity.GetComponent<HealthComponent>();
 
-				//Draw healthbar with correct color based on health percentagee
+				//Draw healthbar with correct color based on health percentage
+				//(healthPoints isn't necessarily 0-100 - normalize against maxHealthPoints first)
+				double healthPercent = (health.healthPoints / (double)health.maxHealthPoints) * 100.0;
+				//overkill damage can push healthPoints negative for the one frame before
+				//the entity is actually destroyed (Kill() is deferred) - clamp so the bar
+				//can't compute a negative width and render growing backwards
+				healthPercent = healthPercent < 0.0 ? 0.0 : (healthPercent > 100.0 ? 100.0 : healthPercent);
+
 				SDL_Color healthBarColor = {255,255,255};
 				//always draw backgroung of health bar in gray color
 				SDL_Color healthBarBackGroundColor = { 128, 128, 128,};
 
-				if (health.healthPercentage >= 0 && health.healthPercentage < 30)
+				if (healthPercent >= 0 && healthPercent < 30)
 				{
 					healthBarColor = { 255,0,0 };//red
 				}
-				if (health.healthPercentage >= 30 && health.healthPercentage < 70)
+				if (healthPercent >= 30 && healthPercent < 70)
 				{
 					healthBarColor = { 255,255,0 };//yeallow
 				}
 
-				if (health.healthPercentage >= 70 && health.healthPercentage <=100)
+				if (healthPercent >= 70 && healthPercent <=100)
 				{
 					healthBarColor = { 0,255,0 };//green
 				}
@@ -46,13 +53,13 @@ class RenderHealthBarSystem
 				//postions of health bar
 				int healthBarWidth = sprite.width * transform.scale.x - 5;
 				int healthBarHeight = 5;
-				double healthBarX = transform.position.x - camera.x + 2.5;
+				double healthBarX = transform.position.x - camera.x + 2;
 				double healthBarY = (transform.position.y + sprite.height * transform.scale.y) - camera.y + 2 ;
 
 				SDL_Rect healthBarRectangle = {
 					static_cast<int>(healthBarX),
 					static_cast<int>(healthBarY),
-					static_cast<int>(healthBarWidth * (health.healthPercentage / 100.0)),
+					static_cast<int>(healthBarWidth * (healthPercent / 100.0)),
 					static_cast<int>(healthBarHeight)
 				};
 				SDL_Rect healthBarBackRectangle = {
