@@ -24,8 +24,12 @@ class ProjectileEmitSystem;
 class ProjectileLifeCycleSystem;
 class RenderTextSystem;
 class RenderHealthBarSystem;
+class HealthRegenerationSystem;
+class RenderManaBarSystem;
+class ManaRegenerationSystem;
 class RenderGUISystem;
 class ScriptSystem;
+class SpecialAbilitySystem;
 
 class Game
 {
@@ -61,8 +65,12 @@ class Game
 		std::unique_ptr<ProjectileLifeCycleSystem> projectileLifeCycleSystem;
 		std::unique_ptr<RenderTextSystem> renderTextSystem;
 		std::unique_ptr<RenderHealthBarSystem> renderHealthBarSystem;
+		std::unique_ptr<HealthRegenerationSystem> healthRegenerationSystem;
+		std::unique_ptr<RenderManaBarSystem> renderManaBarSystem;
+		std::unique_ptr<ManaRegenerationSystem> manaRegenerationSystem;
 		std::unique_ptr<RenderGUISystem> renderGUISystem;
 		std::unique_ptr<ScriptSystem> scriptSystem;
+		std::unique_ptr<SpecialAbilitySystem> specialAbilitySystem;
 
 
 	public:

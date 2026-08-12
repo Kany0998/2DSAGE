@@ -14,10 +14,15 @@
 #include "../Systems/ProjectileLifeCycleSystem.h"
 #include "../Systems/RenderTextSystem.h"
 #include "../Systems/RenderHealthBarSystem.h"
+#include "../Systems/HealthRegenerationSystem.h"
+#include "../Systems/RenderManaBarSystem.h"
+#include "../Systems/ManaRegenerationSystem.h"
 #include "../Systems/RenderGUISystem.h"
 #include "../Systems/ScriptSystem.h"
+#include "../Systems/SpecialAbilitySystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
+#include "../Events/MouseButtonPressedEvent.h"
 #include <iostream>
 #include <SDL.h>
 #include <glm/glm.hpp>
@@ -135,6 +140,18 @@ void Game::ProccessInput()
 			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym);
 			break;
 
+		case SDL_MOUSEBUTTONDOWN:
+			//Don't let a click meant for the ImGui debug panel also fire a projectile
+			if (!io.WantCaptureMouse)
+			{
+				glm::vec2 worldPosition(
+					sdlEvent.button.x + camera.x,
+					sdlEvent.button.y + camera.y
+				);
+				eventBus->EmitEvent<MouseButtonPressedEvent>(sdlEvent.button.button, worldPosition);
+			}
+			break;
+
 		}
 	}
 }
@@ -155,8 +172,12 @@ void Game::Setup()
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
+	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
+	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
+	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
 	renderGUISystem = std::make_unique<RenderGUISystem>();
 	scriptSystem = std::make_unique<ScriptSystem>();
+	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -189,6 +210,7 @@ void Game::Update()
 	damageSystem->SubscribeToEvents(eventBus);
 	keyboardControlSystem->SubscribeToEvents(eventBus);
 	projectileEmitSystem->SubscribeToEvents(eventBus);
+	specialAbilitySystem->SubscribeToEvents(eventBus);
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
@@ -200,6 +222,8 @@ void Game::Update()
 	cameraMovementSystem->Update(*registry, camera);
 	projectileEmitSystem->Update();
 	projectileLifeCycleSystem->Update(*registry);
+	healthRegenerationSystem->Update(*registry, deltaTime);
+	manaRegenerationSystem->Update(*registry, deltaTime);
 	scriptSystem->Update(*registry, deltaTime, SDL_GetTicks());
 
 }
@@ -213,6 +237,7 @@ void Game::Render()
 	renderSystem->Update(*registry, renderer, assetStore, camera);
 	renderTextSystem->Update(*registry, renderer, assetStore, camera);
 	renderHealthBarSystem->Update(*registry, renderer, assetStore, camera);
+	renderManaBarSystem->Update(*registry, renderer, assetStore, camera);
 	if (isDebug)
 	{
 		renderCollisionSystem->Update(*registry, renderer, camera);
@@ -238,6 +263,12 @@ void Game::Destroy()
 {
 	ImGuiSDL::Deinitialize();
 	ImGui::DestroyContext();
+
+	//Free every SDL_Texture/TTF_Font now, while the renderer and SDL_ttf are
+	//still alive - AssetStore otherwise wouldn't be destroyed until Game's own
+	//destructor runs, which happens after SDL_Quit()/TTF_Quit() below.
+	assetStore.reset();
+
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_Quit();

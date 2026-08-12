@@ -70,7 +70,9 @@ class Registry
 		//Entities flagged to be destroyed at the next Update(), mirroring the old
 		//deferred-kill behavior so systems can safely kill entities mid-frame
 		//(e.g. from a collision event handler) without invalidating views/iterators.
-		std::vector<entt::entity> entitiesToBeKilled;
+		//Must de-duplicate: the same entity can be killed twice in one frame
+		//(e.g. two projectiles hitting it before the kill queue is flushed).
+		std::set<entt::entity> entitiesToBeKilled;
 
 	public:
 		Registry() { Logger::Log("Registry Constructor"); }

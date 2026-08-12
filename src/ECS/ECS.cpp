@@ -43,13 +43,21 @@ Entity Registry::CreateEntity()
 
 void Registry::KillEntity(Entity entity)
 {
-	entitiesToBeKilled.push_back(entity.GetHandle());
+	entitiesToBeKilled.insert(entity.GetHandle());
 }
 
 void Registry::Update()
 {
 	for (entt::entity handle : entitiesToBeKilled)
 	{
+		//Guard against a handle that's already been destroyed (defense in depth,
+		//on top of entitiesToBeKilled being a set) - calling destroy() twice on
+		//the same entity trips an entt assertion.
+		if (!enttRegistry.valid(handle))
+		{
+			continue;
+		}
+
 		Entity entity(handle, this);
 
 		//remove any traces of that entity from the tag/group maps before it is destroyed
