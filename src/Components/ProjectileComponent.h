@@ -6,16 +6,20 @@
 struct ProjectileComponent
 {
 	bool isFriendly;
-	int hitPercentDamage;
+	int projectileDamage;
 	int duration;
 	double startTime;
+	bool haveCollided = false;
 
-	ProjectileComponent(bool isFriendly = false, int hitPercentDamge = 0, int duration = 0)
+
+	ProjectileComponent(bool isFriendly = false, int projectileDamage = 0, int duration = 0, bool haveCollided = false)
 	{
 		this->isFriendly = isFriendly;
-		this->hitPercentDamage = hitPercentDamge;
+		this->projectileDamage = projectileDamage;
 		this->duration = duration;
 		this->startTime = SDL_GetTicks();
+		this->haveCollided = haveCollided;
+
 	}
 };
 

@@ -118,6 +118,7 @@ class CollisionSystem
 		}
 
 		// Pairs that overlap spatially but should never be treated as a real collision:
+		//  - two enemies overlapping each other
 		//  - two projectiles overlapping each other, friendly or not
 		//  - a friendly (player-fired) projectile overlapping the player ("player" tag)
 		//  - an unfriendly (enemy-fired) projectile overlapping an "enemies" group member
@@ -126,6 +127,11 @@ class CollisionSystem
 		// or was spawned at runtime through the ImGui "Create new enemy" tool.
 		bool IsCollisionExempt(Entity a, Entity b)
 		{
+			if (a.BelongsToGroup("enemies") && b.BelongsToGroup("enemies"))
+			{
+				return true;
+			}
+
 			bool aIsProjectile = a.HasComponent<ProjectileComponent>();
 			bool bIsProjectile = b.HasComponent<ProjectileComponent>();
 

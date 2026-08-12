@@ -6,6 +6,7 @@
 #include "../Components/BoxColliderComponent.h"
 #include "../Components/ProjectileComponent.h"
 #include "../Components/HealthComponent.h"
+#include "../Components/AttributesComponent.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 
@@ -51,13 +52,22 @@ class DamageSystem
 
 			if (!projectileComponent.isFriendly)
 			{
-				//reduce player health by hitPercentDamage
+				//reduce player health by projectileDamage
 				auto& health = player.GetComponent<HealthComponent>();
+				auto damgeTaken = projectileComponent.projectileDamage;
+				//substract health of the player by projectileDamage of projectile
+				if (player.HasComponent<AttributesComponent>()) {
+					auto& attributes = player.GetComponent<AttributesComponent>();
+					
+					damgeTaken -= attributes.defensePower;
+					if (damgeTaken<=0) {
+						damgeTaken = 1; //minimum damage taken is 1
+					}
+					
+				}
+				health.healthPoints -= damgeTaken;
 
-				//substract health of the player by hitPercentDamage of projectile
-				health.healthPercentage -= projectileComponent.hitPercentDamage;
-
-				if (health.healthPercentage <= 0)
+				if (health.healthPoints <= 0)
 				{
 					player.Kill();
 				}
@@ -68,20 +78,34 @@ class DamageSystem
 
 		void OnProjectileHitsEnemy(Entity projectile, Entity enemy)
 		{
-			auto projectileComponent = projectile.GetComponent<ProjectileComponent>();
+			auto& projectileComponent = projectile.GetComponent<ProjectileComponent>();
 
-			if (projectileComponent.isFriendly)
+			if (projectileComponent.isFriendly && !projectileComponent.haveCollided)
 			{
-				//reduce enemy health by hitPercentDamage
+				//reduce enemy health by projectileDamage
 				auto& health = enemy.GetComponent<HealthComponent>();
 
-				//substract health of the enemy by hitPercentDamage of projectile
-				health.healthPercentage -= projectileComponent.hitPercentDamage;
+				//substract health of the enemy by projectileDamage of projectile
+				auto damgeTaken = projectileComponent.projectileDamage;
+				if (enemy.HasComponent<AttributesComponent>()) {
+					auto& attributes = enemy.GetComponent<AttributesComponent>();
 
-				if (health.healthPercentage <= 0)
+					damgeTaken  -= attributes.defensePower;
+					if (damgeTaken <= 0) {
+						damgeTaken = 1; //minimum damage taken is 1
+					}
+					
+				}
+				health.healthPoints -= damgeTaken;
+
+
+				if (health.healthPoints <= 0)
 				{
 					enemy.Kill();
 				}
+				
+
+				projectileComponent.haveCollided = true;
 
 				projectile.Kill();
 			}
