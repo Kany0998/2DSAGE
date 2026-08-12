@@ -30,7 +30,7 @@ set(IMGUI_SOURCES
 add_executable(2DSAGE
     ${PROJECT_SOURCES}
     ${IMGUI_SOURCES}
-)
+ "src/Components/ManaComponent.h" "src/Systems/RenderManaBarSystem.h" "src/Components/AttributesComponent.h" "src/Systems/ManaRegenerationSystem.h" "src/Systems/HealthRegenerationSystem.h")
 
 target_include_directories(2DSAGE PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -63,12 +63,31 @@ else()
     )
 endif()
 
+file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*"
+)
+
+# A POST_BUILD step on 2DSAGE only runs when 2DSAGE itself needs to relink -
+# editing just a .lua/asset file with no C++ changes would make the build
+# system decide there's nothing to do and skip the copy entirely, leaving a
+# stale assets/ folder next to the exe. Depending on the actual asset files
+# (via this stamp) means the copy re-runs whenever any asset changes, whether
+# or not any C++ source changed.
 add_custom_command(
-    TARGET 2DSAGE POST_BUILD
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_copied.stamp"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:2DSAGE>/assets"
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/assets_copied.stamp"
+    DEPENDS ${ASSET_FILES}
+    COMMENT "Copying assets to output directory"
 )
+
+add_custom_target(CopyAssets ALL
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/assets_copied.stamp"
+)
+
+add_dependencies(2DSAGE CopyAssets)
 
 if(WIN32)
     add_custom_command(
