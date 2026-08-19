@@ -94,12 +94,12 @@ Level = {
 				},
 				attributes =
 				{
-					attack = 150,
-					defense = 100,
+					attack = 1500,
+					defense = 100000,
 					wisdom = 100,
-					vitality = 100,
-					speed = 10,
-					dexterity = 10
+					vitality = 1000,
+					speed = 100,
+					dexterity = 100
 				},
 				projectile_emitter =
 				{
@@ -111,11 +111,20 @@ Level = {
 				},
 				keyboard_controlled =
 				{
-					up_velocity = {x = 0, y = -200},
-					right_velocity = {x = 200, y = 0},
-					down_velocity = {x = 0, y = 200},
-					left_velocity = {x = -200, y = 0},
+					up_velocity = {x = 0, y = -100},
+					right_velocity = {x = 100, y = 0},
+					down_velocity = {x = 0, y = 100},
+					left_velocity = {x = -100, y = 0},
 					diagnalMovement = true
+				},
+				progression =
+				{
+					level = 1,
+					experience = 0,
+					skill_points = 0,
+					max_level = 100,
+					experience_base = 100,	--experience needed to clear level 1
+					experience_growth = 1.15	--each level costs 15% more than the one before
 				},
 				camera_follow =
 				{
@@ -154,10 +163,14 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
 					health_points = 100,
 					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
 				},
 				projectile_emitter =
 				{
@@ -201,10 +214,14 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
 					health_points = 100,
 					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
 				},
 				projectile_emitter =
 				{
@@ -283,10 +300,14 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
 					health_points = 100,
 					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
 				},
 				projectile_emitter =
 				{
@@ -357,14 +378,18 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
 					health_points = 10000,
 					max_health_points = 10000
 				},
+				experience_reward =
+				{
+					experience = 500
+				},
 				attributes =
 				{
-					attack = 15000000,
+					attack = 150,
 					defense = 100,
 					wisdom = 10,
 					vitality = 10,

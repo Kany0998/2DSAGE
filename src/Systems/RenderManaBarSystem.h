@@ -6,8 +6,10 @@
 #include "../Components/ManaComponent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/SpriteComponent.h"
+#include "./BarText.h"
 
 #include <SDL.h>
+#include <string>
 
 class RenderManaBarSystem
 {
@@ -33,14 +35,30 @@ public:
 			//always draw background of mana bar in gray color
 			SDL_Color manaBarBackGroundColor = { 128, 128, 128, };
 
-			manaBarColor = {0,137,255};//red
-			
+			manaBarColor = {0,137,255};//blue
 
-			//postions of mana bar
-			int manaBarWidth = sprite.width * transform.scale.x - 5;
-			int manaBarHeight = 5;
-			double manaBarX = transform.position.x - camera.x + 2;
-			double manaBarY = (transform.position.y + sprite.height * transform.scale.y) - camera.y + 7;
+
+			const std::string manaText = std::to_string(mana.manaPoints) + "/" + std::to_string(mana.maxManaPoints);
+
+			//same sizing rule as the health bar: a fixed width that only grows when the
+			//caption would be clipped
+			int textWidth = 0;
+			int textHeight = 0;
+			BarText::Measure(assetStore, manaText, textWidth, textHeight);
+
+			int manaBarWidth = BarWidth;
+			if (textWidth + 2 * TextPadding > manaBarWidth)
+			{
+				manaBarWidth = textWidth + 2 * TextPadding;
+			}
+
+			int manaBarHeight = BarHeight;
+
+			//centred under the sprite, and directly under the health bar - which is
+			//BarHeight tall and starts 2px below the sprite
+			const double spriteCenterX = transform.position.x + (sprite.width * transform.scale.x) / 2.0;
+			double manaBarX = spriteCenterX - camera.x - manaBarWidth / 2.0;
+			double manaBarY = (transform.position.y + sprite.height * transform.scale.y) - camera.y + 2 + BarHeight + 2;
 
 			SDL_Rect manaBarRectangle = {
 				static_cast<int>(manaBarX),
@@ -60,8 +78,14 @@ public:
 			SDL_SetRenderDrawColor(renderer, manaBarColor.r, manaBarColor.g, manaBarColor.b, 255);
 			SDL_RenderFillRect(renderer, &manaBarRectangle);
 
+			BarText::DrawCentered(renderer, assetStore, manaText, manaBarBackRectangle);
 		}
 	}
+
+private:
+	static constexpr int BarWidth = 70;		//matches RenderHealthBarSystem so the two stack evenly
+	static constexpr int BarHeight = 12;
+	static constexpr int TextPadding = 3;
 };
 
 

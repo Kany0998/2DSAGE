@@ -6,8 +6,10 @@
 #include "../Components/HealthComponent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/SpriteComponent.h"
+#include "./BarText.h"
 
 #include <SDL.h>
+#include <string>
 
 class RenderHealthBarSystem
 {
@@ -50,10 +52,28 @@ class RenderHealthBarSystem
 					healthBarColor = { 0,255,0 };//green
 				}
 
-				//postions of health bar
-				int healthBarWidth = sprite.width * transform.scale.x - 5;
-				int healthBarHeight = 5;
-				double healthBarX = transform.position.x - camera.x + 2;
+				const std::string healthText = std::to_string(health.healthPoints) + "/" + std::to_string(health.maxHealthPoints);
+
+				//Fixed size rather than sprite-relative - a 27px strip scaled off a 32px
+				//sprite can't hold a caption - and it only grows when the caption would
+				//otherwise be clipped, so bars stay uniform for ordinary numbers and
+				//widen for something like "8593/10000".
+				int textWidth = 0;
+				int textHeight = 0;
+				BarText::Measure(assetStore, healthText, textWidth, textHeight);
+
+				int healthBarWidth = BarWidth;
+				if (textWidth + 2 * TextPadding > healthBarWidth)
+				{
+					healthBarWidth = textWidth + 2 * TextPadding;
+				}
+
+				int healthBarHeight = BarHeight;
+
+				//centred under the sprite, so a widened bar grows evenly to both sides
+				//instead of drifting off to the right
+				const double spriteCenterX = transform.position.x + (sprite.width * transform.scale.x) / 2.0;
+				double healthBarX = spriteCenterX - camera.x - healthBarWidth / 2.0;
 				double healthBarY = (transform.position.y + sprite.height * transform.scale.y) - camera.y + 2 ;
 
 				SDL_Rect healthBarRectangle = {
@@ -74,8 +94,14 @@ class RenderHealthBarSystem
 				SDL_SetRenderDrawColor(renderer, healthBarColor.r, healthBarColor.g, healthBarColor.b, 255);
 				SDL_RenderFillRect(renderer, &healthBarRectangle);
 
+				BarText::DrawCentered(renderer, assetStore, healthText, healthBarBackRectangle);
 			}
 		}
+
+	private:
+		static constexpr int BarWidth = 70;		//the size every bar keeps unless its caption doesn't fit
+		static constexpr int BarHeight = 12;
+		static constexpr int TextPadding = 3;	//breathing room either side of the caption
 };
 
 

@@ -14,6 +14,8 @@
 #include "../Components/ProjectileComponent.h"
 #include "../Components/TextLabelComponent.h"
 #include "../Components/ScriptComponent.h"
+#include "../Components/ProgressionComponent.h"
+#include "../Components/ExperienceRewardComponent.h"
 #include <fstream>
 #include <sol/sol.hpp>
 #include <string>
@@ -247,6 +249,31 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					static_cast<int>(entity["components"]["attributes"]["vitality"].get_or(10)),
 					static_cast<int>(entity["components"]["attributes"]["speed"].get_or(10)),
 					static_cast<int>(entity["components"]["attributes"]["dexterity"].get_or(10))
+				);
+			}
+
+			//Progression
+			sol::optional<sol::table> progression = entity["components"]["progression"];
+			if (progression != sol::nullopt)
+			{
+				newEntity.AddComponent<ProgressionComponent>(
+					static_cast<int>(entity["components"]["progression"]["level"].get_or(1)),
+					static_cast<int>(entity["components"]["progression"]["experience"].get_or(0)),
+					//0 means "work it out from experience_base" - see ProgressionComponent
+					static_cast<int>(entity["components"]["progression"]["experience_to_next_level"].get_or(0)),
+					static_cast<int>(entity["components"]["progression"]["skill_points"].get_or(0)),
+					static_cast<int>(entity["components"]["progression"]["max_level"].get_or(100)),
+					static_cast<int>(entity["components"]["progression"]["experience_base"].get_or(100)),
+					static_cast<float>(entity["components"]["progression"]["experience_growth"].get_or(1.15))
+				);
+			}
+
+			//ExperienceReward
+			sol::optional<sol::table> experienceReward = entity["components"]["experience_reward"];
+			if (experienceReward != sol::nullopt)
+			{
+				newEntity.AddComponent<ExperienceRewardComponent>(
+					static_cast<int>(entity["components"]["experience_reward"]["experience"].get_or(0))
 				);
 			}
 

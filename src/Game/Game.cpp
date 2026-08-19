@@ -20,6 +20,8 @@
 #include "../Systems/RenderGUISystem.h"
 #include "../Systems/ScriptSystem.h"
 #include "../Systems/SpecialAbilitySystem.h"
+#include "../Systems/ProgressionSystem.h"
+#include "../Systems/RenderExperienceBarSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Events/MouseButtonPressedEvent.h"
@@ -178,6 +180,8 @@ void Game::Setup()
 	renderGUISystem = std::make_unique<RenderGUISystem>();
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
+	progressionSystem = std::make_unique<ProgressionSystem>();
+	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -213,6 +217,7 @@ void Game::Update()
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
+	progressionSystem->SubscribeToEvents(eventBus);
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
@@ -226,6 +231,7 @@ void Game::Update()
 	projectileLifeCycleSystem->Update(*registry);
 	healthRegenerationSystem->Update(*registry, deltaTime);
 	manaRegenerationSystem->Update(*registry, deltaTime);
+	progressionSystem->Update(*registry);
 	scriptSystem->Update(*registry, deltaTime, SDL_GetTicks());
 
 }
@@ -240,6 +246,7 @@ void Game::Render()
 	renderTextSystem->Update(*registry, renderer, assetStore, camera);
 	renderHealthBarSystem->Update(*registry, renderer, assetStore, camera);
 	renderManaBarSystem->Update(*registry, renderer, assetStore, camera);
+	renderExperienceBarSystem->Update(*registry, renderer, assetStore, camera);
 	if (isDebug)
 	{
 		renderCollisionSystem->Update(*registry, renderer, camera);

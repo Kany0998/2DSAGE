@@ -30,6 +30,8 @@ class ManaRegenerationSystem;
 class RenderGUISystem;
 class ScriptSystem;
 class SpecialAbilitySystem;
+class ProgressionSystem;
+class RenderExperienceBarSystem;
 
 class Game
 {
@@ -71,6 +73,8 @@ class Game
 		std::unique_ptr<RenderGUISystem> renderGUISystem;
 		std::unique_ptr<ScriptSystem> scriptSystem;
 		std::unique_ptr<SpecialAbilitySystem> specialAbilitySystem;
+		std::unique_ptr<ProgressionSystem> progressionSystem;
+		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
 
 
 	public:
