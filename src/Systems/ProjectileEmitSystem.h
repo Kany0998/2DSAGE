@@ -2,8 +2,6 @@
 #define PROJECTILEEMITSYSTEM_H
 
 #include "../ECS/ECS.h"
-#include "../EventBus/EventBus.h"
-#include "../Events/MouseButtonPressedEvent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/SpriteComponent.h"
@@ -13,94 +11,35 @@
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/AttributesComponent.h"
 #include <SDL.h>
+#include <imgui/imgui.h>
+#include <glm/glm.hpp>
 #include <cmath>
+#include <vector>
 
+// Two kinds of emitter live here:
+//  - the player (CameraHollderComponent): holds the left mouse button to fire
+//    continuously toward the cursor, at a rate driven by dexterityPower.
+//  - everything else (enemies): fires on the fixed repeatRate timer loaded from Lua,
+//    straight along its configured projectileVelocity. Enemies have no dexterity,
+//    so their rate is deliberately left alone.
 class ProjectileEmitSystem
 {
 	public:
-		// Needs a registry reference kept alive for OnMouseButtonPressed, since
-		// that's an event-callback with a fixed (MouseButtonPressedEvent&)
-		// signature and can't receive the registry as a call parameter like
-		// Update() does.
-		explicit ProjectileEmitSystem(Registry& registry) : registry(registry) {}
-
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
-		{
-            eventBus->SubscribeToEvent<MouseButtonPressedEvent>(this, &ProjectileEmitSystem::OnMouseButtonPressed);
-        }
-
-
-        void OnMouseButtonPressed(MouseButtonPressedEvent& event) {
-            if (event.button == SDL_BUTTON_LEFT)
-            {
-                // Snapshot first: creating the projectile below adds a TransformComponent
-                // to a brand-new entity, which can grow/reallocate that component's pool.
-                // Doing that while still iterating a live view over TransformComponent is
-                // unsafe (can invalidate the iteration mid-loop) - materializing the
-                // candidates first, like CollisionSystem does, avoids that entirely.
-                std::vector<Entity> emitters;
-                for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>())
-                {
-                    emitters.emplace_back(rawEntity, &registry);
-                }
-
-                for (auto entity : emitters)
-                {
-                    if (entity.HasComponent<CameraHollderComponent>())
-                    {
-                        const auto projectileEmitter = entity.GetComponent<ProjectileEmitterComponent>();
-                        const auto transform = entity.GetComponent<TransformComponent>();
-
-                        // If parent entity has sprite, start the projectile position in the middle of the entity
-                        glm::vec2 projectilePosition = transform.position;
-                        if (entity.HasComponent<SpriteComponent>())
-                        {
-                            auto sprite = entity.GetComponent<SpriteComponent>();
-                            projectilePosition.x += (transform.scale.x * sprite.width / 2);
-                            projectilePosition.y += (transform.scale.y * sprite.height / 2);
-                        }
-
-                        // Aim toward wherever the mouse was clicked (already world-space),
-                        // using the configured projectileVelocity as a speed magnitude
-                        // rather than a per-axis velocity.
-                        glm::vec2 aimDirection = event.worldPosition - projectilePosition;
-                        float distance = glm::length(aimDirection);
-                        if (distance < 0.0001f)
-                        {
-                            continue; //clicked right on top of the shooter - no direction to aim in
-                        }
-                        aimDirection /= distance;
-
-                        float speed = glm::length(projectileEmitter.projectileVelocity);
-                        glm::vec2 projectileVelocity = aimDirection * speed;
-
-                        //point the sprite in the direction it's travelling
-                        double rotation = glm::degrees(std::atan2(projectileVelocity.y, projectileVelocity.x));
-
-						//Damage is scaled by the player's attackPower attribute, if it has one
-                        int scaledDamage = static_cast<int>(projectileEmitter.projectileDamage * 0.5f);
-                        if (entity.HasComponent<AttributesComponent>()) {
-                            const auto& attributes = entity.GetComponent<AttributesComponent>();
-                            scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.attackPower / 25.0f)));
-                        }
-
-                        // Create new projectile entity and add it to the world
-                        Entity projectile = entity.registry->CreateEntity();
-                        projectile.Group("projectiles");
-                        projectile.AddComponent<TransformComponent>(projectilePosition, glm::vec2(transform.scale.x, transform.scale.y), rotation);
-                        projectile.AddComponent<RigidBodyComponent>(projectileVelocity);
-                        projectile.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
-                        projectile.AddComponent<BoxColliderComponent>(4, 4);
-                        projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, scaledDamage, projectileEmitter.projectileDuration);
-                    }
-                }
-            }
-        }
+		// Registry + camera + isDebug are kept as references for the lifetime of the
+		// system: Update() polls the mouse itself (that's what makes hold-to-fire
+		// possible at all - SDL_MOUSEBUTTONDOWN only fires once per physical press),
+		// and the cursor's screen position needs the camera offset to become a
+		// world-space aim target, the same way SpecialAbilitySystem does it.
+		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const bool& isDebug)
+			: registry(registry), camera(camera), isDebug(isDebug) {}
 
 		void Update()
 		{
-			// Same reallocation-during-iteration hazard as OnMouseButtonPressed -
-			// snapshot the emitters before creating any new projectiles.
+			// Snapshot first: emitting a projectile adds a TransformComponent to a
+			// brand-new entity, which can grow/reallocate that component's pool.
+			// Doing that while still iterating a live view over TransformComponent is
+			// unsafe (can invalidate the iteration mid-loop) - materializing the
+			// candidates first, like CollisionSystem does, avoids that entirely.
 			std::vector<Entity> emitters;
 			for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>())
 			{
@@ -110,49 +49,153 @@ class ProjectileEmitSystem
 			for (auto entity : emitters)
 			{
 				auto& projectileEmitter = entity.GetComponent<ProjectileEmitterComponent>();
+				//deliberately a copy, not a reference: the pool it lives in can
+				//reallocate while the projectile below is being created
 				const auto transform = entity.GetComponent<TransformComponent>();
 
-                if (projectileEmitter.repeatRate == 0)
-                {
-                    continue;
-                }
-
-				//check if it time to re-emit a new projectile
-				if (SDL_GetTicks() - projectileEmitter.lastEmittedTime > projectileEmitter.repeatRate)
+				if (entity.HasComponent<CameraHollderComponent>())
 				{
-					glm::vec2 projectilePosition = transform.position;
-					if (entity.HasComponent<SpriteComponent>())
-					{
-						const auto sprite = entity.GetComponent<SpriteComponent>();
-						projectilePosition.x += (transform.scale.x * sprite.width / 2);
-						projectilePosition.y += (transform.scale.y * sprite.height / 2);
-					}
-
-					//point the sprite in the direction it's travelling
-					double rotation = glm::degrees(std::atan2(projectileEmitter.projectileVelocity.y, projectileEmitter.projectileVelocity.x));
-
-                    //Damage is scaled by the entity's attackPower attribute, if it has one
-                    int scaledDamage = static_cast<int>(projectileEmitter.projectileDamage * 0.5f);
-                    if (entity.HasComponent<AttributesComponent>()) {
-                        const auto& attributes = entity.GetComponent<AttributesComponent>();
-                        scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.attackPower / 25.0f)));
-                    }
-
-					Entity projectile = registry.CreateEntity();
-					projectile.Group("projectiles");
-					projectile.AddComponent<TransformComponent>(projectilePosition, glm::vec2(transform.scale.x, transform.scale.y), rotation);
-					projectile.AddComponent<RigidBodyComponent>(projectileEmitter.projectileVelocity);
-					projectile.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
-					projectile.AddComponent<BoxColliderComponent>(4, 4);
-					projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, scaledDamage, projectileEmitter.projectileDuration);
-
-					//update projectile emmiter component last emitted time
-					projectileEmitter.lastEmittedTime = SDL_GetTicks();
+					UpdateMouseAimedEmitter(entity, projectileEmitter, transform);
+				}
+				else
+				{
+					UpdateAutomaticEmitter(entity, projectileEmitter, transform);
 				}
 			}
 		}
 
 	private:
+		//Player shooting: fires for as long as the left button is held down, aimed at
+		//wherever the cursor currently is. repeatRate is ignored here on purpose - the
+		//player's fire rate comes from dexterity (see GetShotIntervalMs) instead.
+		void UpdateMouseAimedEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
+		{
+			//don't shoot through the ImGui debug panel - same guard Game::ProccessInput()
+			//used to apply to the click event. Only consulted while the panel is actually
+			//being drawn, since WantCaptureMouse goes stale once ImGui stops running frames.
+			if (isDebug && ImGui::GetIO().WantCaptureMouse)
+			{
+				return;
+			}
+
+			int mouseX, mouseY;
+			const Uint32 mouseButtons = SDL_GetMouseState(&mouseX, &mouseY);
+			if (!(mouseButtons & SDL_BUTTON(SDL_BUTTON_LEFT)))
+			{
+				return;
+			}
+
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity))
+			{
+				return;
+			}
+
+			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
+
+			//mouse position is screen-space - camera offset turns it into the world-space
+			//point the shot should travel toward
+			const glm::vec2 aimTarget(mouseX + camera.x, mouseY + camera.y);
+			glm::vec2 aimDirection = aimTarget - projectilePosition;
+			const float distance = glm::length(aimDirection);
+			if (distance < 0.0001f)
+			{
+				return; //cursor sits right on top of the shooter - no direction to aim in
+			}
+			aimDirection /= distance;
+
+			//projectileVelocity is used as a speed magnitude here rather than a per-axis velocity
+			const float speed = glm::length(projectileEmitter.projectileVelocity);
+
+			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, aimDirection * speed);
+			projectileEmitter.lastEmittedTime = SDL_GetTicks();
+		}
+
+		//Enemy shooting: unchanged fixed-interval timer along a fixed velocity
+		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
+		{
+			if (projectileEmitter.repeatRate == 0)
+			{
+				return;
+			}
+
+			//check if it is time to re-emit a new projectile
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime <= projectileEmitter.repeatRate)
+			{
+				return;
+			}
+
+			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
+			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, projectileEmitter.projectileVelocity);
+			projectileEmitter.lastEmittedTime = SDL_GetTicks();
+		}
+
+		//Milliseconds the shooter has to wait between shots, derived from dexterity:
+		//BaseShotsPerSecond at 0 dexterity, plus DexterityShotsPerSecond extra shots per
+		//second for every DexterityPerStep points. All of it stays in float - integer
+		//division here would collapse whole ranges of dexterity into an identical rate.
+		int GetShotIntervalMs(Entity entity)
+		{
+			float shotsPerSecond = BaseShotsPerSecond;
+			if (entity.HasComponent<AttributesComponent>())
+			{
+				const auto& attributes = entity.GetComponent<AttributesComponent>();
+				shotsPerSecond += (attributes.dexterityPower / DexterityPerStep) * DexterityShotsPerSecond;
+			}
+
+			//guards against a zero/negative rate if dexterity ever goes negative
+			if (shotsPerSecond < MinShotsPerSecond)
+			{
+				shotsPerSecond = MinShotsPerSecond;
+			}
+
+			return static_cast<int>(1000.0f / shotsPerSecond);
+		}
+
+		//If the shooter has a sprite, the shot starts in the middle of it rather than
+		//at the transform's top-left corner
+		glm::vec2 GetMuzzlePosition(Entity entity, const TransformComponent& transform)
+		{
+			glm::vec2 projectilePosition = transform.position;
+			if (entity.HasComponent<SpriteComponent>())
+			{
+				const auto sprite = entity.GetComponent<SpriteComponent>();
+				projectilePosition.x += (transform.scale.x * sprite.width / 2);
+				projectilePosition.y += (transform.scale.y * sprite.height / 2);
+			}
+			return projectilePosition;
+		}
+
+		void EmitProjectile(Entity entity, const ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform, glm::vec2 position, glm::vec2 velocity)
+		{
+			//Damage is scaled by the shooter's attackPower attribute, if it has one
+			int scaledDamage = static_cast<int>(projectileEmitter.projectileDamage * 0.5f);
+			if (entity.HasComponent<AttributesComponent>())
+			{
+				const auto& attributes = entity.GetComponent<AttributesComponent>();
+				scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.attackPower / 25.0f)));
+			}
+
+			//point the sprite in the direction it's travelling
+			const double rotation = glm::degrees(std::atan2(velocity.y, velocity.x));
+
+			Entity projectile = registry.CreateEntity();
+			projectile.Group("projectiles");
+			projectile.AddComponent<TransformComponent>(position, glm::vec2(transform.scale.x, transform.scale.y), rotation);
+			projectile.AddComponent<RigidBodyComponent>(velocity);
+			projectile.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
+			projectile.AddComponent<BoxColliderComponent>(4, 4);
+			//`entity` is recorded as the owner so whatever this shot kills can be
+			//credited back to the shooter
+			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, scaledDamage, projectileEmitter.projectileDuration, entity);
+		}
+
 		Registry& registry;
+		const SDL_Rect& camera;
+		const bool& isDebug;
+
+		static constexpr float BaseShotsPerSecond = 1.0f;        //fire rate with no dexterity at all
+		static constexpr float DexterityPerStep = 75.0f;         //dexterity needed for one full step
+		static constexpr float DexterityShotsPerSecond = 5.0f;   //extra shots per second per full step
+		static constexpr float MinShotsPerSecond = 0.1f;         //floor, so the interval can never blow up
 };
 #endif

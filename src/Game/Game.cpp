@@ -168,7 +168,7 @@ void Game::Setup()
 	damageSystem = std::make_unique<DamageSystem>();
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
-	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry);
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, isDebug);
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
@@ -209,7 +209,9 @@ void Game::Update()
 	movementSystem->SubscribeToEvents(eventBus);
 	damageSystem->SubscribeToEvents(eventBus);
 	keyboardControlSystem->SubscribeToEvents(eventBus);
-	projectileEmitSystem->SubscribeToEvents(eventBus);
+	//ProjectileEmitSystem no longer subscribes to anything: it polls the mouse in its
+	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
+	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();

@@ -41,6 +41,18 @@ class SpecialAbilitySystem
 				return;
 			}
 
+			// Cooldown gate. SDL keeps re-firing SDL_KEYDOWN while a key is held, so
+			// without this a held SPACE casts every frame until the mana pool is empty.
+			// The timestamp lives on the system rather than on a component because the
+			// caster query below requires CameraHollderComponent, and only one entity
+			// (the player the camera follows) ever has it - if a second caster is added
+			// later this has to move onto a per-entity component, the way
+			// ProjectileEmitterComponent::lastEmittedTime does it for shooting.
+			if (SDL_GetTicks() - lastCastTime < CooldownMs)
+			{
+				return;
+			}
+
 			// Snapshot first: the burst below creates new entities with a TransformComponent,
 			// which can grow/reallocate that component's pool. Doing that while still
 			// iterating a live view over TransformComponent is unsafe - especially here,
@@ -92,8 +104,14 @@ class SpecialAbilitySystem
 					shot.AddComponent<RigidBodyComponent>(velocity);
 					shot.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
 					shot.AddComponent<BoxColliderComponent>(4, 4);
-					shot.AddComponent<ProjectileComponent>(isFriendly, damage, ShotDuration);
+					//the caster owns every shot in the burst, so ability kills are
+					//credited the same way regular shots are
+					shot.AddComponent<ProjectileComponent>(isFriendly, damage, ShotDuration, entity);
 				}
+
+				//only start the cooldown once a cast actually went through - a cast
+				//refused for lack of mana shouldn't lock the ability out for a second
+				lastCastTime = SDL_GetTicks();
 			}
 		}
 
@@ -101,6 +119,9 @@ class SpecialAbilitySystem
 		Registry& registry;
 		const SDL_Rect& camera;
 
+		Uint32 lastCastTime = 0; //timestamp in milliseconds of the last successful cast
+
+		static constexpr Uint32 CooldownMs = 1000; //minimum delay between casts
 		static constexpr int ShotCount = 20;
 		static constexpr float ShotSpeed = 30.0f;   //pixels per second
 		static constexpr int ShotDuration = 10000;    //milliseconds (matches the "for 1 second" ask)

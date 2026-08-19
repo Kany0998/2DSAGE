@@ -27,6 +27,12 @@ class Entity
 		int GetId() const;
 		void Kill();
 
+		// True only if this handle still refers to a live entity. Needed wherever an
+		// Entity is stored past the frame it was obtained in (e.g. the shooter kept on
+		// ProjectileComponent): entt reuses handles, and reading components off a
+		// destroyed entity is undefined behaviour rather than a null check away.
+		bool IsAlive() const;
+
 		//Mange entity tags and groups
 		void Tag(const std::string& tag);
 		bool HasTag(const std::string& tag) const;

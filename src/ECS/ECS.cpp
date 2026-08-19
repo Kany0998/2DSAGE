@@ -11,6 +11,12 @@ void Entity::Kill()
 	registry->KillEntity(*this);
 }
 
+bool Entity::IsAlive() const
+{
+	//a default-constructed Entity has no registry at all, so check that first
+	return registry != nullptr && registry->Raw().valid(entityHandle);
+}
+
 void Entity::Tag(const std::string& tag)
 {
 	registry->TagEntity(*this, tag);
