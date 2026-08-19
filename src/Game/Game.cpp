@@ -165,7 +165,7 @@ void Game::Setup()
 	animationSystem = std::make_unique<AnimationSystem>();
 	collisionSystem = std::make_unique<CollisionSystem>();
 	renderCollisionSystem = std::make_unique<RenderCollisionSystem>();
-	damageSystem = std::make_unique<DamageSystem>();
+	damageSystem = std::make_unique<DamageSystem>(eventBus);
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
 	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, isDebug);
@@ -207,7 +207,7 @@ void Game::Update()
 
 	//perform subscribtion to events for all the systems
 	movementSystem->SubscribeToEvents(eventBus);
-	damageSystem->SubscribeToEvents(eventBus);
+	damageSystem->SubscribeToEvents();
 	keyboardControlSystem->SubscribeToEvents(eventBus);
 	//ProjectileEmitSystem no longer subscribes to anything: it polls the mouse in its
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down

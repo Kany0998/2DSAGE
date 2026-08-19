@@ -7,15 +7,23 @@
 #include "../Components/ProjectileComponent.h"
 #include "../Components/HealthComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/ExperienceRewardComponent.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
+#include "../Events/EntityKilledEvent.h"
 
 class DamageSystem
 {
 	public:
-		DamageSystem() = default;
+		// Needs the bus kept alive as a member so deaths can be announced from inside
+		// onCollision(): that's an event-callback with a fixed (CollisionEvent&)
+		// signature and can't receive the bus as a call parameter.
+		explicit DamageSystem(std::unique_ptr<EventBus>& eventBus) : eventBus(eventBus) {}
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		// Takes no bus parameter, unlike the other systems: this one already holds the
+		// bus it emits deaths on, and accepting a second one here would let a caller
+		// subscribe on one bus while announcing on another.
+		void SubscribeToEvents()
 		{
 			eventBus->SubscribeToEvent<CollisionEvent>(this, &DamageSystem::onCollision);
 		}
@@ -54,6 +62,16 @@ class DamageSystem
 			{
 				//reduce player health by projectileDamage
 				auto& health = player.GetComponent<HealthComponent>();
+
+				//Kill() only queues the destruction until the next Registry::Update(), so
+				//an entity that dropped to 0 stays alive and collidable for the rest of
+				//this frame. Without this guard every further hit in that window runs the
+				//death branch again.
+				if (health.healthPoints <= 0)
+				{
+					return;
+				}
+
 				auto damgeTaken = projectileComponent.projectileDamage;
 				//substract health of the player by projectileDamage of projectile
 				if (player.HasComponent<AttributesComponent>()) {
@@ -69,6 +87,7 @@ class DamageSystem
 
 				if (health.healthPoints <= 0)
 				{
+					AnnounceDeath(player, projectileComponent.owner);
 					player.Kill();
 				}
 
@@ -84,6 +103,16 @@ class DamageSystem
 			{
 				//reduce enemy health by projectileDamage
 				auto& health = enemy.GetComponent<HealthComponent>();
+
+				//Same deferred-kill window as OnProjectileHitsPlayer: an enemy already at
+				//0 health is still collidable until the next Registry::Update(). This is
+				//the guard that stops a second projectile from running the death branch
+				//twice - which matters as soon as dying hands out an experience reward.
+				//It also stops corpses from absorbing shots for the rest of the frame.
+				if (health.healthPoints <= 0)
+				{
+					return;
+				}
 
 				//substract health of the enemy by projectileDamage of projectile
 				auto damgeTaken = projectileComponent.projectileDamage;
@@ -101,15 +130,34 @@ class DamageSystem
 
 				if (health.healthPoints <= 0)
 				{
+					AnnounceDeath(enemy, projectileComponent.owner);
 					enemy.Kill();
 				}
-				
+
 
 				projectileComponent.haveCollided = true;
 
 				projectile.Kill();
 			}
 		}
+
+	private:
+		// Announces a death on the bus. Emitted before Kill() purely for readability -
+		// Kill() only queues the destruction, so the victim's components are readable
+		// either way - and the reward is copied into the event here, while the victim
+		// is guaranteed to still exist.
+		void AnnounceDeath(Entity victim, Entity killer)
+		{
+			int experienceReward = 0;
+			if (victim.HasComponent<ExperienceRewardComponent>())
+			{
+				experienceReward = victim.GetComponent<ExperienceRewardComponent>().experienceReward;
+			}
+
+			eventBus->EmitEvent<EntityKilledEvent>(victim, killer, experienceReward);
+		}
+
+		std::unique_ptr<EventBus>& eventBus;
 };
 
 #endif
