@@ -148,7 +148,17 @@ class ProjectileEmitSystem
 				shotsPerSecond = MinShotsPerSecond;
 			}
 
-			return static_cast<int>(1000.0f / shotsPerSecond);
+			//A second floor on the far end: above 1000 shots per second the interval
+			//truncates to 0, and the cooldown test below it is an unsigned comparison
+			//that is never true against 0 - so a high enough dexterity would fire a
+			//projectile every single frame with no cap at all.
+			int shotInterval = static_cast<int>(1000.0f / shotsPerSecond);
+			if (shotInterval < MinShotIntervalMs)
+			{
+				shotInterval = MinShotIntervalMs;
+			}
+
+			return shotInterval;
 		}
 
 		//If the shooter has a sprite, the shot starts in the middle of it rather than
@@ -197,5 +207,6 @@ class ProjectileEmitSystem
 		static constexpr float DexterityPerStep = 75.0f;         //dexterity needed for one full step
 		static constexpr float DexterityShotsPerSecond = 5.0f;   //extra shots per second per full step
 		static constexpr float MinShotsPerSecond = 0.1f;         //floor, so the interval can never blow up
+		static constexpr int MinShotIntervalMs = 1;              //floor, so the interval can never reach zero
 };
 #endif
