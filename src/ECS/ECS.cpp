@@ -14,7 +14,15 @@ void Entity::Kill()
 bool Entity::IsAlive() const
 {
 	//a default-constructed Entity has no registry at all, so check that first
-	return registry != nullptr && registry->Raw().valid(entityHandle);
+	if (registry == nullptr || !registry->Raw().valid(entityHandle))
+	{
+		return false;
+	}
+
+	//valid() alone is not enough: Kill() only queues destruction until the next
+	//Registry::Update(), so an entity killed earlier in this same frame is still
+	//valid and would otherwise read as a live target
+	return !registry->IsPendingKill(entityHandle);
 }
 
 void Entity::Tag(const std::string& tag)

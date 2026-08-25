@@ -27,10 +27,16 @@ class Entity
 		int GetId() const;
 		void Kill();
 
-		// True only if this handle still refers to a live entity. Needed wherever an
-		// Entity is stored past the frame it was obtained in (e.g. the shooter kept on
-		// ProjectileComponent): entt reuses handles, and reading components off a
-		// destroyed entity is undefined behaviour rather than a null check away.
+		// True only if this handle refers to an entity that is live AND not already
+		// queued for destruction. Needed wherever an Entity is stored past the moment
+		// it was obtained (e.g. the shooter kept on ProjectileComponent): entt reuses
+		// handles, and reading components off a destroyed entity is undefined
+		// behaviour rather than a null check away.
+		//
+		// The pending-kill half matters just as much as the validity half: Kill() only
+		// queues, so an entity killed earlier in this same frame is still valid() and
+		// would otherwise be treated as a legitimate target for rewards or effects it
+		// can never benefit from.
 		bool IsAlive() const;
 
 		//Mange entity tags and groups
@@ -93,6 +99,9 @@ class Registry
 		//entity managment
 		Entity CreateEntity();
 		void KillEntity(Entity entity);
+
+		//True between Kill() and the next Update() that actually destroys the entity
+		bool IsPendingKill(entt::entity handle) const { return entitiesToBeKilled.count(handle) > 0; }
 
 		//adding/removing components straight to/from the entt component pools
 		template <typename TComponent, typename ...TArgs> void AddComponent(Entity entity, TArgs&& ...args);
