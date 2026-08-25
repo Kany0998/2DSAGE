@@ -127,15 +127,21 @@ class DamageSystem
 				}
 				health.healthPoints -= damgeTaken;
 
+				//Everything this function still needs from the projectile is taken care of
+				//BEFORE the death is announced. AnnounceDeath() runs every subscriber
+				//synchronously, and any one of them that adds a component to a new entity
+				//(a loot drop, a death explosion) can reallocate that component's pool -
+				//which would turn a write through `projectileComponent` into a write to
+				//freed memory. Copying the owner out and flipping the flag first means no
+				//reference has to survive the dispatch.
+				const Entity killer = projectileComponent.owner;
+				projectileComponent.haveCollided = true;
 
 				if (health.healthPoints <= 0)
 				{
-					AnnounceDeath(enemy, projectileComponent.owner);
+					AnnounceDeath(enemy, killer);
 					enemy.Kill();
 				}
-
-
-				projectileComponent.haveCollided = true;
 
 				projectile.Kill();
 			}
