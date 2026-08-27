@@ -25,13 +25,13 @@
 class ProjectileEmitSystem
 {
 	public:
-		// Registry + camera + isDebug are kept as references for the lifetime of the
-		// system: Update() polls the mouse itself (that's what makes hold-to-fire
-		// possible at all - SDL_MOUSEBUTTONDOWN only fires once per physical press),
-		// and the cursor's screen position needs the camera offset to become a
-		// world-space aim target, the same way SpecialAbilitySystem does it.
-		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const bool& isDebug)
-			: registry(registry), camera(camera), isDebug(isDebug) {}
+		// Registry + camera are kept as references for the lifetime of the system:
+		// Update() polls the mouse itself (that's what makes hold-to-fire possible at
+		// all - SDL_MOUSEBUTTONDOWN only fires once per physical press), and the
+		// cursor's screen position needs the camera offset to become a world-space aim
+		// target, the same way SpecialAbilitySystem does it.
+		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera)
+			: registry(registry), camera(camera) {}
 
 		void Update()
 		{
@@ -70,10 +70,10 @@ class ProjectileEmitSystem
 		//player's fire rate comes from dexterity (see GetShotIntervalMs) instead.
 		void UpdateMouseAimedEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
 		{
-			//don't shoot through the ImGui debug panel - same guard Game::ProccessInput()
-			//used to apply to the click event. Only consulted while the panel is actually
-			//being drawn, since WantCaptureMouse goes stale once ImGui stops running frames.
-			if (isDebug && ImGui::GetIO().WantCaptureMouse)
+			//don't shoot through an ImGui window - the same guard Game::ProccessInput() applies
+			//to the click event. ImGui runs a frame unconditionally now, so WantCaptureMouse is
+			//always current and needs no debug-mode qualifier.
+			if (ImGui::GetIO().WantCaptureMouse)
 			{
 				return;
 			}
@@ -201,7 +201,6 @@ class ProjectileEmitSystem
 
 		Registry& registry;
 		const SDL_Rect& camera;
-		const bool& isDebug;
 
 		static constexpr float BaseShotsPerSecond = 1.0f;        //fire rate with no dexterity at all
 		static constexpr float DexterityPerStep = 75.0f;         //dexterity needed for one full step

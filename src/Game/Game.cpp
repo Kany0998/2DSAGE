@@ -170,7 +170,7 @@ void Game::Setup()
 	damageSystem = std::make_unique<DamageSystem>(eventBus);
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
-	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, isDebug);
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera);
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
@@ -251,8 +251,9 @@ void Game::Render()
 	{
 		renderCollisionSystem->Update(*registry, renderer, camera);
 
-		renderGUISystem->Update(*registry, camera);
+		
 	}
+	renderGUISystem->Update(*registry, camera, isDebug);
 
 	SDL_RenderPresent(renderer);
 }

@@ -112,6 +112,13 @@ class Registry
 		//tags management
 		void TagEntity(Entity entity, const std::string& tag);
 		bool EntityHasTag(Entity entity, const std::string& tag) const;
+
+		//True while some entity carries this tag. GetEntityByTag() is a .at() lookup and
+		//throws when the tag is absent - which happens the moment the tagged entity is
+		//destroyed, since Registry::Update() removes tags before destroying. Call this
+		//first from anything that runs every frame.
+		bool HasEntityWithTag(const std::string& tag) const { return entityPerTag.count(tag) > 0; }
+
 		Entity GetEntityByTag(const std::string& tag);
 		void RemoveEntityTag(Entity entity);
 
