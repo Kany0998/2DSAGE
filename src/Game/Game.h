@@ -4,6 +4,7 @@
 #include "../ECS/ECS.h"
 #include "../AssetStore/AssetStore.h"
 #include "../EventBus/EventBus.h"
+#include "../TileMap/TileMap.h"
 #include "sol/sol.hpp"
 
 const int FPS = 60;
@@ -51,6 +52,7 @@ class Game
 
 		std::unique_ptr<AssetStore> assetStore;
 		std::unique_ptr<EventBus> eventBus;
+		TileMap tileMap;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're
@@ -75,6 +77,7 @@ class Game
 		std::unique_ptr<SpecialAbilitySystem> specialAbilitySystem;
 		std::unique_ptr<ProgressionSystem> progressionSystem;
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
+
 
 
 	public:

@@ -12,13 +12,16 @@
 #include "../Components/HealthComponent.h"
 #include "../Components/ProgressionComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../TileMap/TileMap.h"
+#include "../TileMap/MovementType.h"
+
 
 class RenderGUISystem
 {
 	public:
 		RenderGUISystem() = default;
 
-		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug)
+		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
 			//Render GUI elements here
 			ImGui::NewFrame();
@@ -124,9 +127,21 @@ class RenderGUISystem
 				ImGui::SetNextWindowBgAlpha(0.5f);
 				if (ImGui::Begin("Map Coordinates", NULL, windowFlags))
 				{
-					ImGui::Text("Map coordinates(x=%.1f, y=%.1f",
-						ImGui::GetIO().MousePos.x + camera.x,
-						ImGui::GetIO().MousePos.y + camera.y);
+					double worldX = ImGui::GetIO().MousePos.x + camera.x;
+					double worldY = ImGui::GetIO().MousePos.y + camera.y;
+
+					int col = tilemap.colAt(worldX);
+					int row = tilemap.rowAt(worldY);
+					int tileId = tilemap.tileAt(col, row);
+
+					bool isBlockedGround = tilemap.isBlocked(col, row, MovementType_Ground);
+					bool isBlockedFlying = tilemap.isBlocked(col, row, MovementType_Flying);
+
+
+					ImGui::Text("Map coordinates(x=%.1f, y=%.1f)",worldX,worldY);
+					ImGui::Text("Map tile (col=%d, row=%d, id=%d)", col, row, tileId);
+					ImGui::Text("Map tile is blocked (ground): %s", isBlockedGround ? "Yes" : "No");
+					ImGui::Text("Map tile is blocked (flying): %s", isBlockedFlying ? "Yes" : "No");
 				}
 				ImGui::End();
 			}

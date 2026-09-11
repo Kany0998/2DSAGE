@@ -38,7 +38,13 @@ Level = {
 		mapNumCols = 25,
 		tileSize = 32,
 		tileScale = 4.0,
-		layer = 0
+		layer = 0,
+
+		tile_properties =
+		{
+			[0] =
+			{tile_id = 21, blocks_ground = true, blocks_flying = true}
+		},
 	},
 
 	-- table to define entites and components of enetities
@@ -53,7 +59,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 100, y = 100},
+					position = {x = 1000, y = 1000},
 					scale = {x = 3.0, y = 3.0},
 					rotation = 0.0 --deg
 				},
@@ -126,6 +132,10 @@ Level = {
 					experience_base = 100,	--experience needed to clear level 1
 					experience_growth = 1.15	--each level costs 15% more than the one before
 				},
+				movement_type =
+				{
+					type = "flying"
+				},
 				camera_follow =
 				{
 					follow = true
@@ -180,6 +190,10 @@ Level = {
 					projectile_damage = 49,
 					friendly = false
 				},
+				movement_type =
+				{
+					type = "ground"
+				}
 			}
 
 		},
@@ -231,6 +245,10 @@ Level = {
 					projectile_damage = 49,
 					friendly = false
 				},
+				movement_type =
+				{
+					type = "ground"
+				}
 			}
 
 		},
@@ -317,6 +335,10 @@ Level = {
 					projectile_damage = 49,
 					friendly = false
 				},
+				movement_type =
+				{
+					type = "ground"
+				},
 				on_update_script =
 				{
 					[0] = 
@@ -385,7 +407,7 @@ Level = {
 				},
 				experience_reward =
 				{
-					experience = 500
+					experience = 50000000
 				},
 				attributes =
 				{

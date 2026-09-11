@@ -16,6 +16,9 @@
 #include "../Components/ScriptComponent.h"
 #include "../Components/ProgressionComponent.h"
 #include "../Components/ExperienceRewardComponent.h"
+#include "../Components/MovementTypeComponent.h"
+#include "../TileMap/TileMap.h"
+#include "../TileMap/MovementType.h"
 #include <fstream>
 #include <sol/sol.hpp>
 #include <string>
@@ -32,7 +35,7 @@ LevelLoader::~LevelLoader()
 }
 
 void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
-	const std::unique_ptr<AssetStore>& assetStore,SDL_Renderer* renderer,int levelNumber)
+	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
 	//check the syntax to see if it is valid
@@ -88,26 +91,58 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	int tileSize = map["tileSize"];
 	double tileScale = map["tileScale"];
 	int layer = map["layer"];
-	std::fstream mapFile;
-	mapFile.open(mapFilePath);
+
+	//Read the tile properties from the lua file
+	sol::table tileProperties = map["tile_properties"];
+	int tileIndex = 0;
+
+	while (true)
+	{
+		sol::optional<sol::table> hasTileProperty = tileProperties[tileIndex];
+		if (hasTileProperty == sol::nullopt)
+		{
+			break;
+		}
+
+		sol::table tileProperty = tileProperties[tileIndex];
+
+		int tileId = tileProperty["tile_id"];
+		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
+		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
+
+		int mask = 0;
+		if (blocksGround)
+		{
+			mask |= MovementType_Ground;
+		}
+
+		if (blocksFlying)
+		{
+			mask |= MovementType_Flying;
+		}
+
+		tileMap.setBlockMask(tileId, mask);
+
+		tileIndex++;
+		
+	}
+
+	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);;
 
 	for (int y = 0; y < mapNumRows; y++)
 	{
 		for (int x = 0; x < mapNumCols; x++)
 		{
-			char ch;
-			mapFile.get(ch);
-			int srcRectY = std::atoi(&ch) * tileSize;
-			mapFile.get(ch);
-			int srcRectX = std::atoi(&ch) * tileSize;
-			mapFile.ignore();
+			int tileId = tileMap.tileAt(x, y);
+			int srcRectX = (tileId % 10) * tileSize;
+			int srcRectY = (tileId / 10) * tileSize;
 
 			Entity tile = registry->CreateEntity();
 			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
 			tile.AddComponent<SpriteComponent>(mapTextureAssetId, tileSize, tileSize, layer, false, srcRectX, srcRectY);
 		}
 	}
-	mapFile.close();
+
 	Game::mapWidth = mapNumCols * tileSize * tileScale;
 	Game::mapHeight = mapNumRows * tileSize * tileScale;
 
@@ -291,6 +326,21 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
 				);
+			}
+
+			//MovementType
+			sol::optional<sol::table> movementType = entity["components"]["movement_type"];
+			if (movementType != sol::nullopt)
+			{
+				std::string typeName = entity["components"]["movement_type"]["type"].get_or(std::string("ground"));
+
+				int type = MovementType_Ground;
+				if(typeName == "flying")
+				{
+					type = MovementType_Flying;
+				}
+
+				newEntity.AddComponent<MovementTypeComponent>(type);
 			}
 
 			//CameraFollow

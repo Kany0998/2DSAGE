@@ -189,7 +189,7 @@ void Game::Setup()
 	//Load first level
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
-	loader.LoadLevel(lua, registry, assetStore, renderer, 1);
+	loader.LoadLevel(lua, registry, assetStore, tileMap, renderer, 1);
 }
 
 void Game::Update()
@@ -223,7 +223,7 @@ void Game::Update()
 
 	// invoke all the systems to update
 	keyboardControlSystem->Update(*registry);
-	movementSystem->Update(*registry, deltaTime);
+	movementSystem->Update(*registry, deltaTime, tileMap);
 	animationSystem->Update(*registry);
 	collisionSystem->Update(*registry, eventBus);
 	cameraMovementSystem->Update(*registry, camera);
@@ -253,7 +253,7 @@ void Game::Render()
 
 		
 	}
-	renderGUISystem->Update(*registry, camera, isDebug);
+	renderGUISystem->Update(*registry, camera, isDebug, tileMap);
 
 	SDL_RenderPresent(renderer);
 }

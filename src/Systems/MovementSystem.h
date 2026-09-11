@@ -8,6 +8,8 @@
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/SpriteComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/MovementTypeComponent.h"
+#include "../TileMap/TileMap.h"
 
 
 class MovementSystem
@@ -36,7 +38,7 @@ class MovementSystem
 			}
 		}
 
-		void Update(Registry& registry, double deltaTime)
+		void Update(Registry& registry, double deltaTime, const TileMap& tileMap)
 		{
 			//Loop all entites that have Transform + RigidBody + Sprite
 			for (auto rawEntity : registry.Raw().view<TransformComponent, RigidBodyComponent, SpriteComponent>())
@@ -67,10 +69,33 @@ class MovementSystem
 					}
 				}
 
-				transform.position.x += rigidbody.velocity.x * speedMultiplier * deltaTime;
-				transform.position.y += rigidbody.velocity.y * speedMultiplier * deltaTime;
+				bool hasMovementType = entity.HasComponent<MovementTypeComponent>();
+				int movmentType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
 
-				//
+				double candidateX = transform.position.x + rigidbody.velocity.x * speedMultiplier * deltaTime;
+				double candidateY = transform.position.y + rigidbody.velocity.y * speedMultiplier * deltaTime;
+
+				//ignores terrain blocking if the entity has no movement type, e.g. projectiles and obstacles
+				if (!hasMovementType) {
+					transform.position.x = candidateX;
+					transform.position.y = candidateY;
+				}
+
+				else {
+					int halfWidth = sprite.width * transform.scale.x / 2;
+					int halfHeight = sprite.height * transform.scale.y / 2;
+
+					//X axis : candiadte testes against current y
+					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movmentType)) {
+						transform.position.x = candidateX;
+					}
+					//Y axis : candidate tests against current x
+					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movmentType)) {
+						transform.position.y = candidateY;
+					}
+					
+				}
+				
 				int paddingLeft = 0;
 				int paddingTop = 0;
 				int paddingRight = Game::mapWidth - sprite.width * transform.scale.x;
