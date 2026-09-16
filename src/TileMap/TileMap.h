@@ -19,10 +19,15 @@ class TileMap {
 		// which is why Lua only lists obstacles. Bit values come from MovementType.h.
 		int blockMasks[tileIdCount] = {};
 
-		int Index(int col, int row) const;
+		
 
 
 	public:
+
+		int Index(int col, int row) const;
+
+		int IndexToRow(int index) const;
+		int IndexToCol(int index) const;
 
 		void load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale);
 		void setBlockMask(int tileId, int mask);

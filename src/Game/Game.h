@@ -5,6 +5,7 @@
 #include "../AssetStore/AssetStore.h"
 #include "../EventBus/EventBus.h"
 #include "../TileMap/TileMap.h"
+#include "../Pathfinding/Pathfinder.h"
 #include "sol/sol.hpp"
 
 const int FPS = 60;
@@ -53,6 +54,7 @@ class Game
 		std::unique_ptr<AssetStore> assetStore;
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
+		Pathfinder pathfinder;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're

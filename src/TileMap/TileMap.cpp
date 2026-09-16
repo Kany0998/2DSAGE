@@ -11,7 +11,15 @@ int TileMap::Index(int col, int row) const
 	return row * cols + col;
 }
 
+int TileMap::IndexToRow(int index) const
+{
+	return index / cols;
+}
 
+int TileMap::IndexToCol(int index) const
+{
+	return index % cols;
+}
 
 bool TileMap::isInside(int col, int row) const
 {

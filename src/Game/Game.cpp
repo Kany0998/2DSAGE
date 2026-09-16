@@ -190,6 +190,7 @@ void Game::Setup()
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	loader.LoadLevel(lua, registry, assetStore, tileMap, renderer, 1);
+	
 }
 
 void Game::Update()
