@@ -17,6 +17,7 @@
 #include "../Components/ProgressionComponent.h"
 #include "../Components/ExperienceRewardComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/AIComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include <fstream>
@@ -341,6 +342,28 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				}
 
 				newEntity.AddComponent<MovementTypeComponent>(type);
+			}
+
+			//AIComponent
+			sol::optional<sol::table> AI = entity["components"]["ai"];
+			if (AI != sol::nullopt)
+			{
+				const glm::vec2 spawnPoint{
+					entity["components"]["transform"]["position"]["x"],
+					entity["components"]["transform"]["position"]["y"]
+				};
+
+				
+				const double tileWorldSize = tileMap.TileWorldSize();
+
+				newEntity.AddComponent<AIComponent>(
+					spawnPoint,
+					entity["components"]["ai"]["detection_range"].get_or(6.0) * tileWorldSize,
+					entity["components"]["ai"]["stop_distance"].get_or(1.0) * tileWorldSize,
+					entity["components"]["ai"]["move_speed"].get_or(100.0)
+				);
+
+
 			}
 
 			//CameraFollow

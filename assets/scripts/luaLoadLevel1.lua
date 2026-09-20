@@ -43,7 +43,7 @@ Level = {
 		tile_properties =
 		{
 			[0] =
-			{tile_id = 21, blocks_ground = true, blocks_flying = true}
+			{tile_id = 21, blocks_ground = true, blocks_flying = false}
 		},
 	},
 
@@ -149,13 +149,13 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 400, y = 400},
-					scale = {x = 6.0, y = 6.0},
+					position = {x = 1216, y = 1216},
+					scale = {x = 2.0, y = 2.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
 				{
-					velocity = {x = 100, y = 0}
+					velocity = {x = 0, y = 0}
 				},
 				sprite = 
 				{
@@ -193,7 +193,13 @@ Level = {
 				movement_type =
 				{
 					type = "ground"
-				}
+				},
+				ai =
+				{
+					detection_range = 10,
+					stop_distance = 1.5,
+					move_speed = 100
+				},
 			}
 
 		},
@@ -248,7 +254,13 @@ Level = {
 				movement_type =
 				{
 					type = "ground"
-				}
+				},
+				ai =
+				{
+					detection_range = 6,
+					stop_distance = 1,
+					move_speed = 100
+				},
 			}
 
 		},

@@ -34,6 +34,7 @@ class ScriptSystem;
 class SpecialAbilitySystem;
 class ProgressionSystem;
 class RenderExperienceBarSystem;
+class AISystem;
 
 class Game
 {
@@ -55,6 +56,7 @@ class Game
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
 		Pathfinder pathfinder;
+		std::vector<int> debugPath;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're
@@ -79,6 +81,7 @@ class Game
 		std::unique_ptr<SpecialAbilitySystem> specialAbilitySystem;
 		std::unique_ptr<ProgressionSystem> progressionSystem;
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
+		std::unique_ptr<AISystem> aiSystem;
 
 
 

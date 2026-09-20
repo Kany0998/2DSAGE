@@ -22,9 +22,12 @@
 #include "../Systems/SpecialAbilitySystem.h"
 #include "../Systems/ProgressionSystem.h"
 #include "../Systems/RenderExperienceBarSystem.h"
+#include "../Systems/AISystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Events/MouseButtonPressedEvent.h"
+#include "../TileMap/MovementType.h"
+#include "../Pathfinding/Pathfinder.h"
 #include <iostream>
 #include <SDL.h>
 #include <glm/glm.hpp>
@@ -182,6 +185,7 @@ void Game::Setup()
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 	progressionSystem = std::make_unique<ProgressionSystem>();
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
+	aiSystem = std::make_unique<AISystem>();
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -224,6 +228,7 @@ void Game::Update()
 
 	// invoke all the systems to update
 	keyboardControlSystem->Update(*registry);
+	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	movementSystem->Update(*registry, deltaTime, tileMap);
 	animationSystem->Update(*registry);
 	collisionSystem->Update(*registry, eventBus);
@@ -234,6 +239,7 @@ void Game::Update()
 	manaRegenerationSystem->Update(*registry, deltaTime);
 	progressionSystem->Update(*registry);
 	scriptSystem->Update(*registry, deltaTime, SDL_GetTicks());
+	
 
 }
 
@@ -254,6 +260,71 @@ void Game::Render()
 
 		
 	}
+
+	//TEMP step-6 test: search from the first enemy to the player and log the path
+	if (isDebug && registry->HasEntityWithTag("player")) {
+		std::vector<Entity> enemies = registry->GetEntitiesByGroup("enemies");
+
+		if (!enemies.empty()) {
+			Entity player = registry->GetEntityByTag("player");
+			Entity enemy = enemies[0];
+
+			//Centre of the sprite, the same point MovementSystem tests against the tilemap
+			const auto& pTransform = player.GetComponent<TransformComponent>();
+			const auto& pSprite = player.GetComponent<SpriteComponent>();
+			double pX = pTransform.position.x + pSprite.width * pTransform.scale.x / 2.0;
+			double pY = pTransform.position.y + pSprite.height * pTransform.scale.y / 2.0;
+
+			const auto& eTransform = enemy.GetComponent<TransformComponent>();
+			const auto& eSprite = enemy.GetComponent<SpriteComponent>();
+			double eX = eTransform.position.x + eSprite.width * eTransform.scale.x / 2.0;
+			double eY = eTransform.position.y + eSprite.height * eTransform.scale.y / 2.0;
+
+			int startCol = tileMap.colAt(eX), startRow = tileMap.rowAt(eY);
+			int goalCol = tileMap.colAt(pX), goalRow = tileMap.rowAt(pY);
+
+			pathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+			
+			
+			SDL_SetRenderDrawColor(renderer, 155, 21, 21, 255);
+
+			double tileWorldSize = tileMap.TileWorldSize();
+			int pathSizeGrid = 20;
+
+			//The line starts where the enemy actually is, the same anchor the smoothing used
+			double previousScreenX = eX - camera.x;
+			double previousScreenY = eY - camera.y;
+
+			for (const int index : debugPath) {
+				int col = tileMap.IndexToCol(index);
+				int row = tileMap.IndexToRow(index);
+
+				double screenCenterX = col * tileWorldSize + tileWorldSize / 2 - camera.x;
+				double screenCenterY = row * tileWorldSize + tileWorldSize / 2 - camera.y;
+
+				SDL_RenderDrawLine(renderer,
+					static_cast<int>(previousScreenX),
+					static_cast<int>(previousScreenY),
+					static_cast<int>(screenCenterX),
+					static_cast<int>(screenCenterY)
+				);
+
+				SDL_Rect pathRect = {
+				static_cast<int>(screenCenterX - pathSizeGrid/2),
+				static_cast<int>(screenCenterY - pathSizeGrid/2),
+				static_cast<int>(pathSizeGrid),
+				static_cast<int>(pathSizeGrid)
+				};
+
+				SDL_RenderFillRect(renderer, &pathRect);
+
+				previousScreenX = screenCenterX;
+				previousScreenY = screenCenterY;
+			}
+			
+		}
+	}
+
 	renderGUISystem->Update(*registry, camera, isDebug, tileMap);
 
 	SDL_RenderPresent(renderer);

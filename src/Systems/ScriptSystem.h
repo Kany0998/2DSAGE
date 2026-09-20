@@ -6,6 +6,7 @@
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AnimationComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
+#include "../Components/AIComponent.h"
 #include "../Logger/Logger.h"	
 #include "../ECS/ECS.h"
 #include <tuple>
@@ -65,6 +66,16 @@ void SetEntityVelocity(Entity entity, double x, double y)
 	else
 	{
 		Logger::Err("Trying to set velocity of entity that do not have rigidbody component");
+	}
+}
+
+void SetEntityAIPaused(Entity entity, bool paused) {
+	if (entity.HasComponent<AIComponent>()) {
+		auto& ai = entity.GetComponent<AIComponent>();
+		ai.scriptControlsVelocity = paused;
+	}
+	else {
+		Logger::Err("Trying to pause AI of entity that does not have an AI component");
 	}
 }
 
@@ -132,6 +143,7 @@ class ScriptSystem
 			lua.set_function("set_rotation", SetEntityRotation);
 			lua.set_function("set_animation_frame", SetAnimationFrame);
 			lua.set_function("set_projectile_velocity", SetProjectileVelocity);
+			lua.set_function("set_ai_paused", SetEntityAIPaused);
 		}
 
 		void Update(Registry& registry, double deltaTime, int ellapsedTime)
