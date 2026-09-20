@@ -144,7 +144,19 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 	}
 
-	return costSoFar[goalIndex] >= 0.0;
+	if (costSoFar[goalIndex] < 0.0) {
+		return false;
+	}
+
+	int cell = goalIndex;
+
+	while (cell != startIndex) {
+		outPath.push_back(cell);
+		cell = cameFrom[cell];
+	}
+	std::reverse(outPath.begin(), outPath.end());
+
+	return true;
 }
 
 
