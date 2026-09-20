@@ -13,6 +13,7 @@ class Pathfinder {
 		std::vector<int> cameFrom;
 		std::vector<int> tilesState;
 		static constexpr double diagonalCost = 1.41421356237;
+		
 
 		//Tile information
 		static constexpr int unreachedTile = 0; //Search hasnt find this file yet
@@ -29,8 +30,11 @@ class Pathfinder {
 		void FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours) const;
 		double CostToEnter(bool isDiagonal) const;
 
+		bool HasLineOfSight(const TileMap& tilemap, int fromIndex, int toIndex, int movementType) const;
+		void SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path) const;
+
 	public:
-		
+		bool smoothingEnable = true;
 		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow,int movementType, std::vector<int>& outPath);
 };
 
