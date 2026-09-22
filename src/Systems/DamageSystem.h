@@ -8,6 +8,7 @@
 #include "../Components/HealthComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/ExperienceRewardComponent.h"
+#include "../Components/AIComponent.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 #include "../Events/EntityKilledEvent.h"
@@ -56,6 +57,8 @@ class DamageSystem
 
 		void OnProjectileHitsPlayer(Entity projectile, Entity player)
 		{
+			//Deliberately a copy: owner is read after AnnounceDeath(), and a subscriber that
+			//creates an entity can reallocate this pool - see the note in OnProjectileHitsEnemy
 			auto projectileComponent = projectile.GetComponent<ProjectileComponent>();
 
 			if (!projectileComponent.isFriendly)
@@ -113,6 +116,25 @@ class DamageSystem
 				{
 					return;
 				}
+				if (enemy.HasComponent<AIComponent>()) {
+					
+					auto& enemyAI = enemy.GetComponent<AIComponent>();
+
+					if (enemyAI.state == AIState::Return) {
+						projectileComponent.haveCollided = true;
+						projectile.Kill();
+
+						return;
+					}
+
+					if (enemyAI.state == AIState::Patrol) {
+						EnterAIState(enemyAI, AIState::Chase);
+						enemyAI.aggroCooldown = 0.0;
+						enemyAI.aggroTimer = aggroOnHitSeconds;
+					}
+					
+				}
+
 
 				//substract health of the enemy by projectileDamage of projectile
 				auto damgeTaken = projectileComponent.projectileDamage;
@@ -127,6 +149,7 @@ class DamageSystem
 				}
 				health.healthPoints -= damgeTaken;
 
+
 				//Everything this function still needs from the projectile is taken care of
 				//BEFORE the death is announced. AnnounceDeath() runs every subscriber
 				//synchronously, and any one of them that adds a component to a new entity
@@ -136,6 +159,7 @@ class DamageSystem
 				//reference has to survive the dispatch.
 				const Entity killer = projectileComponent.owner;
 				projectileComponent.haveCollided = true;
+				
 
 				if (health.healthPoints <= 0)
 				{

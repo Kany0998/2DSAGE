@@ -348,21 +348,40 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> AI = entity["components"]["ai"];
 			if (AI != sol::nullopt)
 			{
-				const glm::vec2 spawnPoint{
-					entity["components"]["transform"]["position"]["x"],
-					entity["components"]["transform"]["position"]["y"]
-				};
+				if (newEntity.HasComponent<TransformComponent>() && newEntity.HasComponent<SpriteComponent>()) {
+					const auto& transform = newEntity.GetComponent<TransformComponent>();
+					const auto& sprite = newEntity.GetComponent<SpriteComponent>();
 
+					const glm::vec2 spawnPoint = {
+						transform.position.x + sprite.width * transform.scale.x / 2.0,
+						transform.position.y + sprite.height * transform.scale.y / 2.0
+					};
+
+
+					const double tileWorldSize = tileMap.TileWorldSize();
+
+					double detection_range = entity["components"]["ai"]["detection_range"].get_or(6.0) * tileWorldSize;
+					double leash_range = entity["components"]["ai"]["leash_range"].get_or(20.0) * tileWorldSize;
+
+					newEntity.AddComponent<AIComponent>(
+						spawnPoint,
+						detection_range,
+						entity["components"]["ai"]["stop_distance"].get_or(1.0)* tileWorldSize,
+						leash_range,
+						entity["components"]["ai"]["move_speed"].get_or(100.0),
+						entity["components"]["ai"]["patrol_radius"].get_or(0.0)* tileWorldSize,
+						entity["components"]["ai"]["patrol_pause"].get_or(0.0)
+						
+					);
+
+					if (leash_range < detection_range * 1.2) {
+						Logger::Warn("leash_range: " + std::to_string(leash_range) + " is shorter than detection_range: " + std::to_string(detection_range) + " * 1,2 : the enemy will give up before it loses sight of the player.");
+					}
+				}
+				else {
+					Logger::Err("Entity needs sprite and transform components for AI");
+				}
 				
-				const double tileWorldSize = tileMap.TileWorldSize();
-
-				newEntity.AddComponent<AIComponent>(
-					spawnPoint,
-					entity["components"]["ai"]["detection_range"].get_or(6.0) * tileWorldSize,
-					entity["components"]["ai"]["stop_distance"].get_or(1.0) * tileWorldSize,
-					entity["components"]["ai"]["move_speed"].get_or(100.0)
-				);
-
 
 			}
 

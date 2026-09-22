@@ -33,6 +33,21 @@ void Logger::Log(const std::string& message)
 	}
 }
 
+//For data that loads and runs but probably isn't what the author meant: worth a look,
+//not a failure
+void Logger::Warn(const std::string& message)
+{
+	LogEntry logEntry;
+	logEntry.type = LOG_WARNING;
+	logEntry.message = "WRN: [" + CurrentDateTimeToString() + "] " + message;
+	std::cerr << "\x1B[38;5;208m" << logEntry.message << "\033[0m" << std::endl;
+	messages.push_back(logEntry);
+	if (messages.size() > MaxMessages)
+	{
+		messages.pop_front();
+	}
+}
+
 void Logger::Err(const std::string& message)
 {
 	LogEntry logEntry;

@@ -4,6 +4,7 @@
 #include "../ECS/ECS.h"
 #include "../Components/TransformComponent.h"
 #include "../Components//SpriteComponent.h"
+#include "../Components/AIComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <SDL.h>
@@ -21,6 +22,7 @@ class RenderSystem
 			{
 				TransformComponent transformComponent;
 				SpriteComponent spriteComponent;
+				Uint8 alpha = 255;
 			};
 
 			std::vector<RenderableEntity> renderableEntities;
@@ -32,6 +34,14 @@ class RenderSystem
 				RenderableEntity renderableEntity;
 				renderableEntity.spriteComponent = entity.GetComponent<SpriteComponent>();
 				renderableEntity.transformComponent = entity.GetComponent<TransformComponent>();
+
+				if (entity.HasComponent<AIComponent>()) {
+
+					const auto& enemyAI = entity.GetComponent<AIComponent>();
+					if (enemyAI.state == AIState::Return) {
+						renderableEntity.alpha = 128;
+					}
+				}
 
 				//Bypass rendering entites if they are outside the camera view
 				bool isEntityOutsideCameraView = (
@@ -75,15 +85,20 @@ class RenderSystem
 					dstRect.w / 2,
 					dstRect.h / 2
 				};
+				SDL_Texture* texture = assetStore->GetTexture(sprite.assetId);
+				SDL_SetTextureAlphaMod(texture, entity.alpha);
+
 				SDL_RenderCopyEx(
 					renderer,
-					assetStore->GetTexture(sprite.assetId),
+					texture,
 					&srcRect,
 					&dstRect,
 					transform.rotation,
 					NULL,
 					sprite.flip
 				);
+
+				SDL_SetTextureAlphaMod(texture, 255);
 				//draw png texute based on spriteId
 			}
 		}

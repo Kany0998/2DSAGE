@@ -26,6 +26,7 @@ class Logger
 		static constexpr size_t MaxMessages = 500;
 		static std::deque<LogEntry> messages;
 		static void Log(const std::string& message);
+		static void Warn(const std::string& message);
 		static void Err(const std::string& message);
 };
 

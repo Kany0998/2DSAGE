@@ -175,8 +175,8 @@ Level = {
 				},
 				health =
 				{
-					health_points = 100,
-					max_health_points = 100
+					health_points = 1000,
+					max_health_points = 1000
 				},
 				experience_reward =
 				{
@@ -196,9 +196,12 @@ Level = {
 				},
 				ai =
 				{
-					detection_range = 10,
-					stop_distance = 1.5,
-					move_speed = 100
+					detection_range = 6,
+					stop_distance = 1.0,
+					leash_range = 10,
+					move_speed = 100,
+					patrol_radius = 3,   -- tiles, measured from the spawn point
+					patrol_pause = 2.0  -- seconds to wait after reaching a point
 				},
 			}
 
@@ -259,8 +262,9 @@ Level = {
 				{
 					detection_range = 6,
 					stop_distance = 1,
+					leash_range = 10,
 					move_speed = 100
-				},
+				}
 			}
 
 		},
