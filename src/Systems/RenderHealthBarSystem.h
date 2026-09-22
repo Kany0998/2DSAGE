@@ -22,9 +22,9 @@ class RenderHealthBarSystem
 			{
 				Entity entity(rawEntity, &registry);
 
-				const auto transform = entity.GetComponent<TransformComponent>();
-				const auto sprite = entity.GetComponent<SpriteComponent>();
-				const auto health = entity.GetComponent<HealthComponent>();
+				const auto& transform = entity.GetComponent<TransformComponent>();
+				const auto& sprite = entity.GetComponent<SpriteComponent>();
+				const auto& health = entity.GetComponent<HealthComponent>();
 
 				//Draw healthbar with correct color based on health percentage
 				//(healthPoints isn't necessarily 0-100 - normalize against maxHealthPoints first)

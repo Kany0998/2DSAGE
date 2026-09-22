@@ -22,9 +22,9 @@ public:
 		{
 			Entity entity(rawEntity, &registry);
 
-			const auto transform = entity.GetComponent<TransformComponent>();
-			const auto sprite = entity.GetComponent<SpriteComponent>();
-			const auto mana = entity.GetComponent<ManaComponent>();
+			const auto& transform = entity.GetComponent<TransformComponent>();
+			const auto& sprite = entity.GetComponent<SpriteComponent>();
+			const auto& mana = entity.GetComponent<ManaComponent>();
 
 			//Draw mana bar with correct color based on mana percentage
 			//(manaPoints isn't necessarily 0-100 - normalize against maxManaPoints first)

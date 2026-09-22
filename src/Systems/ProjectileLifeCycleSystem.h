@@ -12,7 +12,7 @@ class ProjectileLifeCycleSystem
         void Update(Registry& registry) {
             for (auto rawEntity : registry.Raw().view<ProjectileComponent>()) {
                 Entity entity(rawEntity, &registry);
-                auto projectile = entity.GetComponent<ProjectileComponent>();
+                const auto& projectile = entity.GetComponent<ProjectileComponent>();
 
                 // Kill projectiles after they reach their duration limit
                 if (SDL_GetTicks() - projectile.startTime > projectile.duration) {

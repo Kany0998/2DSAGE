@@ -37,7 +37,7 @@ public:
 		{
 			Entity entity(rawEntity, &registry);
 
-			const auto keyboardControlled = entity.GetComponent<KeyBoardControlledComponent>();
+			const auto& keyboardControlled = entity.GetComponent<KeyBoardControlledComponent>();
 			auto& sprite = entity.GetComponent<SpriteComponent>();
 			auto& rigidBody = entity.GetComponent<RigidBodyComponent>();
 			auto& transform = entity.GetComponent<TransformComponent>();

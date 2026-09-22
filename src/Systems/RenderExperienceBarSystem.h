@@ -25,9 +25,9 @@ class RenderExperienceBarSystem
 			{
 				Entity entity(rawEntity, &registry);
 
-				const auto transform = entity.GetComponent<TransformComponent>();
-				const auto sprite = entity.GetComponent<SpriteComponent>();
-				const auto progression = entity.GetComponent<ProgressionComponent>();
+				const auto& transform = entity.GetComponent<TransformComponent>();
+				const auto& sprite = entity.GetComponent<SpriteComponent>();
+				const auto& progression = entity.GetComponent<ProgressionComponent>();
 
 				//How far into the current level the entity is. ProgressionSystem::Update()
 				//guarantees a non-zero threshold before anything renders, but a bar that

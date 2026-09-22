@@ -18,8 +18,8 @@ class CameraMovementSystem
             {
                 Entity entity(rawEntity, &registry);
 
-                auto transform = entity.GetComponent<TransformComponent>();
-                auto sprite = entity.GetComponent<SpriteComponent>();
+                const auto& transform = entity.GetComponent<TransformComponent>();
+                const auto& sprite = entity.GetComponent<SpriteComponent>();
 
                 //center of the spire
                 int playerCenterX = transform.position.x + (sprite.width * transform.scale.x) / 2;

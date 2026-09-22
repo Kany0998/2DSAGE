@@ -47,7 +47,7 @@ class MovementSystem
 
 				auto& transform = entity.GetComponent<TransformComponent>();
 				const auto rigidbody = entity.GetComponent<RigidBodyComponent>();
-				auto sprite = entity.GetComponent<SpriteComponent>();
+				const auto& sprite = entity.GetComponent<SpriteComponent>();
 
 				//Movement speed is scaled by the entity's speedPower attribute, if it has
 				//one. Entities without attributes (projectiles, obstacles) keep a plain

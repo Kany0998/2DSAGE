@@ -17,7 +17,7 @@ class RenderTextSystem
 			for(auto rawEntity: registry.Raw().view<TextLabelComponent>())
 			{
 				Entity entity(rawEntity, &registry);
-				const auto textLabel = entity.GetComponent<TextLabelComponent>();
+				const auto& textLabel = entity.GetComponent<TextLabelComponent>();
 
 				SDL_Surface* surface = TTF_RenderText_Blended(assetStore->GetFont(textLabel.assetId), textLabel.text.c_str(), textLabel.color);
 				SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);

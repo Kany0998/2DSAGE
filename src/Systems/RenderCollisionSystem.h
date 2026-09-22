@@ -17,8 +17,8 @@ public:
 		{
 			Entity entity(rawEntity, &registry);
 
-			const auto transform = entity.GetComponent<TransformComponent>();
-			const auto collider = entity.GetComponent<BoxColliderComponent>();
+			const auto& transform = entity.GetComponent<TransformComponent>();
+			const auto& collider = entity.GetComponent<BoxColliderComponent>();
 
 			SDL_Rect colliderRect = {
 				static_cast<int>(transform.position.x + collider.offset.x - camera.x),

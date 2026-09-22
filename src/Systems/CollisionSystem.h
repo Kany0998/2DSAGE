@@ -36,7 +36,10 @@ class CollisionSystem
 				Entity a = *i;
 				auto aTransform = a.GetComponent<TransformComponent>();
 				auto& aCollider = a.GetComponent<BoxColliderComponent>();
-				auto aSprite = a.GetComponent<SpriteComponent>();
+				//Only the layer is needed, and a bare int cannot dangle when a collision
+				//event below creates entities: SpriteComponent also carries a std::string,
+				//so copying the whole component per pair would allocate
+				const int aLayer = a.GetComponent<SpriteComponent>().layer;
 				//loop rest eneties on right of i never loop enties on left
 				for (auto j = i; j != entities.end(); j++)
 				{
@@ -48,7 +51,7 @@ class CollisionSystem
 					}
 					auto bTransform = b.GetComponent<TransformComponent>();
 					auto& bCollider = b.GetComponent<BoxColliderComponent>();
-					auto bSprite = b.GetComponent<SpriteComponent>();
+					const int bLayer = b.GetComponent<SpriteComponent>().layer;
 					//collison check AABB between A B
 					bool collisonHappend = CheckAABBCollison(
 						aTransform.position.x,
@@ -72,8 +75,6 @@ class CollisionSystem
 
 						//Logger::Log("Entity " + std::to_string(a.GetId()) + " is colliding with " +std::to_string(b.GetId()) );
 						//TODO: Event type
-						int aLayer = aSprite.layer;
-						int bLayer = bSprite.layer;
 						//possible collision events make sure that gound player/enemy wont destroy player/enemy in air just by simple collsion
 						bool playerInAir_vs_EnemyInAir =
 							(aLayer == 7 && bLayer == 6) ||

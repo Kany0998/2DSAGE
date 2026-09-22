@@ -15,7 +15,7 @@ public:
 		for (auto rawEntity : registry.Raw().view<ManaComponent, AttributesComponent>()) {
 			Entity entity(rawEntity, &registry);
 			auto& mana = entity.GetComponent<ManaComponent>();
-			auto attributes = entity.GetComponent<AttributesComponent>();
+			const auto& attributes = entity.GetComponent<AttributesComponent>();
 
 			if (mana.manaPoints < mana.maxManaPoints) {
 				mana.manaRegenAccumulator += (1 + attributes.wisdomPower / 10.0f) * deltaTime;

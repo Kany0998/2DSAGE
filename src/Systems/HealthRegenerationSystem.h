@@ -15,7 +15,7 @@ public:
 		for (auto rawEntity : registry.Raw().view<HealthComponent, AttributesComponent>()) {
 			Entity entity(rawEntity, &registry);
 			auto& health = entity.GetComponent<HealthComponent>();
-			auto attributes = entity.GetComponent<AttributesComponent>();
+			const auto& attributes = entity.GetComponent<AttributesComponent>();
 
 			if (health.healthPoints < health.maxHealthPoints) {
 				health.healthRegenAccumulator += (1 + attributes.vitalityPower / 10.0f) * deltaTime;
