@@ -9,9 +9,17 @@
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/HealthComponent.h"
+#include "../Components/AttributesComponent.h"
+#include "../Components/ManaComponent.h"	
 #include "../Components/ProjectileComponent.h"
 #include "../Components/TextLabelComponent.h"
 #include "../Components/ScriptComponent.h"
+#include "../Components/ProgressionComponent.h"
+#include "../Components/ExperienceRewardComponent.h"
+#include "../Components/MovementTypeComponent.h"
+#include "../Components/AIComponent.h"
+#include "../TileMap/TileMap.h"
+#include "../TileMap/MovementType.h"
 #include <fstream>
 #include <sol/sol.hpp>
 #include <string>
@@ -27,7 +35,8 @@ LevelLoader::~LevelLoader()
 	Logger::Log("LevelLoader destructor called!");
 }
 
-void LevelLoader::LoadLevel(sol::state& lua, const std::unique_ptr<Registry>& registry, const std::unique_ptr<AssetStore>& assetStore, SDL_Renderer* renderer, int levelNumber)
+void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
+	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
 	//check the syntax to see if it is valid
@@ -83,26 +92,58 @@ void LevelLoader::LoadLevel(sol::state& lua, const std::unique_ptr<Registry>& re
 	int tileSize = map["tileSize"];
 	double tileScale = map["tileScale"];
 	int layer = map["layer"];
-	std::fstream mapFile;
-	mapFile.open(mapFilePath);
+
+	//Read the tile properties from the lua file
+	sol::table tileProperties = map["tile_properties"];
+	int tileIndex = 0;
+
+	while (true)
+	{
+		sol::optional<sol::table> hasTileProperty = tileProperties[tileIndex];
+		if (hasTileProperty == sol::nullopt)
+		{
+			break;
+		}
+
+		sol::table tileProperty = tileProperties[tileIndex];
+
+		int tileId = tileProperty["tile_id"];
+		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
+		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
+
+		int mask = 0;
+		if (blocksGround)
+		{
+			mask |= MovementType_Ground;
+		}
+
+		if (blocksFlying)
+		{
+			mask |= MovementType_Flying;
+		}
+
+		tileMap.setBlockMask(tileId, mask);
+
+		tileIndex++;
+		
+	}
+
+	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);;
 
 	for (int y = 0; y < mapNumRows; y++)
 	{
 		for (int x = 0; x < mapNumCols; x++)
 		{
-			char ch;
-			mapFile.get(ch);
-			int srcRectY = std::atoi(&ch) * tileSize;
-			mapFile.get(ch);
-			int srcRectX = std::atoi(&ch) * tileSize;
-			mapFile.ignore();
+			int tileId = tileMap.tileAt(x, y);
+			int srcRectX = (tileId % 10) * tileSize;
+			int srcRectY = (tileId / 10) * tileSize;
 
 			Entity tile = registry->CreateEntity();
 			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
 			tile.AddComponent<SpriteComponent>(mapTextureAssetId, tileSize, tileSize, layer, false, srcRectX, srcRectY);
 		}
 	}
-	mapFile.close();
+
 	Game::mapWidth = mapNumCols * tileSize * tileScale;
 	Game::mapHeight = mapNumRows * tileSize * tileScale;
 
@@ -143,17 +184,24 @@ void LevelLoader::LoadLevel(sol::state& lua, const std::unique_ptr<Registry>& re
 			sol::optional<sol::table> transform = entity["components"]["transform"];
 			if (transform != sol::nullopt)
 			{
+				const glm::vec2 position{
+					entity["components"]["transform"]["position"]["x"],
+					entity["components"]["transform"]["position"]["y"]
+				};
+
+				const glm::vec2 scale{
+					entity["components"]["transform"]["scale"]["x"].get_or(1.0),
+					entity["components"]["transform"]["scale"]["y"].get_or(1.0)
+				};
+
+				const double rotation =
+					entity["components"]["transform"]["rotation"].get_or(0.0);
+
 				newEntity.AddComponent<TransformComponent>(
-					glm::vec2(
-						entity["components"]["transform"]["position"]["x"],
-						entity["components"]["transform"]["position"]["y"]
-					),
-					glm::vec2(
-						entity["components"]["transform"]["scale"]["x"].get_or(1.0),
-						entity["components"]["transform"]["scale"]["y"].get_or(1.0)
-					),
-					entity["components"]["transform"]["rotation"].get_or(0.0)
-					);
+					position,
+					scale,
+					rotation
+				);
 			}
 
 			//RigidBody
@@ -212,10 +260,59 @@ void LevelLoader::LoadLevel(sol::state& lua, const std::unique_ptr<Registry>& re
 			if (health != sol::nullopt)
 			{
 				newEntity.AddComponent<HealthComponent>(
-					static_cast<int>(entity["components"]["health"]["health_percentage"].get_or(100))
+					static_cast<int>(entity["components"]["health"]["health_points"].get_or(100)),
+					static_cast<int>(entity["components"]["health"]["max_health_points"].get_or(100))
 				);
 			}
-			
+
+			//Mana
+			sol::optional<sol::table> mana = entity["components"]["mana"];
+			if (mana != sol::nullopt)
+			{
+				newEntity.AddComponent<ManaComponent>(
+					static_cast<int>(entity["components"]["mana"]["mana_percentage"].get_or(100)),
+					static_cast<int>(entity["components"]["mana"]["max_mana_points"].get_or(100))
+				);
+			}
+			//Attributes
+			sol::optional<sol::table> attributes = entity["components"]["attributes"];
+			if(attributes != sol::nullopt)
+			{
+				newEntity.AddComponent<AttributesComponent>(
+					static_cast<int>(entity["components"]["attributes"]["attack"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["defense"].get_or(0)),
+					static_cast<int>(entity["components"]["attributes"]["wisdom"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["vitality"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["speed"].get_or(10)),
+					static_cast<int>(entity["components"]["attributes"]["dexterity"].get_or(10))
+				);
+			}
+
+			//Progression
+			sol::optional<sol::table> progression = entity["components"]["progression"];
+			if (progression != sol::nullopt)
+			{
+				newEntity.AddComponent<ProgressionComponent>(
+					static_cast<int>(entity["components"]["progression"]["level"].get_or(1)),
+					static_cast<int>(entity["components"]["progression"]["experience"].get_or(0)),
+					//0 means "work it out from experience_base" - see ProgressionComponent
+					static_cast<int>(entity["components"]["progression"]["experience_to_next_level"].get_or(0)),
+					static_cast<int>(entity["components"]["progression"]["skill_points"].get_or(0)),
+					static_cast<int>(entity["components"]["progression"]["max_level"].get_or(100)),
+					static_cast<int>(entity["components"]["progression"]["experience_base"].get_or(100)),
+					static_cast<float>(entity["components"]["progression"]["experience_growth"].get_or(1.15))
+				);
+			}
+
+			//ExperienceReward
+			sol::optional<sol::table> experienceReward = entity["components"]["experience_reward"];
+			if (experienceReward != sol::nullopt)
+			{
+				newEntity.AddComponent<ExperienceRewardComponent>(
+					static_cast<int>(entity["components"]["experience_reward"]["experience"].get_or(0))
+				);
+			}
+
 			//ProjectileEmitter
 			sol::optional<sol::table> projectileEmitter = entity["components"]["projectile_emitter"];
 			if (projectileEmitter != sol::nullopt)
@@ -227,9 +324,65 @@ void LevelLoader::LoadLevel(sol::state& lua, const std::unique_ptr<Registry>& re
 					),
 					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10) * 1000),
-					static_cast<int>(entity["components"]["projectile_emitter"]["hit_percentage_damage"].get_or(10)),
+					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
 				);
+			}
+
+			//MovementType
+			sol::optional<sol::table> movementType = entity["components"]["movement_type"];
+			if (movementType != sol::nullopt)
+			{
+				std::string typeName = entity["components"]["movement_type"]["type"].get_or(std::string("ground"));
+
+				int type = MovementType_Ground;
+				if(typeName == "flying")
+				{
+					type = MovementType_Flying;
+				}
+
+				newEntity.AddComponent<MovementTypeComponent>(type);
+			}
+
+			//AIComponent
+			sol::optional<sol::table> AI = entity["components"]["ai"];
+			if (AI != sol::nullopt)
+			{
+				if (newEntity.HasComponent<TransformComponent>() && newEntity.HasComponent<SpriteComponent>()) {
+					const auto& transform = newEntity.GetComponent<TransformComponent>();
+					const auto& sprite = newEntity.GetComponent<SpriteComponent>();
+
+					const glm::vec2 spawnPoint = {
+						transform.position.x + sprite.width * transform.scale.x / 2.0,
+						transform.position.y + sprite.height * transform.scale.y / 2.0
+					};
+
+
+					const double tileWorldSize = tileMap.TileWorldSize();
+
+					double detection_range = entity["components"]["ai"]["detection_range"].get_or(6.0) * tileWorldSize;
+					double leash_range = entity["components"]["ai"]["leash_range"].get_or(20.0) * tileWorldSize;
+
+					newEntity.AddComponent<AIComponent>(
+						spawnPoint,
+						detection_range,
+						entity["components"]["ai"]["stop_distance"].get_or(1.0)* tileWorldSize,
+						leash_range,
+						entity["components"]["ai"]["move_speed"].get_or(100.0),
+						entity["components"]["ai"]["patrol_radius"].get_or(0.0)* tileWorldSize,
+						entity["components"]["ai"]["patrol_pause"].get_or(0.0)
+						
+					);
+
+					if (leash_range < detection_range * 1.2) {
+						Logger::Warn("leash_range: " + std::to_string(leash_range) + " is shorter than detection_range: " + std::to_string(detection_range) + " * 1,2 : the enemy will give up before it loses sight of the player.");
+					}
+				}
+				else {
+					Logger::Err("Entity needs sprite and transform components for AI");
+				}
+				
+
 			}
 
 			//CameraFollow

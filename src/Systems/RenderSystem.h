@@ -4,36 +4,44 @@
 #include "../ECS/ECS.h"
 #include "../Components/TransformComponent.h"
 #include "../Components//SpriteComponent.h"
+#include "../Components/AIComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <SDL.h>
 
 
-class RenderSystem : public System
+class RenderSystem
 {
 	public:
-		RenderSystem()
-		{
-			RequireComponent<TransformComponent>();
-			RequireComponent<SpriteComponent>();
-		}
+		RenderSystem() = default;
 
-		void Update(SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, SDL_Rect& camera)
+		void Update(Registry& registry, SDL_Renderer* renderer, std::unique_ptr<AssetStore>& assetStore, SDL_Rect& camera)
 		{
 			//Create vector with sprite and transform component of all entites
 			struct RenderableEntity
 			{
 				TransformComponent transformComponent;
 				SpriteComponent spriteComponent;
+				Uint8 alpha = 255;
 			};
 
 			std::vector<RenderableEntity> renderableEntities;
 
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<TransformComponent, SpriteComponent>())
 			{
+				Entity entity(rawEntity, &registry);
+
 				RenderableEntity renderableEntity;
 				renderableEntity.spriteComponent = entity.GetComponent<SpriteComponent>();
 				renderableEntity.transformComponent = entity.GetComponent<TransformComponent>();
+
+				if (entity.HasComponent<AIComponent>()) {
+
+					const auto& enemyAI = entity.GetComponent<AIComponent>();
+					if (enemyAI.state == AIState::Return) {
+						renderableEntity.alpha = 128;
+					}
+				}
 
 				//Bypass rendering entites if they are outside the camera view
 				bool isEntityOutsideCameraView = (
@@ -55,10 +63,10 @@ class RenderSystem : public System
 				return a.spriteComponent.layer < b.spriteComponent.layer;
 				});
 
-		
+
 			//Loop all entites that the system is intested in
 			for (auto entity : renderableEntities)
-			{ 
+			{
 				const auto transform = entity.transformComponent;
 				const auto sprite = entity.spriteComponent;
 
@@ -77,15 +85,20 @@ class RenderSystem : public System
 					dstRect.w / 2,
 					dstRect.h / 2
 				};
+				SDL_Texture* texture = assetStore->GetTexture(sprite.assetId);
+				SDL_SetTextureAlphaMod(texture, entity.alpha);
+
 				SDL_RenderCopyEx(
 					renderer,
-					assetStore->GetTexture(sprite.assetId),
+					texture,
 					&srcRect,
 					&dstRect,
 					transform.rotation,
 					NULL,
 					sprite.flip
 				);
+
+				SDL_SetTextureAlphaMod(texture, 255);
 				//draw png texute based on spriteId
 			}
 		}

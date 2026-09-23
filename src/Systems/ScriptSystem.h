@@ -6,6 +6,7 @@
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AnimationComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
+#include "../Components/AIComponent.h"
 #include "../Logger/Logger.h"	
 #include "../ECS/ECS.h"
 #include <tuple>
@@ -68,6 +69,16 @@ void SetEntityVelocity(Entity entity, double x, double y)
 	}
 }
 
+void SetEntityAIPaused(Entity entity, bool paused) {
+	if (entity.HasComponent<AIComponent>()) {
+		auto& ai = entity.GetComponent<AIComponent>();
+		ai.scriptControlsVelocity = paused;
+	}
+	else {
+		Logger::Err("Trying to pause AI of entity that does not have an AI component");
+	}
+}
+
 void SetEntityRotation(Entity entity, double angle)
 {
 	if (entity.HasComponent<TransformComponent>())
@@ -108,13 +119,10 @@ void SetProjectileVelocity(Entity entity, double x, double y)
 	}
 }
 
-class ScriptSystem : public System
+class ScriptSystem
 {
 	public:
-		ScriptSystem()
-		{
-			RequireComponent<ScriptComponent>();
-		}
+		ScriptSystem() = default;
 
 		void CreateLuaBindings(sol::state& lua)
 		{
@@ -135,13 +143,15 @@ class ScriptSystem : public System
 			lua.set_function("set_rotation", SetEntityRotation);
 			lua.set_function("set_animation_frame", SetAnimationFrame);
 			lua.set_function("set_projectile_velocity", SetProjectileVelocity);
+			lua.set_function("set_ai_paused", SetEntityAIPaused);
 		}
 
-		void Update(double deltaTime, int ellapsedTime)
+		void Update(Registry& registry, double deltaTime, int ellapsedTime)
 		{
 			//loop all the entites with script component and invoke their lua function
-			for (auto entity : GetSystemEntities())
+			for (auto rawEntity : registry.Raw().view<ScriptComponent>())
 			{
+				Entity entity(rawEntity, &registry);
 				const auto script = entity.GetComponent<ScriptComponent>();
 				script.func(entity, deltaTime, ellapsedTime);
 			}

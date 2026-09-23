@@ -7,22 +7,19 @@
 #include "../Components/SpriteComponent.h"
 #include <SDL.h>
 
-class CameraMovementSystem : public System
+class CameraMovementSystem
 {
 	public:
-		CameraMovementSystem()
+		CameraMovementSystem() = default;
+
+		void Update(Registry& registry, SDL_Rect& camera)
 		{
-			RequireComponent<CameraHollderComponent>();
-			RequireComponent<TransformComponent>();
-			RequireComponent<SpriteComponent>();
-		}
-		
-		void Update(SDL_Rect& camera)
-		{
-            for (auto entity : GetSystemEntities())
+            for (auto rawEntity : registry.Raw().view<CameraHollderComponent, TransformComponent, SpriteComponent>())
             {
-                auto transform = entity.GetComponent<TransformComponent>();
-                auto sprite = entity.GetComponent<SpriteComponent>();
+                Entity entity(rawEntity, &registry);
+
+                const auto& transform = entity.GetComponent<TransformComponent>();
+                const auto& sprite = entity.GetComponent<SpriteComponent>();
 
                 //center of the spire
                 int playerCenterX = transform.position.x + (sprite.width * transform.scale.x) / 2;

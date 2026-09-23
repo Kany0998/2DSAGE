@@ -9,16 +9,16 @@ struct ProjectileEmitterComponent
 	glm::vec2 projectileVelocity;
 	int repeatRate; //in milliseconds
 	int projectileDuration; //in milliseconds
-	int hitPercentDamage;
+	int projectileDamage;
 	int lastEmittedTime; //timestamp in milliseconds
 	bool isFriendly; //true if fired by player false if fired by enemy
 
-	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int hitPercentDamage = 10, bool isFriendly = false)
+	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int projectileDamage = 10, bool isFriendly = false)
 	{
 		this->projectileVelocity = projectileVelocity;
 		this->repeatRate = repeatRate;
 		this->projectileDuration = projectileDuration;
-		this->hitPercentDamage = hitPercentDamage;
+		this->projectileDamage = projectileDamage;
 		this->isFriendly = isFriendly;
 		this->lastEmittedTime = SDL_GetTicks();
 	}

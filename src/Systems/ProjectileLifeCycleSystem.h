@@ -4,17 +4,15 @@
 #include "../ECS/ECS.h"
 #include "../Components/ProjectileComponent.h"
 
-class ProjectileLifeCycleSystem : public System 
+class ProjectileLifeCycleSystem
 {
     public:
-        ProjectileLifeCycleSystem() 
-        {
-            RequireComponent<ProjectileComponent>();
-        }
+        ProjectileLifeCycleSystem() = default;
 
-        void Update() {
-            for (auto entity : GetSystemEntities()) {
-                auto projectile = entity.GetComponent<ProjectileComponent>();
+        void Update(Registry& registry) {
+            for (auto rawEntity : registry.Raw().view<ProjectileComponent>()) {
+                Entity entity(rawEntity, &registry);
+                const auto& projectile = entity.GetComponent<ProjectileComponent>();
 
                 // Kill projectiles after they reach their duration limit
                 if (SDL_GetTicks() - projectile.startTime > projectile.duration) {

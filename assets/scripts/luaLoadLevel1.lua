@@ -3,7 +3,7 @@ local current_system_hour = os.date("*t").hour
 
 local map_texute_asset_id
 
-if current_system_hour >= 9 and current_system_hour < 19 then
+if current_system_hour >= 9 and current_system_hour < 23 then
 	map_texute_asset_id = "tilemap-texture-day"
 else
 	map_texute_asset_id = "tilemap-texture-night"
@@ -38,7 +38,13 @@ Level = {
 		mapNumCols = 25,
 		tileSize = 32,
 		tileScale = 4.0,
-		layer = 0
+		layer = 0,
+
+		tile_properties =
+		{
+			[0] =
+			{tile_id = 21, blocks_ground = true, blocks_flying = false}
+		},
 	},
 
 	-- table to define entites and components of enetities
@@ -53,7 +59,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 100, y = 100},
+					position = {x = 1000, y = 1000},
 					scale = {x = 3.0, y = 3.0},
 					rotation = 0.0 --deg
 				},
@@ -82,25 +88,53 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 5}
 				},
-				health = 
+				health =
 				{
-					health_percentage = 100
+					health_points = 10,
+					max_health_points = 1000
+				},
+				mana =
+				{
+					mana_percentage = 1000,
+					max_mana_points = 1000
+				},
+				attributes =
+				{
+					attack = 1500,
+					defense = 100000,
+					wisdom = 100,
+					vitality = 1000,
+					speed = 100,
+					dexterity = 100
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 100},
 					projectile_duration = 10, --sec
 					repeat_frequency = 0,
-					hit_percentage_damage = 20,
+					projectile_damage = 15,
 					friendly = true
 				},
 				keyboard_controlled =
 				{
-					up_velocity = {x = 0, y = -200},
-					right_velocity = {x = 200, y = 0},
-					down_velocity = {x = 0, y = 200},
-					left_velocity = {x = -200, y = 0},
+					up_velocity = {x = 0, y = -100},
+					right_velocity = {x = 100, y = 0},
+					down_velocity = {x = 0, y = 100},
+					left_velocity = {x = -100, y = 0},
 					diagnalMovement = true
+				},
+				progression =
+				{
+					level = 1,
+					experience = 0,
+					skill_points = 0,
+					max_level = 100,
+					experience_base = 100,	--experience needed to clear level 1
+					experience_growth = 1.15	--each level costs 15% more than the one before
+				},
+				movement_type =
+				{
+					type = "flying"
 				},
 				camera_follow =
 				{
@@ -115,13 +149,13 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 400, y = 400},
-					scale = {x = 6.0, y = 6.0},
+					position = {x = 1216, y = 1216},
+					scale = {x = 2.0, y = 2.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
 				{
-					velocity = {x = 100, y = 0}
+					velocity = {x = 0, y = 0}
 				},
 				sprite = 
 				{
@@ -139,18 +173,98 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
-					health_percentage = 100
+					health_points = 1000,
+					max_health_points = 1000
+				},
+				experience_reward =
+				{
+					experience = 50
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
 					friendly = false
 				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				ai =
+				{
+					detection_range = 6,
+					stop_distance = 1.0,
+					leash_range = 10,
+					move_speed = 100,
+					patrol_radius = 3,   -- tiles, measured from the spawn point
+					patrol_pause = 2.0  -- seconds to wait after reaching a point
+				},
+			}
+
+		},
+		{
+			--tank
+			group = "enemies",
+			components =
+			{
+				transform =
+				{
+					position = {x = 800, y = 400},
+					scale = {x = 6.0, y = 6.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = -100, y = 0}
+				},
+				sprite = 
+				{
+					texture_asset_id = "tank-texture",
+					width = 32,
+					height = 32,
+					layer  = 3,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 32,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				health =
+				{
+					health_points = 100,
+					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
+				},
+				projectile_emitter =
+				{
+					projectile_velocity = {x = 100, y = 0},
+					projectile_duration = 10, --sec
+					repeat_frequency = 3,
+					projectile_damage = 49,
+					friendly = false
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				ai =
+				{
+					detection_range = 6,
+					stop_distance = 1,
+					leash_range = 10,
+					move_speed = 100
+				}
 			}
 
 		},
@@ -161,7 +275,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 800, y = 400},
+					position = {x = 1600, y = 400},
 					scale = {x = 2.0, y = 2.0},
 					rotation = 0.0 --deg
 				},
@@ -220,17 +334,26 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
-					health_percentage = 100
+					health_points = 100,
+					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
 					friendly = false
+				},
+				movement_type =
+				{
+					type = "ground"
 				},
 				on_update_script =
 				{
@@ -263,7 +386,7 @@ Level = {
 
 		},
 		{
-			--tank
+			--tree
 			group = "enemies",
 			components =
 			{
@@ -293,16 +416,30 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				health = 
+				health =
 				{
-					health_percentage = 100
+					health_points = 10000,
+					max_health_points = 10000
+				},
+				experience_reward =
+				{
+					experience = 50000000
+				},
+				attributes =
+				{
+					attack = 150,
+					defense = 100,
+					wisdom = 10,
+					vitality = 10,
+					speed = 10,
+					dexterity = 10
 				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
-					hit_percentage_damage = 49,
+					projectile_damage = 49,
 					friendly = false
 				},
 				on_update_script =
