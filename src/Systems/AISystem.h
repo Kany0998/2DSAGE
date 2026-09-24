@@ -12,6 +12,7 @@
 #include "../Pathfinding/Pathfinder.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
+#include "../Utils/EntityGeometry.h"
 #include <string>
 #include <algorithm>
 #include <cmath>
@@ -31,8 +32,10 @@ class AISystem
 			if (!registry.HasEntityWithTag("player")) {
 				for (auto rawEntity : registry.Raw().view<AIComponent, RigidBodyComponent>()) {
 					Entity entity(rawEntity, &registry);
+					auto& entityAI = entity.GetComponent<AIComponent>();
 					entity.GetComponent<RigidBodyComponent>().velocity = glm::vec2(0.0, 0.0);
-					entity.GetComponent<AIComponent>().state = AIState::Patrol;
+					EnterAIState(entityAI, AIState::Patrol);
+					
 				}
 				return;
 			}
@@ -147,7 +150,7 @@ class AISystem
 					const double tileWorldSize = tileMap.TileWorldSize();
 
 					if (enemyAI.patrolTargetCell == -1) {
-						const int radiusInCells = static_cast<int>(enemyAI.patrolRadius / tileWorldSize);
+						const int radiusInCells = static_cast<int>(std::ceil(enemyAI.patrolRadius / tileWorldSize));
 						const int spawnCol = tileMap.colAt(enemyAI.spawnPoint.x);
 						const int spawnRow = tileMap.rowAt(enemyAI.spawnPoint.y);
 
@@ -183,6 +186,8 @@ class AISystem
 
 						//Nothing usable this frame (a cramped spawn): stand still and try again
 						if (enemyAI.patrolTargetCell == -1) {
+							Logger::Warn("Entity: " + std::to_string(entity.GetId()) + " no usable patrol cell near its spawn");
+							enemyAI.patrolPauseTimer = enemyAI.patrolPause;
 							enemyRigidBody.velocity = glm::vec2{ 0.0, 0.0 };
 							continue;
 						}
@@ -197,7 +202,6 @@ class AISystem
 					if (shouldSearch) {
 
 						if (searchesThisFrame >= maxSearchesPerFrame) {
-							enemyRigidBody.velocity = glm::vec2{ 0.0,0.0 };
 							continue;
 						}
 
@@ -209,6 +213,7 @@ class AISystem
 
 						if (!found) {
 							enemyAI.patrolTargetCell = -1;
+							enemyAI.patrolPauseTimer = enemyAI.patrolPause;
 							enemyRigidBody.velocity = glm::vec2{ 0.0,0.0 };
 							continue;
 						}
@@ -236,7 +241,6 @@ class AISystem
 					if (shouldSearch) {
 
 						if (searchesThisFrame >= maxSearchesPerFrame) {
-							enemyRigidBody.velocity = glm::vec2{ 0.0,0.0 };
 							continue;
 						}
 
@@ -297,7 +301,6 @@ class AISystem
 					if (shouldSearch) {
 						//Over budget: keep the old path and try again next frame
 						if (searchesThisFrame >= maxSearchesPerFrame) {
-							enemyRigidBody.velocity = glm::vec2{ 0.0,0.0 };
 							continue;
 						}
 
@@ -370,12 +373,6 @@ class AISystem
 
 		static constexpr double aggroCooldownSeconds = 5.0;
 
-		static glm::vec2 EntityCenter(const TransformComponent& transform, const SpriteComponent& sprite) {
-			return glm::vec2(
-				transform.position.x + sprite.width * transform.scale.x / 2.0,
-				transform.position.y + sprite.height * transform.scale.y / 2.0
-			);
-		}
 
 		//Steers along ai.path; the last leg aims at finalTarget itself rather than its tile centre.
 		//Returns true once within stopDistance of finalTarget, having stopped there
@@ -437,7 +434,7 @@ class AISystem
 
 			//Never step past the target, or the enemy oscillates around it
 			double speedThisFrame = ai.movementSpeed;
-			if (speedThisFrame * deltaTime > length) {
+			if (speedThisFrame * deltaTime > length && deltaTime > 0.0) {
 				speedThisFrame = length / deltaTime;
 			}
 
