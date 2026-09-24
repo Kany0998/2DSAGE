@@ -37,7 +37,8 @@ struct AIComponent {
 	double aggroTimer;
 
 
-	AIComponent(glm::vec2 spawnPoint = glm::vec2(0.0, 0.0), double detectionRange = 0, double stopRange = 0,double leashRange = 0, double movementSpeed = 150.0, double patrolRadius = 0, double patrolPause = 0) {
+	AIComponent(glm::vec2 spawnPoint = glm::vec2(0.0, 0.0), double detectionRange = 0, double stopRange = 0,double leashRange = 0,
+		double movementSpeed = 150.0, double patrolRadius = 0, double patrolPause = 0) {
 		
 		this->spawnPoint = spawnPoint;
 		this->detectionRange = detectionRange;

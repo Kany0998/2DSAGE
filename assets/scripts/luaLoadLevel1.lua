@@ -101,7 +101,7 @@ Level = {
 				attributes =
 				{
 					attack = 1500,
-					defense = 100000,
+					defense = 10000,
 					wisdom = 100,
 					vitality = 1000,
 					speed = 100,
@@ -184,10 +184,12 @@ Level = {
 				},
 				projectile_emitter =
 				{
-					projectile_velocity = {x = 100, y = 0},
+					projectile_velocity = {x = 300, y = 100},
 					projectile_duration = 10, --sec
-					repeat_frequency = 3,
-					projectile_damage = 49,
+					repeat_frequency = 1,
+					projectile_damage = 100,
+					aim_at_player = true,
+					attack_range = 4,
 					friendly = false
 				},
 				movement_type =
@@ -202,6 +204,7 @@ Level = {
 					move_speed = 100,
 					patrol_radius = 3,   -- tiles, measured from the spawn point
 					patrol_pause = 2.0  -- seconds to wait after reaching a point
+
 				},
 			}
 
@@ -252,6 +255,7 @@ Level = {
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
 					projectile_damage = 49,
+					aim_at_player = true,
 					friendly = false
 				},
 				movement_type =
@@ -348,6 +352,7 @@ Level = {
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
+					aim_at_player = true,
 					projectile_damage = 49,
 					friendly = false
 				},

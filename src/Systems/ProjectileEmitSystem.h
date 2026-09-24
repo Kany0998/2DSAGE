@@ -10,6 +10,8 @@
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/AIComponent.h"
+#include "../Utils/EntityGeometry.h"
 #include <SDL.h>
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
@@ -113,6 +115,49 @@ class ProjectileEmitSystem
 		//Enemy shooting: unchanged fixed-interval timer along a fixed velocity
 		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
 		{
+
+			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
+			//Default: the fixed velocity authored in Lua, for shooters with no AI
+			glm::vec2 shotVelocity = projectileEmitter.projectileVelocity;
+			
+			if (projectileEmitter.aimAtPlayer) {
+
+				//An AI shooter only fires while engaged; a turret has no AI and always may
+				if (entity.HasComponent<AIComponent>() && entity.GetComponent<AIComponent>().state != AIState::Chase) {
+					return;
+				}
+
+				if (!registry.HasEntityWithTag("player")) {
+					return;
+				}
+
+				Entity player = registry.GetEntityByTag("player");
+				if (!player.IsAlive()) {
+					return;
+				}
+				const auto& playerTransform = player.GetComponent<TransformComponent>();
+				const auto& playerSprite = player.GetComponent<SpriteComponent>();
+
+				const glm::vec2 playerCenter = EntityCenter(playerTransform, playerSprite);
+
+				const double dx = playerCenter.x - projectilePosition.x;
+				const double dy = playerCenter.y - projectilePosition.y;
+				const double distanceSquared = dx * dx + dy * dy;
+
+				if (distanceSquared > projectileEmitter.attackRange * projectileEmitter.attackRange) {
+					return;
+				}
+				const double length = std::sqrt(distanceSquared);
+
+				if (length < 0.0001) {
+					return;
+				}
+
+				const double speed = glm::length(projectileEmitter.projectileVelocity);
+				shotVelocity = glm::vec2(dx / length * speed, dy / length * speed);
+
+			}
+
 			if (projectileEmitter.repeatRate == 0)
 			{
 				return;
@@ -124,9 +169,10 @@ class ProjectileEmitSystem
 				return;
 			}
 
-			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
-			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, projectileEmitter.projectileVelocity);
+			
+			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, shotVelocity);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
+			
 		}
 
 		//Milliseconds the shooter has to wait between shots, derived from dexterity:

@@ -317,14 +317,21 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> projectileEmitter = entity["components"]["projectile_emitter"];
 			if (projectileEmitter != sol::nullopt)
 			{
+
+				const double tileWorldSize = tileMap.TileWorldSize();
+
+				const double attack_range = entity["components"]["projectile_emitter"]["attack_range"].get_or(4.0) * tileWorldSize;
+
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"]
 					),
-					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1) * 1000),
-					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10) * 1000),
+					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1.0) * 1000),
+					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10.0) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
+					entity["components"]["projectile_emitter"]["aim_at_player"].get_or(false),
+					attack_range,
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
 				);
 			}
@@ -369,14 +376,19 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 						entity["components"]["ai"]["stop_distance"].get_or(1.0)* tileWorldSize,
 						leash_range,
 						entity["components"]["ai"]["move_speed"].get_or(100.0),
-						entity["components"]["ai"]["patrol_radius"].get_or(0.0)* tileWorldSize,
+						entity["components"]["ai"]["patrol_radius"].get_or(0.0) * tileWorldSize,
 						entity["components"]["ai"]["patrol_pause"].get_or(0.0)
-						
 					);
 
 					if (leash_range < detection_range * 1.2) {
 						Logger::Warn("leash_range: " + std::to_string(leash_range) + " is shorter than detection_range: " + std::to_string(detection_range) + " * 1,2 : the enemy will give up before it loses sight of the player.");
 					}
+					const auto& emitter = newEntity.GetComponent<ProjectileEmitterComponent>();
+
+					if (detection_range < emitter.attackRange) {
+						Logger::Warn("attack_range: " + std::to_string(emitter.attackRange) + " is greater than detection_range: " + std::to_string(detection_range) + " which may be a typo");
+					}
+
 				}
 				else {
 					Logger::Err("Entity needs sprite and transform components for AI");
