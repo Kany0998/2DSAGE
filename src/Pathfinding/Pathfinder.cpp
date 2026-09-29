@@ -15,13 +15,18 @@ double Pathfinder::OctileHeuristic(int col, int row, int goalCol, int goalRow) c
 
 
 
-double Pathfinder::CostToEnter(bool isDiagonal) const{
+double Pathfinder::CostToEnter(const TileMap& tilemap, int col, int row, bool isDiagonal) const {
 
-	if (isDiagonal) {
-		return diagonalCost;
+	double speedMultiplier = tilemap.SpeedMultiplierAt(col, row);
+	if (speedMultiplier <= 0) {
+		speedMultiplier = 0.0000001;	//Some field can have multiplier as 0 so player will be temporary blocked there but we try to skip them for AI
 	}
 
-	return 1.0;
+	if (isDiagonal) {
+		return diagonalCost / speedMultiplier;
+	}
+
+	return stepCost / speedMultiplier;
 }
 
 
@@ -51,10 +56,20 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 			if (tilemap.isBlocked(col + dx, row, movementType) || tilemap.isBlocked(col, row + dy, movementType)) {
 				continue;
 			}
+
+			//A diagonal grazes the corner shared with both orthogonal cells, so the entity
+			//really does travel through them: charge for the worst of the three, or the
+			//search gets a corner crossing for free
+			const double sideA = tilemap.SpeedMultiplierAt(col + dx, row);
+			const double sideB = tilemap.SpeedMultiplierAt(col, row + dy);
+
+			if (sideA < diagonalMinMultiplier || sideB < diagonalMinMultiplier) {
+				continue;
+			}
 		}
 
 		int neighbourIndex = tilemap.Index(neighbourCol, neighbourRow);
-		double cost = CostToEnter(isDiagonal);
+		double cost = CostToEnter(tilemap, neighbourCol, neighbourRow, isDiagonal);
 
 		outNeighbours.push_back({ neighbourIndex, cost });
 	}
@@ -164,33 +179,91 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	return true;
 }
 
-bool Pathfinder::HasLineOfSight(const TileMap& tilemap, int fromIndex, int toIndex, int movementType) const {
-	double tileWorldSize = tilemap.TileWorldSize();
-	double fromX = tilemap.IndexToCol(fromIndex) * tileWorldSize + tileWorldSize / 2.0;
-	double fromY = tilemap.IndexToRow(fromIndex) * tileWorldSize + tileWorldSize / 2.0;
-	double toX = tilemap.IndexToCol(toIndex) * tileWorldSize + tileWorldSize / 2.0;
-	double toY = tilemap.IndexToRow(toIndex) * tileWorldSize + tileWorldSize / 2.0;
+double Pathfinder::LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier) const {
+
+	const double tileWorldSize = tilemap.TileWorldSize();
+
+	const double fromX = tilemap.IndexToCol(fromIndex) * tileWorldSize + tileWorldSize / 2.0;
+	const double fromY = tilemap.IndexToRow(fromIndex) * tileWorldSize + tileWorldSize / 2.0;
+	const double toX = tilemap.IndexToCol(toIndex) * tileWorldSize + tileWorldSize / 2.0;
+	const double toY = tilemap.IndexToRow(toIndex) * tileWorldSize + tileWorldSize / 2.0;
 
 	const double dx = toX - fromX;
 	const double dy = toY - fromY;
-	
-	//Sample at least twice per tile, so no blocked tile can hide between two samples
-	const int steps = static_cast<int>(std::ceil(std::max(std::abs(dx), std::abs(dy)) / (tileWorldSize / 2.0)));
-	
+
+	const int steps = static_cast<int>(std::ceil(std::max(std::abs(dx), std::abs(dy)) / (tileWorldSize / lineSamplesPerTile)));
+
 	if (steps < 1) {
-		return true;
+		return 0.0;
 	}
+
+	const double lineLength = std::sqrt(dx * dx + dy * dy);
+	const double distancePerSample = lineLength / steps;
+
+	//An entity does not follow this line exactly: it starts anywhere in its own cell and
+	//counts a waypoint as reached within the arrival radius. The line is therefore tested
+	//as a corridor that wide, not as a line
+	const double offsetX = -dy / lineLength * tileWorldSize * lineClearanceInTiles;
+	const double offsetY = dx / lineLength * tileWorldSize * lineClearanceInTiles;
+
+	double cost = 0.0;
 
 	for (int i = 1; i <= steps; ++i) {
 		const double t = static_cast<double>(i) / steps;
 		const double x = fromX + dx * t;
 		const double y = fromY + dy * t;
 
-		if (tilemap.isBlockedAtWorld(x, y, movementType)) {
-			return false;
+		double worstMultiplier = 1.0;
+
+		for (int probe = -1; probe <= 1; ++probe) {
+			const double probeX = x + offsetX * probe;
+			const double probeY = y + offsetY * probe;
+
+			if (tilemap.isBlockedAtWorld(probeX, probeY, movementType)) {
+				return -1.0;
+			}
+
+			double multiplier = tilemap.SpeedMultiplierAtWorld(probeX, probeY);
+
+			if (multiplier <= 0.0) {
+				multiplier = 0.0000001;
+			}
+
+			if (multiplier < worstMultiplier) {
+				worstMultiplier = multiplier;
+			}
 		}
+
+		//Never straighten across ground the search went out of its way to avoid
+		if (worstMultiplier < minMultiplier) {
+			return -1.0;
+		}
+
+		cost += (distancePerSample / tileWorldSize) / worstMultiplier;
 	}
-	return true;
+
+	return cost;
+}
+
+double Pathfinder::PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep) const {
+
+	double cost = 0.0;
+	int previous = fromIndex;
+
+	for (int k = firstStep; k <= lastStep; ++k) {
+		const int next = path[k];
+
+		const int previousCol = tilemap.IndexToCol(previous);
+		const int previousRow = tilemap.IndexToRow(previous);
+		const int nextCol = tilemap.IndexToCol(next);
+		const int nextRow = tilemap.IndexToRow(next);
+
+		const bool isDiagonal = (nextCol != previousCol) && (nextRow != previousRow);
+
+		cost += CostToEnter(tilemap, nextCol, nextRow, isDiagonal);
+		previous = next;
+	}
+	return cost;
 }
 
 void Pathfinder::SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path) const {
@@ -210,7 +283,17 @@ void Pathfinder::SmoothPath(const TileMap& tilemap, int startIndex, int movement
 		//Furthest cell on the remaining route that can be reached in a straight line
 		int best = i;
 		for (int j = cellCount - 1; j > i; --j) {
-			if (HasLineOfSight(tilemap, anchor, path[j], movementType)) {
+			const double lineCost = LineCost(tilemap, anchor, path[j], movementType, smoothingMinMultiplier);
+
+			if(lineCost < 0.0){
+				continue;
+			}
+
+			const double segmentCost = PathSegmentCost(tilemap, anchor, path, i, j);
+
+			//Straighten only when the shortcut is no dearer than the route it replaces,
+			//so a detour the search made around slow ground survives smoothing
+			if (lineCost <= segmentCost + costEpsilon) {
 				best = j;
 				break;
 			}

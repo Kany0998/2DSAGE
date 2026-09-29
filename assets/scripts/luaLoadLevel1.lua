@@ -42,7 +42,7 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, speed_multiplier = 3.0},
+			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, speed_multiplier = 0.3},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
@@ -200,7 +200,7 @@ Level = {
 				},
 				ai =
 				{
-					detection_range = 6,
+					detection_range = 12,
 					stop_distance = 1.0,
 					leash_range = 10,
 					move_speed = 100,

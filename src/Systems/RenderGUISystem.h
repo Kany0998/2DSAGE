@@ -144,7 +144,7 @@ class RenderGUISystem
 					ImGui::Text("Map tile (col=%d, row=%d, id=%d)", col, row, tileId);
 					ImGui::Text("Map tile is blocked (ground): %s", isBlockedGround ? "Yes" : "No");
 					ImGui::Text("Map tile is blocked (flying): %s", isBlockedFlying ? "Yes" : "No");
-					ImGui::Text("Map tile speed multiplier: multi=%.2f", speedMultiplier);
+					ImGui::Text("Map tile speed multiplier: multi=%.6f", speedMultiplier);
 				}
 				ImGui::End();
 			}

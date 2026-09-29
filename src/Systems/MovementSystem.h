@@ -71,11 +71,11 @@ class MovementSystem
 				}
 
 				bool hasMovementType = entity.HasComponent<MovementTypeComponent>();
-				int movmentType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
+				int movementType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
 
 				double speedTileMultiplier = 1.0;
 				
-				if (hasMovementType) {
+				if (hasMovementType && movementType == MovementType_Ground) {
 					glm::vec2 entityCenter = EntityCenter(transform, sprite);
 					int const col = tileMap.colAt(entityCenter.x);
 					int const row = tileMap.rowAt(entityCenter.y);
@@ -99,11 +99,11 @@ class MovementSystem
 					int halfHeight = sprite.height * transform.scale.y / 2;
 
 					//X axis : candiadte testes against current y
-					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movmentType)) {
+					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movementType)) {
 						transform.position.x = candidateX;
 					}
 					//Y axis : candidate tests against current x
-					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movmentType)) {
+					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movementType)) {
 						transform.position.y = candidateY;
 					}
 					

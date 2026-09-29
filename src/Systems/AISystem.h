@@ -100,7 +100,6 @@ class AISystem
 				const AIState previousState = enemyAI.state;
 
 				
-				
 				switch (enemyAI.state) {
 
 					case AIState::Patrol:
@@ -313,6 +312,19 @@ class AISystem
 
 						if (logSearches) {
 							Logger::Log("EntityId: " + std::to_string(entity.GetId()) + " Path size: " + std::to_string(enemyAI.path.size()));
+
+							std::string message = "Enemy " + std::to_string(entity.GetId()) + " path (" + std::to_string(enemyAI.path.size()) + "):";
+
+							for (const int cellIndex : enemyAI.path) {
+								const int cellCol = tileMap.IndexToCol(cellIndex);
+								const int cellRow = tileMap.IndexToRow(cellIndex);
+								message += " (" + std::to_string(cellCol) + "," + std::to_string(cellRow) + ")"
+									+ " id=" + std::to_string(tileMap.tileAt(cellCol, cellRow))
+									+ " m=" + std::to_string(tileMap.SpeedMultiplierAt(cellCol, cellRow));
+							}
+
+							Logger::Log(message);
+
 						}
 
 						if (found) {
@@ -336,8 +348,6 @@ class AISystem
 									enemyAI.aggroCooldown = aggroCooldownSeconds;
 									enemyRigidBody.velocity = glm::vec2(0.0, 0.0);
 								}
-								
-								
 								continue;
 							}
 						}

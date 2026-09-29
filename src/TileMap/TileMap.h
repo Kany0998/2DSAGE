@@ -12,7 +12,7 @@ class TileMap {
 		int tileSize = 0;
 		double tileScale = 0.0;
 		double tileWorldSize = 0.0;
-		static constexpr int tileIdCount = 100;	
+		static constexpr int tileIdCount = 100;
 
 		// What each tile id blocks, indexed by the id itself. Ids in the .map file are
 		// two digits, so 100 slots covers every one of them. 0 means "blocks nothing",
