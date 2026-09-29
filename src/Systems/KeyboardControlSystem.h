@@ -41,14 +41,16 @@ public:
 			auto& sprite = entity.GetComponent<SpriteComponent>();
 			auto& rigidBody = entity.GetComponent<RigidBodyComponent>();
 			auto& transform = entity.GetComponent<TransformComponent>();
+			const double diagonalSprt = 1.41;
 
 
 			if (keyboardControlled.diagnalMovement)
 			{
 				if (up && right)
 				{
-					rigidBody.velocity.y = keyboardControlled.upVelocity.y;
-					rigidBody.velocity.x = keyboardControlled.rightVelocity.x;
+					
+					rigidBody.velocity.y = keyboardControlled.upVelocity.y / diagonalSprt;
+					rigidBody.velocity.x = keyboardControlled.rightVelocity.x / diagonalSprt;
 					sprite.srcRect.y = sprite.height * 0;
 					transform.rotation = 45.0;
 					usedDiagonal = true;
@@ -56,8 +58,8 @@ public:
 
 				else if (down && right)
 				{
-					rigidBody.velocity.y = keyboardControlled.downVelocity.y;
-					rigidBody.velocity.x = keyboardControlled.rightVelocity.x;
+					rigidBody.velocity.y = keyboardControlled.downVelocity.y / diagonalSprt;
+					rigidBody.velocity.x = keyboardControlled.rightVelocity.x / diagonalSprt;
 					sprite.srcRect.y = sprite.height * 1;
 					transform.rotation = 45.0;
 					usedDiagonal = true;
@@ -65,16 +67,16 @@ public:
 
 				else if (down && left)
 				{
-					rigidBody.velocity.y = keyboardControlled.downVelocity.y;
-					rigidBody.velocity.x = keyboardControlled.leftVelocity.x;
+					rigidBody.velocity.y = keyboardControlled.downVelocity.y / diagonalSprt;
+					rigidBody.velocity.x = keyboardControlled.leftVelocity.x / diagonalSprt;
 					sprite.srcRect.y = sprite.height * 2;
 					transform.rotation = 45.0;
 					usedDiagonal = true;
 				}
 				else if (up && left)
 				{
-					rigidBody.velocity.y = keyboardControlled.upVelocity.y;
-					rigidBody.velocity.x = keyboardControlled.leftVelocity.x;
+					rigidBody.velocity.y = keyboardControlled.upVelocity.y / diagonalSprt;
+					rigidBody.velocity.x = keyboardControlled.leftVelocity.x / diagonalSprt;
 					sprite.srcRect.y = sprite.height * 3;
 					transform.rotation = 45.0;
 					usedDiagonal = true;
