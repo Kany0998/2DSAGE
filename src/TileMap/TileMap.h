@@ -18,6 +18,7 @@ class TileMap {
 		// two digits, so 100 slots covers every one of them. 0 means "blocks nothing",
 		// which is why Lua only lists obstacles. Bit values come from MovementType.h.
 		int blockMasks[tileIdCount] = {};
+		double speedMultipliers[tileIdCount] = {};	//1.0 - normal gorund, less - for example water slower, more - for example road faster
 
 		
 
@@ -31,14 +32,17 @@ class TileMap {
 
 		void load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale);
 		void setBlockMask(int tileId, int mask);
+		void setSpeedMultiplier(int tileId, double speedMultiplier);
 
 		int colAt(double worldX) const;
 		int rowAt(double worldY) const;
 
 		bool isInside(int col, int row) const;
 		int tileAt(int col, int row) const;
+		double SpeedMultiplierAt(int col, int row) const;
 		bool isBlocked(int col, int row, int movementType) const;
 		bool isBlockedAtWorld(double worldX, double worldY, int movementType) const;
+		double SpeedMultiplierAtWorld(double worldX, double worldY) const;
 
 		int Cols() const { return cols; }
 		int Rows() const { return rows; }

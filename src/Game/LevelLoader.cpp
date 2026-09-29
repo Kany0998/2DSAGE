@@ -93,6 +93,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	double tileScale = map["tileScale"];
 	int layer = map["layer"];
 
+	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);
 	//Read the tile properties from the lua file
 	sol::table tileProperties = map["tile_properties"];
 	int tileIndex = 0;
@@ -108,8 +109,14 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		sol::table tileProperty = tileProperties[tileIndex];
 
 		int tileId = tileProperty["tile_id"];
+		double speedMultiplier = tileProperty["speed_multiplier"].get_or(1.0);
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
+
+		if (speedMultiplier == 0.0) {
+			Logger::Warn("Your speed multiplier for tile: " + std::to_string(tileId) + ", is equal to :" + std::to_string(speedMultiplier) +
+				" meaning it would trap everything with movement type in it: which may be a typo");
+		}
 
 		int mask = 0;
 		if (blocksGround)
@@ -123,12 +130,11 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		}
 
 		tileMap.setBlockMask(tileId, mask);
-
+		tileMap.setSpeedMultiplier(tileId, speedMultiplier);
 		tileIndex++;
-		
 	}
 
-	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);;
+	
 
 	for (int y = 0; y < mapNumRows; y++)
 	{

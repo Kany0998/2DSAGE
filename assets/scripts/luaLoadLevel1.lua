@@ -42,8 +42,10 @@ Level = {
 
 		tile_properties =
 		{
-			[0] =
-			{tile_id = 21, blocks_ground = true, blocks_flying = false}
+			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, speed_multiplier = 3.0},
+			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
+			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
+
 		},
 	},
 

@@ -10,6 +10,7 @@
 #include "../Components/AttributesComponent.h"
 #include "../Components/MovementTypeComponent.h"
 #include "../TileMap/TileMap.h"
+#include "../Utils/EntityGeometry.h"
 
 
 class MovementSystem
@@ -72,6 +73,17 @@ class MovementSystem
 				bool hasMovementType = entity.HasComponent<MovementTypeComponent>();
 				int movmentType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
 
+				double speedTileMultiplier = 1.0;
+				
+				if (hasMovementType) {
+					glm::vec2 entityCenter = EntityCenter(transform, sprite);
+					int const col = tileMap.colAt(entityCenter.x);
+					int const row = tileMap.rowAt(entityCenter.y);
+					speedTileMultiplier = tileMap.SpeedMultiplierAt(col, row);
+				}
+
+				speedMultiplier = speedMultiplier * speedTileMultiplier;
+
 				double candidateX = transform.position.x + rigidbody.velocity.x * speedMultiplier * deltaTime;
 				double candidateY = transform.position.y + rigidbody.velocity.y * speedMultiplier * deltaTime;
 
@@ -82,6 +94,7 @@ class MovementSystem
 				}
 
 				else {
+
 					int halfWidth = sprite.width * transform.scale.x / 2;
 					int halfHeight = sprite.height * transform.scale.y / 2;
 

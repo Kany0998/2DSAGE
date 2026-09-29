@@ -37,6 +37,16 @@ int TileMap::tileAt(int col, int row) const
 	return tileIds[Index(col, row)];
 }
 
+double TileMap::SpeedMultiplierAt(int col, int row) const {
+
+	if (!isInside(col, row))
+	{
+		return 1;
+	}
+	int tileId = tileIds[Index(col, row)];
+	return speedMultipliers[tileId];
+}
+
 
 
 void TileMap::setBlockMask(int tileId, int mask) {
@@ -49,6 +59,19 @@ void TileMap::setBlockMask(int tileId, int mask) {
 	else
 	{
 		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId));
+	}
+}
+
+void TileMap::setSpeedMultiplier(int tileId, double speedMultiplier) {
+
+	if (tileId >= 0 && tileId < tileIdCount)
+	{
+		speedMultipliers[tileId] = speedMultiplier;
+	}
+
+	else
+	{
+		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for speed mulitplier");
 	}
 }
 
@@ -92,6 +115,12 @@ bool TileMap::isBlockedAtWorld(double worldX, double worldY, int movementType) c
 	return isBlocked(col, row, movementType);
 }
 
+double TileMap::SpeedMultiplierAtWorld(double worldX, double worldY) const {
+	int col = colAt(worldX);
+	int row = rowAt(worldY);
+	return SpeedMultiplierAt(col, row);
+}
+
 void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale)
 {
 	rows = mapRows;
@@ -109,6 +138,10 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 	{
 		Logger::Err("Failed to open map file: " + filePath);
 		return;
+	}
+
+	for (int i = 0; i < tileIdCount; ++i) {
+		speedMultipliers[i] = 1.0;
 	}
 
 
