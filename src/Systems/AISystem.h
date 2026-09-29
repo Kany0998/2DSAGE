@@ -325,9 +325,19 @@ class AISystem
 								Logger::Log("Enemy " + std::to_string(entity.GetId()) + " gave up: no path to the player");
 
 								const bool nearHome = spawnDistanceSquared <= enemyAI.patrolRadius * enemyAI.patrolRadius;
-								EnterAIState(enemyAI, nearHome ? AIState::Patrol : AIState::Return);
-								enemyAI.aggroCooldown = aggroCooldownSeconds;
-								enemyRigidBody.velocity = glm::vec2(0.0, 0.0);
+								if (entity.HasComponent<HealthComponent>()) {
+									const auto& enemyHealth = entity.GetComponent<HealthComponent>();
+									EnterAIState(enemyAI, (nearHome && enemyHealth.healthPoints == enemyHealth.maxHealthPoints) ? AIState::Patrol : AIState::Return);
+									enemyAI.aggroCooldown = aggroCooldownSeconds;
+									enemyRigidBody.velocity = glm::vec2(0.0, 0.0);
+								}
+								else {
+									EnterAIState(enemyAI, nearHome ? AIState::Patrol : AIState::Return);
+									enemyAI.aggroCooldown = aggroCooldownSeconds;
+									enemyRigidBody.velocity = glm::vec2(0.0, 0.0);
+								}
+								
+								
 								continue;
 							}
 						}
