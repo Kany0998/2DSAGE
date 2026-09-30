@@ -18,6 +18,8 @@
 #include <cmath>
 #include <random>
 
+static constexpr double patrolMinMultiplier = 0.5;
+
 class AISystem
 {
 	public:
@@ -167,6 +169,12 @@ class AISystem
 							}
 
 							if (tileMap.isBlocked(col, row, enemyMovementType.movementType)) {
+								continue;
+							}
+
+							//An enemy may cross slow ground when it has to, but should not
+							//choose to wander into it
+							if (tileMap.SpeedMultiplierAt(col, row) < patrolMinMultiplier) {
 								continue;
 							}
 

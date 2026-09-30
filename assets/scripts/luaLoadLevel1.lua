@@ -42,7 +42,7 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, speed_multiplier = 0.3},
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, speed_multiplier = 1.0, friction = 0.99, acceleration = 400},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
@@ -136,7 +136,7 @@ Level = {
 				},
 				movement_type =
 				{
-					type = "flying"
+					type = "ground"
 				},
 				camera_follow =
 				{

@@ -47,6 +47,24 @@ double TileMap::SpeedMultiplierAt(int col, int row) const {
 	return speedMultipliers[tileId];
 }
 
+double TileMap::FrictionAt(int col, int row) const{
+	if (!isInside(col, row))
+	{
+		return 1;
+	}
+	int tileId = tileIds[Index(col, row)];
+	return frictions[tileId];
+}
+
+
+double TileMap::AccelerationAt(int col, int row) const{
+	if (!isInside(col, row))
+	{
+		return 0.0;
+	}
+	int tileId = tileIds[Index(col, row)];
+	return accelerations[tileId];
+}
 
 
 void TileMap::setBlockMask(int tileId, int mask) {
@@ -72,6 +90,31 @@ void TileMap::setSpeedMultiplier(int tileId, double speedMultiplier) {
 	else
 	{
 		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for speed mulitplier");
+	}
+}
+
+void TileMap::setFriction(int tileId, double friction) {
+	if (tileId >= 0 && tileId < tileIdCount)
+	{
+		frictions[tileId] = friction;
+	}
+
+	else
+	{
+		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for friction");
+	}
+}
+
+
+void TileMap::setAcceleration(int tileId, double acceleration){
+	if (tileId >= 0 && tileId < tileIdCount)
+	{
+		accelerations[tileId] = acceleration;
+	}
+
+	else
+	{
+		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for acceleration");
 	}
 }
 
@@ -142,7 +185,10 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 
 	for (int i = 0; i < tileIdCount; ++i) {
 		speedMultipliers[i] = 1.0;
+		frictions[i] = 1.0;
+		accelerations[i] = 0.0;
 	}
+
 
 
 	for (int y = 0; y < rows; ++y)

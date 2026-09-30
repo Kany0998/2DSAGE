@@ -110,6 +110,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 		int tileId = tileProperty["tile_id"];
 		double speedMultiplier = tileProperty["speed_multiplier"].get_or(1.0);
+		double friction = tileProperty["friction"].get_or(1.0);
+		double acceleration = tileProperty["acceleration"].get_or(0.0);
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
 
@@ -131,6 +133,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 		tileMap.setBlockMask(tileId, mask);
 		tileMap.setSpeedMultiplier(tileId, speedMultiplier);
+		tileMap.setAcceleration(tileId, acceleration);
+		tileMap.setFriction(tileId, friction);
 		tileIndex++;
 	}
 

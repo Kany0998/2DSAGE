@@ -11,6 +11,7 @@
 #include "../Components/MovementTypeComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../Utils/EntityGeometry.h"
+#include <cmath>
 
 
 class MovementSystem
@@ -47,7 +48,7 @@ class MovementSystem
 				Entity entity(rawEntity, &registry);
 
 				auto& transform = entity.GetComponent<TransformComponent>();
-				const auto rigidbody = entity.GetComponent<RigidBodyComponent>();
+				auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 				const auto& sprite = entity.GetComponent<SpriteComponent>();
 
 				//Movement speed is scaled by the entity's speedPower attribute, if it has
@@ -74,18 +75,73 @@ class MovementSystem
 				int movementType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
 
 				double speedTileMultiplier = 1.0;
+				double friction = 1.0;
+				double acceleration = 0.0;
 				
 				if (hasMovementType && movementType == MovementType_Ground) {
 					glm::vec2 entityCenter = EntityCenter(transform, sprite);
 					int const col = tileMap.colAt(entityCenter.x);
 					int const row = tileMap.rowAt(entityCenter.y);
 					speedTileMultiplier = tileMap.SpeedMultiplierAt(col, row);
+					friction = tileMap.FrictionAt(col, row);
+					acceleration = tileMap.AccelerationAt(col, row);
 				}
 
 				speedMultiplier = speedMultiplier * speedTileMultiplier;
+				glm::vec2 desiredSpeed = rigidbody.velocity * speedMultiplier;
 
-				double candidateX = transform.position.x + rigidbody.velocity.x * speedMultiplier * deltaTime;
-				double candidateY = transform.position.y + rigidbody.velocity.y * speedMultiplier * deltaTime;
+
+				//acceleration of 0 means "not slippery": the entity simply gets what it asks for,
+				//which is how every unauthored tile behaves
+				if (acceleration <= 0) {
+					rigidbody.actualVelocity = desiredSpeed;
+				}
+
+				else {
+					//Slippery ground: the entity does not get the velocity it asks for, it is
+					//pushed towards it and keeps whatever it had
+					const float desiredLength = glm::length(desiredSpeed);
+					const float previousLength = glm::length(rigidbody.actualVelocity);
+
+					if (desiredLength > 0.0001f) {
+						const glm::vec2 direction = desiredSpeed / desiredLength;
+
+						//Push only until it is already moving that fast in the direction it is
+						//being pushed. Slowing down is friction's job - capping the velocity
+						//itself would erase momentum the moment the AI asks for less, and
+						//enemies would hardly slide at all
+						const float speedAlongDirection = glm::dot(rigidbody.actualVelocity, direction);
+
+						if (speedAlongDirection < desiredLength) {
+							rigidbody.actualVelocity += direction * static_cast<float>(acceleration * deltaTime);
+						}
+					}
+
+					//Turning must not create speed: pushing north-east while already moving east
+					//adds to both axes and the total would exceed what was asked for. The cap is
+					//whichever is larger, the speed asked for or the speed already carried, so
+					//momentum survives while boosts do not
+					const float allowedLength = std::max(desiredLength, previousLength);
+					const float newLength = glm::length(rigidbody.actualVelocity);
+
+					if (newLength > allowedLength && newLength > 0.0001f) {
+						rigidbody.actualVelocity = rigidbody.actualVelocity / newLength * allowedLength;
+					}
+
+					//Friction is per second, not per frame: pow keeps the same ice behaving the
+					//same way at 60 and at 144 frames per second
+					rigidbody.actualVelocity *= static_cast<float>(std::pow(friction, deltaTime));
+
+					//Exponential decay never reaches zero, so below a pixel per second it is
+					//simply not moving
+					if (glm::length(rigidbody.actualVelocity) < 1.0f) {
+						rigidbody.actualVelocity = glm::vec2(0.0f, 0.0f);
+					}
+				}
+				
+
+				double candidateX = transform.position.x + rigidbody.actualVelocity.x * deltaTime;
+				double candidateY = transform.position.y + rigidbody.actualVelocity.y * deltaTime;
 
 				//ignores terrain blocking if the entity has no movement type, e.g. projectiles and obstacles
 				if (!hasMovementType) {
