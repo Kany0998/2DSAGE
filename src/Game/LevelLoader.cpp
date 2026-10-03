@@ -17,6 +17,7 @@
 #include "../Components/ProgressionComponent.h"
 #include "../Components/ExperienceRewardComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/PushableComponent.h"
 #include "../Components/AIComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
@@ -218,11 +219,20 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> rigidbody = entity["components"]["rigidbody"];
 			if (rigidbody != sol::nullopt)
 			{
+				double mass = entity["components"]["rigidbody"]["mass"].get_or(1.0);
+
+				if (mass <= 0.0)
+				{
+					Logger::Warn("mass " + std::to_string(mass) + " is not usable: a pusher would be flung away from it. Using 1.0");
+					mass = 1.0;
+				}
+
 				newEntity.AddComponent<RigidBodyComponent>(
 					glm::vec2(
 						entity["components"]["rigidbody"]["velocity"]["x"],
 						entity["components"]["rigidbody"]["velocity"]["y"]
-					)
+					),
+					mass
 				);
 			}
 
@@ -359,6 +369,13 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				}
 
 				newEntity.AddComponent<MovementTypeComponent>(type);
+			}
+
+			//Pushable
+			sol::optional<sol::table> pushable = entity["components"]["pushable"];
+			if (pushable != sol::nullopt)
+			{
+				newEntity.AddComponent<PushableComponent>();
 			}
 
 			//AIComponent

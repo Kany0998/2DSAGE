@@ -2,14 +2,14 @@
 #define MOVEMENTSYSTEM_H
 
 #include "../ECS/ECS.h"
-#include "../EventBus/EventBus.h"
-#include "../Events/CollisionEvent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/SpriteComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/PushableComponent.h"
 #include "../TileMap/TileMap.h"
+#include "../Physics/PushResolver.h"
 #include "../Utils/EntityGeometry.h"
 #include <cmath>
 
@@ -19,26 +19,6 @@ class MovementSystem
 	public:
 		MovementSystem() = default;
 
-		void SubscribeToEvents(const std::unique_ptr<EventBus>& eventBus)
-		{
-			eventBus->SubscribeToEvent<CollisionEvent>(this, &MovementSystem::onCollision);
-		}
-
-		void onCollision(CollisionEvent& ev)
-		{
-			Entity a = ev.a;
-			Entity b = ev.b;
-
-			if (a.BelongsToGroup("enemies") && b.BelongsToGroup("obstacles"))
-			{
-				OnEnemyHitsObstacle(a, b);
-			}
-
-			if (b.BelongsToGroup("enemies") && a.BelongsToGroup("obstacles"))
-			{
-				OnEnemyHitsObstacle(b, a);
-			}
-		}
 
 		void Update(Registry& registry, double deltaTime, const TileMap& tileMap)
 		{
@@ -154,14 +134,39 @@ class MovementSystem
 					int halfWidth = sprite.width * transform.scale.x / 2;
 					int halfHeight = sprite.height * transform.scale.y / 2;
 
-					//X axis : candiadte testes against current y
+					const bool isPushable = entity.HasComponent<PushableComponent>();
+
+					//X axis : candidate tests against current y
 					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movementType)) {
-						transform.position.x = candidateX;
+						
+						//A sliding crate stops at a player or enemy, on this axis only
+						if (isPushable && candidateX != transform.position.x 
+							&& PushResolver::IsBlockedByBody(registry, entity, candidateX, transform.position.y, true)
+							) {
+							rigidbody.actualVelocity.x = 0.0f;
+
+						}
+						//Returns the distance allowed, so it is added, not assigned
+						else {
+							transform.position.x += static_cast<float>(PushResolver::PushAlongAxis(registry, tileMap, entity, candidateX, transform.position.y, candidateX - transform.position.x, true, deltaTime));
+						}
 					}
 					//Y axis : candidate tests against current x
 					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movementType)) {
-						transform.position.y = candidateY;
+
+						//A sliding crate stops at a player or enemy, on this axis only
+						if (isPushable && candidateY != transform.position.y
+							&& PushResolver::IsBlockedByBody(registry, entity, transform.position.x, candidateY, false)
+							) {
+							rigidbody.actualVelocity.y = 0.0f;
+
+						}
+						
+						else {
+							transform.position.y += static_cast<float>(PushResolver::PushAlongAxis(registry, tileMap, entity, transform.position.x, candidateY, candidateY - transform.position.y, false, deltaTime));
+						}
 					}
+					
 					
 				}
 				
@@ -188,26 +193,6 @@ class MovementSystem
 				if (isEntityOutsideMap && !entity.HasTag("player"))
 				{
 					entity.Kill();
-				}
-			}
-		}
-
-		void OnEnemyHitsObstacle(Entity enemy, Entity obstacle)
-		{
-			if(enemy.HasComponent<RigidBodyComponent>() && enemy.HasComponent<SpriteComponent>())
-			{
-				auto& rigidbody = enemy.GetComponent<RigidBodyComponent>();
-				auto& sprite = enemy.GetComponent<SpriteComponent>();
-				if(rigidbody.velocity.x != 0)
-				{
-					rigidbody.velocity.x *= -1;
-					sprite.flip = (sprite.flip == SDL_FLIP_NONE) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-				}
-
-				if(rigidbody.velocity.y != 0)
-				{
-					rigidbody.velocity.y *= -1;
-					sprite.flip = (sprite.flip == SDL_FLIP_NONE) ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE;
 				}
 			}
 		}
