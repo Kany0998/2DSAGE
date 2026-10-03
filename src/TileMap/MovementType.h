@@ -7,7 +7,8 @@
 enum MovementType {
 	MovementType_Ground = 1,
 	MovementType_Flying = 2,
-	MovementType_Swimming = 4
+	MovementType_Swimming = 4,
+	MovementType_Projectile = 8
 };
 
 

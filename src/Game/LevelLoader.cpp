@@ -17,6 +17,7 @@
 #include "../Components/ProgressionComponent.h"
 #include "../Components/ExperienceRewardComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/PushableComponent.h"
 #include "../Components/AIComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
@@ -93,6 +94,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	double tileScale = map["tileScale"];
 	int layer = map["layer"];
 
+	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);
 	//Read the tile properties from the lua file
 	sol::table tileProperties = map["tile_properties"];
 	int tileIndex = 0;
@@ -108,8 +110,17 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		sol::table tileProperty = tileProperties[tileIndex];
 
 		int tileId = tileProperty["tile_id"];
+		double speedMultiplier = tileProperty["speed_multiplier"].get_or(1.0);
+		double friction = tileProperty["friction"].get_or(1.0);
+		double acceleration = tileProperty["acceleration"].get_or(0.0);
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
+		bool blocksProjectile = tileProperty["blocks_projectiles"].get_or(false);
+
+		if (speedMultiplier == 0.0) {
+			Logger::Warn("Your speed multiplier for tile: " + std::to_string(tileId) + ", is equal to :" + std::to_string(speedMultiplier) +
+				" meaning it would trap everything with movement type in it: which may be a typo");
+		}
 
 		int mask = 0;
 		if (blocksGround)
@@ -122,13 +133,19 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			mask |= MovementType_Flying;
 		}
 
-		tileMap.setBlockMask(tileId, mask);
+		if (blocksProjectile)
+		{
+			mask |= MovementType_Projectile;
+		}
 
+		tileMap.setBlockMask(tileId, mask);
+		tileMap.setSpeedMultiplier(tileId, speedMultiplier);
+		tileMap.setAcceleration(tileId, acceleration);
+		tileMap.setFriction(tileId, friction);
 		tileIndex++;
-		
 	}
 
-	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);;
+	
 
 	for (int y = 0; y < mapNumRows; y++)
 	{
@@ -208,11 +225,20 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> rigidbody = entity["components"]["rigidbody"];
 			if (rigidbody != sol::nullopt)
 			{
+				double mass = entity["components"]["rigidbody"]["mass"].get_or(1.0);
+
+				if (mass <= 0.0)
+				{
+					Logger::Warn("mass " + std::to_string(mass) + " is not usable: a pusher would be flung away from it. Using 1.0");
+					mass = 1.0;
+				}
+
 				newEntity.AddComponent<RigidBodyComponent>(
 					glm::vec2(
 						entity["components"]["rigidbody"]["velocity"]["x"],
 						entity["components"]["rigidbody"]["velocity"]["y"]
-					)
+					),
+					mass
 				);
 			}
 
@@ -317,14 +343,21 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> projectileEmitter = entity["components"]["projectile_emitter"];
 			if (projectileEmitter != sol::nullopt)
 			{
+
+				const double tileWorldSize = tileMap.TileWorldSize();
+
+				const double attack_range = entity["components"]["projectile_emitter"]["attack_range"].get_or(4.0) * tileWorldSize;
+
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"]
 					),
-					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1) * 1000),
-					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10) * 1000),
+					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1.0) * 1000),
+					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10.0) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
+					entity["components"]["projectile_emitter"]["aim_at_player"].get_or(false),
+					attack_range,
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
 				);
 			}
@@ -342,6 +375,13 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				}
 
 				newEntity.AddComponent<MovementTypeComponent>(type);
+			}
+
+			//Pushable
+			sol::optional<sol::table> pushable = entity["components"]["pushable"];
+			if (pushable != sol::nullopt)
+			{
+				newEntity.AddComponent<PushableComponent>();
 			}
 
 			//AIComponent
@@ -369,14 +409,19 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 						entity["components"]["ai"]["stop_distance"].get_or(1.0)* tileWorldSize,
 						leash_range,
 						entity["components"]["ai"]["move_speed"].get_or(100.0),
-						entity["components"]["ai"]["patrol_radius"].get_or(0.0)* tileWorldSize,
+						entity["components"]["ai"]["patrol_radius"].get_or(0.0) * tileWorldSize,
 						entity["components"]["ai"]["patrol_pause"].get_or(0.0)
-						
 					);
 
 					if (leash_range < detection_range * 1.2) {
 						Logger::Warn("leash_range: " + std::to_string(leash_range) + " is shorter than detection_range: " + std::to_string(detection_range) + " * 1,2 : the enemy will give up before it loses sight of the player.");
 					}
+					const auto& emitter = newEntity.GetComponent<ProjectileEmitterComponent>();
+
+					if (detection_range < emitter.attackRange) {
+						Logger::Warn("attack_range: " + std::to_string(emitter.attackRange) + " is greater than detection_range: " + std::to_string(detection_range) + " which may be a typo");
+					}
+
 				}
 				else {
 					Logger::Err("Entity needs sprite and transform components for AI");

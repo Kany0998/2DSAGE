@@ -42,8 +42,10 @@ Level = {
 
 		tile_properties =
 		{
-			[0] =
-			{tile_id = 21, blocks_ground = true, blocks_flying = false}
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = true, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
+			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
+			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
+
 		},
 	},
 
@@ -65,7 +67,8 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = 0, y = 0}
+					velocity = {x = 0, y = 0},
+					mass = 6.0
 				},
 				sprite = 
 				{
@@ -101,7 +104,7 @@ Level = {
 				attributes =
 				{
 					attack = 1500,
-					defense = 100000,
+					defense = 10000,
 					wisdom = 100,
 					vitality = 1000,
 					speed = 100,
@@ -134,7 +137,7 @@ Level = {
 				},
 				movement_type =
 				{
-					type = "flying"
+					type = "ground"
 				},
 				camera_follow =
 				{
@@ -155,7 +158,8 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = 0, y = 0}
+					velocity = {x = 0, y = 0},
+					mass = 4.0
 				},
 				sprite = 
 				{
@@ -184,10 +188,12 @@ Level = {
 				},
 				projectile_emitter =
 				{
-					projectile_velocity = {x = 100, y = 0},
+					projectile_velocity = {x = 300, y = 100},
 					projectile_duration = 10, --sec
-					repeat_frequency = 3,
-					projectile_damage = 49,
+					repeat_frequency = 1,
+					projectile_damage = 100,
+					aim_at_player = true,
+					attack_range = 4,
 					friendly = false
 				},
 				movement_type =
@@ -196,12 +202,13 @@ Level = {
 				},
 				ai =
 				{
-					detection_range = 6,
+					detection_range = 12,
 					stop_distance = 1.0,
 					leash_range = 10,
 					move_speed = 100,
 					patrol_radius = 3,   -- tiles, measured from the spawn point
 					patrol_pause = 2.0  -- seconds to wait after reaching a point
+
 				},
 			}
 
@@ -219,7 +226,8 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = -100, y = 0}
+					velocity = {x = -100, y = 0},
+					mass = 2.5
 				},
 				sprite = 
 				{
@@ -252,6 +260,7 @@ Level = {
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
 					projectile_damage = 49,
+					aim_at_player = true,
 					friendly = false
 				},
 				movement_type =
@@ -275,13 +284,14 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 1600, y = 400},
+					position = {x = 1650, y = 400},
 					scale = {x = 2.0, y = 2.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
 				{
-					velocity = {x = 0, y = 0}
+					velocity = {x = 0, y = 0},
+					mass = 1.0
 				},
 				sprite = 
 				{
@@ -299,7 +309,235 @@ Level = {
 					height = 32,
 					offset = {x = 0, y = 0}
 				},
-				
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+
+				}
+
+			}
+
+		},
+		{
+			--tree
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1700, y = 400},
+					scale = {x = 2.0, y = 2.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = 0, y = 0},
+					mass = 1.0
+				},
+				sprite = 
+				{
+					texture_asset_id = "tree-texture",
+					width = 16,
+					height = 32,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 16,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+					
+				}
+
+			}
+
+		},
+		{
+			--tree
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1750, y = 400},
+					scale = {x = 2.0, y = 2.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = 0, y = 0},
+					mass = 1.0
+				},
+				sprite = 
+				{
+					texture_asset_id = "tree-texture",
+					width = 16,
+					height = 32,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 16,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+					
+				}
+
+			}
+
+		},
+		{
+			--tree
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1800, y = 400},
+					scale = {x = 2.0, y = 2.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = 0, y = 0},
+					mass = 1.0
+				},
+				sprite = 
+				{
+					texture_asset_id = "tree-texture",
+					width = 16,
+					height = 32,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 16,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+					
+				}
+
+			}
+
+		},
+		{
+			--tree
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1850, y = 400},
+					scale = {x = 2.0, y = 2.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = 0, y = 0},
+					mass = 1.0
+				},
+				sprite = 
+				{
+					texture_asset_id = "tree-texture",
+					width = 16,
+					height = 32,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 16,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+					
+				}
+
+			}
+
+		},
+		{
+			--tree
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1900, y = 400},
+					scale = {x = 2.0, y = 2.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = 0, y = 0},
+					mass = 1.0
+				},
+				sprite = 
+				{
+					texture_asset_id = "tree-texture",
+					width = 16,
+					height = 32,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 16,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				pushable =
+				{
+					
+				}
+
 			}
 
 		},
@@ -316,7 +554,8 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = 0, y = 100}
+					velocity = {x = 0, y = 100},
+					mass = 7.5
 				},
 				sprite = 
 				{
@@ -348,6 +587,7 @@ Level = {
 					projectile_velocity = {x = 100, y = 0},
 					projectile_duration = 10, --sec
 					repeat_frequency = 3,
+					aim_at_player = true,
 					projectile_damage = 49,
 					friendly = false
 				},
@@ -398,7 +638,8 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = 100, y = 0}
+					velocity = {x = 100, y = 0},
+					mass = 1.5
 				},
 				sprite = 
 				{

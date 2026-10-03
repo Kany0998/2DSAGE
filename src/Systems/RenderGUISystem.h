@@ -137,11 +137,18 @@ class RenderGUISystem
 					bool isBlockedGround = tilemap.isBlocked(col, row, MovementType_Ground);
 					bool isBlockedFlying = tilemap.isBlocked(col, row, MovementType_Flying);
 
+					double speedMultiplier = tilemap.SpeedMultiplierAt(col, row);
+					double friction = tilemap.FrictionAt(col, row);
+					double acceleration = tilemap.AccelerationAt(col, row);
+
 
 					ImGui::Text("Map coordinates(x=%.1f, y=%.1f)",worldX,worldY);
 					ImGui::Text("Map tile (col=%d, row=%d, id=%d)", col, row, tileId);
 					ImGui::Text("Map tile is blocked (ground): %s", isBlockedGround ? "Yes" : "No");
 					ImGui::Text("Map tile is blocked (flying): %s", isBlockedFlying ? "Yes" : "No");
+					ImGui::Text("Map tile speed multiplier: multi=%.3f", speedMultiplier);
+					ImGui::Text("Map tile friciton: multi=%.2f", friction);
+					ImGui::Text("Map tile acceleration: multi=%.2f", acceleration);
 				}
 				ImGui::End();
 			}

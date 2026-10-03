@@ -215,7 +215,6 @@ void Game::Update()
 	eventBus->Reset();
 
 	//perform subscribtion to events for all the systems
-	movementSystem->SubscribeToEvents(eventBus);
 	damageSystem->SubscribeToEvents();
 	keyboardControlSystem->SubscribeToEvents(eventBus);
 	//ProjectileEmitSystem no longer subscribes to anything: it polls the mouse in its

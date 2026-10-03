@@ -2,14 +2,17 @@
 #define MOVEMENTSYSTEM_H
 
 #include "../ECS/ECS.h"
-#include "../EventBus/EventBus.h"
-#include "../Events/CollisionEvent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/SpriteComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/ProjectileComponent.h"
+#include "../Components/PushableComponent.h"
 #include "../TileMap/TileMap.h"
+#include "../Physics/PushResolver.h"
+#include "../Utils/EntityGeometry.h"
+#include <cmath>
 
 
 class MovementSystem
@@ -17,26 +20,6 @@ class MovementSystem
 	public:
 		MovementSystem() = default;
 
-		void SubscribeToEvents(const std::unique_ptr<EventBus>& eventBus)
-		{
-			eventBus->SubscribeToEvent<CollisionEvent>(this, &MovementSystem::onCollision);
-		}
-
-		void onCollision(CollisionEvent& ev)
-		{
-			Entity a = ev.a;
-			Entity b = ev.b;
-
-			if (a.BelongsToGroup("enemies") && b.BelongsToGroup("obstacles"))
-			{
-				OnEnemyHitsObstacle(a, b);
-			}
-
-			if (b.BelongsToGroup("enemies") && a.BelongsToGroup("obstacles"))
-			{
-				OnEnemyHitsObstacle(b, a);
-			}
-		}
 
 		void Update(Registry& registry, double deltaTime, const TileMap& tileMap)
 		{
@@ -46,7 +29,7 @@ class MovementSystem
 				Entity entity(rawEntity, &registry);
 
 				auto& transform = entity.GetComponent<TransformComponent>();
-				const auto rigidbody = entity.GetComponent<RigidBodyComponent>();
+				auto& rigidbody = entity.GetComponent<RigidBodyComponent>();
 				const auto& sprite = entity.GetComponent<SpriteComponent>();
 
 				//Movement speed is scaled by the entity's speedPower attribute, if it has
@@ -70,29 +53,136 @@ class MovementSystem
 				}
 
 				bool hasMovementType = entity.HasComponent<MovementTypeComponent>();
-				int movmentType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
+				int movementType = hasMovementType ? entity.GetComponent<MovementTypeComponent>().movementType : MovementType_Ground;
 
-				double candidateX = transform.position.x + rigidbody.velocity.x * speedMultiplier * deltaTime;
-				double candidateY = transform.position.y + rigidbody.velocity.y * speedMultiplier * deltaTime;
+				double speedTileMultiplier = 1.0;
+				double friction = 1.0;
+				double acceleration = 0.0;
+				
+				if (hasMovementType && movementType == MovementType_Ground) {
+					glm::vec2 entityCenter = EntityCenter(transform, sprite);
+					int const col = tileMap.colAt(entityCenter.x);
+					int const row = tileMap.rowAt(entityCenter.y);
+					speedTileMultiplier = tileMap.SpeedMultiplierAt(col, row);
+					friction = tileMap.FrictionAt(col, row);
+					acceleration = tileMap.AccelerationAt(col, row);
+				}
 
-				//ignores terrain blocking if the entity has no movement type, e.g. projectiles and obstacles
+				speedMultiplier = speedMultiplier * speedTileMultiplier;
+				glm::vec2 desiredSpeed = rigidbody.velocity * speedMultiplier;
+
+
+				//acceleration of 0 means "not slippery": the entity simply gets what it asks for,
+				//which is how every unauthored tile behaves
+				if (acceleration <= 0) {
+					rigidbody.actualVelocity = desiredSpeed;
+				}
+
+				else {
+					//Slippery ground: the entity does not get the velocity it asks for, it is
+					//pushed towards it and keeps whatever it had
+					const float desiredLength = glm::length(desiredSpeed);
+					const float previousLength = glm::length(rigidbody.actualVelocity);
+
+					if (desiredLength > 0.0001f) {
+						const glm::vec2 direction = desiredSpeed / desiredLength;
+
+						//Push only until it is already moving that fast in the direction it is
+						//being pushed. Slowing down is friction's job - capping the velocity
+						//itself would erase momentum the moment the AI asks for less, and
+						//enemies would hardly slide at all
+						const float speedAlongDirection = glm::dot(rigidbody.actualVelocity, direction);
+
+						if (speedAlongDirection < desiredLength) {
+							rigidbody.actualVelocity += direction * static_cast<float>(acceleration * deltaTime);
+						}
+					}
+
+					//Turning must not create speed: pushing north-east while already moving east
+					//adds to both axes and the total would exceed what was asked for. The cap is
+					//whichever is larger, the speed asked for or the speed already carried, so
+					//momentum survives while boosts do not
+					const float allowedLength = std::max(desiredLength, previousLength);
+					const float newLength = glm::length(rigidbody.actualVelocity);
+
+					if (newLength > allowedLength && newLength > 0.0001f) {
+						rigidbody.actualVelocity = rigidbody.actualVelocity / newLength * allowedLength;
+					}
+
+					//Friction is per second, not per frame: pow keeps the same ice behaving the
+					//same way at 60 and at 144 frames per second
+					rigidbody.actualVelocity *= static_cast<float>(std::pow(friction, deltaTime));
+
+					//Exponential decay never reaches zero, so below a pixel per second it is
+					//simply not moving
+					if (glm::length(rigidbody.actualVelocity) < 1.0f) {
+						rigidbody.actualVelocity = glm::vec2(0.0f, 0.0f);
+					}
+				}
+				
+
+				double candidateX = transform.position.x + rigidbody.actualVelocity.x * deltaTime;
+				double candidateY = transform.position.y + rigidbody.actualVelocity.y * deltaTime;
+
+				//ignores terrain blocking if the entity has no movement type
 				if (!hasMovementType) {
 					transform.position.x = candidateX;
 					transform.position.y = candidateY;
 				}
 
+				//A projectile never pushes and is never pushed: it flies on, or dies on terrain that stops bullets
+				else if (entity.HasComponent<ProjectileComponent>()) {
+					const double halfWidth = sprite.width * transform.scale.x / 2.0;
+					const double halfHeight = sprite.height * transform.scale.y / 2.0;
+
+					//Tested where it is going, in one step - a bullet does not slide along walls
+					if (tileMap.isBlockedAtWorld(candidateX + halfWidth, candidateY + halfHeight, movementType)) {
+						entity.Kill();
+					}
+					else {
+						transform.position.x = static_cast<float>(candidateX);
+						transform.position.y = static_cast<float>(candidateY);
+					}
+				}
+
 				else {
+
 					int halfWidth = sprite.width * transform.scale.x / 2;
 					int halfHeight = sprite.height * transform.scale.y / 2;
 
-					//X axis : candiadte testes against current y
-					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movmentType)) {
-						transform.position.x = candidateX;
+					const bool isPushable = entity.HasComponent<PushableComponent>();
+
+					//X axis : candidate tests against current y
+					if (!tileMap.isBlockedAtWorld(candidateX + halfWidth, transform.position.y + halfHeight, movementType)) {
+						
+						//A sliding crate stops at a player or enemy, on this axis only
+						if (isPushable && candidateX != transform.position.x 
+							&& PushResolver::IsBlockedByBody(registry, entity, candidateX, transform.position.y, true)
+							) {
+							rigidbody.actualVelocity.x = 0.0f;
+
+						}
+						//Returns the distance allowed, so it is added, not assigned
+						else {
+							transform.position.x += static_cast<float>(PushResolver::PushAlongAxis(registry, tileMap, entity, candidateX, transform.position.y, candidateX - transform.position.x, true, deltaTime));
+						}
 					}
 					//Y axis : candidate tests against current x
-					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movmentType)) {
-						transform.position.y = candidateY;
+					if (!tileMap.isBlockedAtWorld(transform.position.x + halfWidth, candidateY + halfHeight, movementType)) {
+
+						//A sliding crate stops at a player or enemy, on this axis only
+						if (isPushable && candidateY != transform.position.y
+							&& PushResolver::IsBlockedByBody(registry, entity, transform.position.x, candidateY, false)
+							) {
+							rigidbody.actualVelocity.y = 0.0f;
+
+						}
+						
+						else {
+							transform.position.y += static_cast<float>(PushResolver::PushAlongAxis(registry, tileMap, entity, transform.position.x, candidateY, candidateY - transform.position.y, false, deltaTime));
+						}
 					}
+					
 					
 				}
 				
@@ -119,26 +209,6 @@ class MovementSystem
 				if (isEntityOutsideMap && !entity.HasTag("player"))
 				{
 					entity.Kill();
-				}
-			}
-		}
-
-		void OnEnemyHitsObstacle(Entity enemy, Entity obstacle)
-		{
-			if(enemy.HasComponent<RigidBodyComponent>() && enemy.HasComponent<SpriteComponent>())
-			{
-				auto& rigidbody = enemy.GetComponent<RigidBodyComponent>();
-				auto& sprite = enemy.GetComponent<SpriteComponent>();
-				if(rigidbody.velocity.x != 0)
-				{
-					rigidbody.velocity.x *= -1;
-					sprite.flip = (sprite.flip == SDL_FLIP_NONE) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
-				}
-
-				if(rigidbody.velocity.y != 0)
-				{
-					rigidbody.velocity.y *= -1;
-					sprite.flip = (sprite.flip == SDL_FLIP_NONE) ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE;
 				}
 			}
 		}
