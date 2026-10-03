@@ -10,6 +10,7 @@
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/MovementTypeComponent.h"
 #include "../Components/AIComponent.h"
 #include "../Utils/EntityGeometry.h"
 #include <SDL.h>
@@ -243,6 +244,7 @@ class ProjectileEmitSystem
 			//`entity` is recorded as the owner so whatever this shot kills can be
 			//credited back to the shooter
 			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, scaledDamage, projectileEmitter.projectileDuration, entity);
+			projectile.AddComponent<MovementTypeComponent>(MovementType_Projectile);
 		}
 
 		Registry& registry;

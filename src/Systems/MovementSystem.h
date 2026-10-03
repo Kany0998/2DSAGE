@@ -7,6 +7,7 @@
 #include "../Components/SpriteComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/ProjectileComponent.h"
 #include "../Components/PushableComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../Physics/PushResolver.h"
@@ -123,10 +124,25 @@ class MovementSystem
 				double candidateX = transform.position.x + rigidbody.actualVelocity.x * deltaTime;
 				double candidateY = transform.position.y + rigidbody.actualVelocity.y * deltaTime;
 
-				//ignores terrain blocking if the entity has no movement type, e.g. projectiles and obstacles
+				//ignores terrain blocking if the entity has no movement type
 				if (!hasMovementType) {
 					transform.position.x = candidateX;
 					transform.position.y = candidateY;
+				}
+
+				//A projectile never pushes and is never pushed: it flies on, or dies on terrain that stops bullets
+				else if (entity.HasComponent<ProjectileComponent>()) {
+					const double halfWidth = sprite.width * transform.scale.x / 2.0;
+					const double halfHeight = sprite.height * transform.scale.y / 2.0;
+
+					//Tested where it is going, in one step - a bullet does not slide along walls
+					if (tileMap.isBlockedAtWorld(candidateX + halfWidth, candidateY + halfHeight, movementType)) {
+						entity.Kill();
+					}
+					else {
+						transform.position.x = static_cast<float>(candidateX);
+						transform.position.y = static_cast<float>(candidateY);
+					}
 				}
 
 				else {

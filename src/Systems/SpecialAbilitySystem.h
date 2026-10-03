@@ -13,6 +13,7 @@
 #include "../Components/ManaComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/CameraHollderComponent.h"
+#include "../Components/MovementTypeComponent.h"
 #include <SDL.h>
 #include <glm/glm.hpp>
 #include <cmath>
@@ -107,6 +108,7 @@ class SpecialAbilitySystem
 					//the caster owns every shot in the burst, so ability kills are
 					//credited the same way regular shots are
 					shot.AddComponent<ProjectileComponent>(isFriendly, damage, ShotDuration, entity);
+					shot.AddComponent<MovementTypeComponent>(MovementType_Projectile);
 				}
 
 				//only start the cooldown once a cast actually went through - a cast

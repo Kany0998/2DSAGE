@@ -115,6 +115,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		double acceleration = tileProperty["acceleration"].get_or(0.0);
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
+		bool blocksProjectile = tileProperty["blocks_projectiles"].get_or(false);
 
 		if (speedMultiplier == 0.0) {
 			Logger::Warn("Your speed multiplier for tile: " + std::to_string(tileId) + ", is equal to :" + std::to_string(speedMultiplier) +
@@ -130,6 +131,11 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		if (blocksFlying)
 		{
 			mask |= MovementType_Flying;
+		}
+
+		if (blocksProjectile)
+		{
+			mask |= MovementType_Projectile;
 		}
 
 		tileMap.setBlockMask(tileId, mask);
