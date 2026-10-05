@@ -94,28 +94,28 @@ void TileMap::setSpeedMultiplier(int tileId, double speedMultiplier) {
 }
 
 void TileMap::setFriction(int tileId, double friction) {
-	if (tileId >= 0 && tileId < tileIdCount)
-	{
+	if (tileId >= 0 && tileId < tileIdCount){
 		frictions[tileId] = friction;
 	}
 
-	else
-	{
+	else{
 		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for friction");
 	}
 }
 
 
 void TileMap::setAcceleration(int tileId, double acceleration){
-	if (tileId >= 0 && tileId < tileIdCount)
-	{
+	if (tileId >= 0 && tileId < tileIdCount){
 		accelerations[tileId] = acceleration;
 	}
 
-	else
-	{
+	else{
 		Logger::Err("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for acceleration");
 	}
+}
+
+void TileMap::setTextureAssetId(const std::string& id) {
+	textureAssetId = id;
 }
 
 

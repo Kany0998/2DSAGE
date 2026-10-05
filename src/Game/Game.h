@@ -35,6 +35,7 @@ class SpecialAbilitySystem;
 class ProgressionSystem;
 class RenderExperienceBarSystem;
 class AISystem;
+class RenderTileMapSystem;
 
 class Game
 {
@@ -48,6 +49,11 @@ class Game
 		Uint32 currentTick;
 
 		sol::state lua;
+
+		//Render-time measurement (debug mode only): summed over a batch of frames, then averaged
+		double renderTimeSumMs = 0.0;
+		int renderTimeFrames = 0;
+		static constexpr int renderTimeBatch = 300;	//about 5 s at 60 FPS
 
 		//entt-backed registry (component storage/sparse sets); see ECS.h
 		std::unique_ptr<Registry> registry;
@@ -82,6 +88,7 @@ class Game
 		std::unique_ptr<ProgressionSystem> progressionSystem;
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
 		std::unique_ptr<AISystem> aiSystem;
+		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
 
 
 

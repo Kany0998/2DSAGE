@@ -23,6 +23,7 @@
 #include "../Systems/ProgressionSystem.h"
 #include "../Systems/RenderExperienceBarSystem.h"
 #include "../Systems/AISystem.h"
+#include "../Systems/RenderTileMapSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Events/MouseButtonPressedEvent.h"
@@ -186,6 +187,7 @@ void Game::Setup()
 	progressionSystem = std::make_unique<ProgressionSystem>();
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
+	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -248,7 +250,34 @@ void Game::Render()
 	SDL_RenderClear(renderer);
 
 	//Invoke all the systems that need to render
+
+	//In debug mode the map and sprite rendering is timed and averaged over a batch of frames -
+	//the measurement behind the tilemap refactor. FPS is capped, so the work itself is timed
+	const Uint64 renderStart = isDebug ? SDL_GetPerformanceCounter() : 0;
+	renderTileMapSystem->Update(renderer, assetStore, camera, tileMap);
 	renderSystem->Update(*registry, renderer, assetStore, camera);
+
+	if (isDebug) {
+		const Uint64 renderEnd = SDL_GetPerformanceCounter();
+		renderTimeSumMs += (renderEnd - renderStart) * 1000.0 / SDL_GetPerformanceFrequency();
+		renderTimeFrames++;
+
+		if (renderTimeFrames == renderTimeBatch) {
+			const size_t entityCount = registry->Raw().view<TransformComponent>().size();
+			Logger::Log("Render time (tilemap + sprites): " + std::to_string(renderTimeSumMs / renderTimeFrames) +
+				" ms/frame over " + std::to_string(renderTimeFrames) +
+				" frames, entities with a transform: " + std::to_string(entityCount));
+
+			renderTimeSumMs = 0.0;
+			renderTimeFrames = 0;
+		}
+	}
+	else {
+		//A batch half-filled before debug mode was switched off would otherwise be mixed into the next one
+		renderTimeSumMs = 0.0;
+		renderTimeFrames = 0;
+	}
+
 	renderTextSystem->Update(*registry, renderer, assetStore, camera);
 	renderHealthBarSystem->Update(*registry, renderer, assetStore, camera);
 	renderManaBarSystem->Update(*registry, renderer, assetStore, camera);

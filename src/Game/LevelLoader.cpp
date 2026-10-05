@@ -21,7 +21,6 @@
 #include "../Components/AIComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
-#include <fstream>
 #include <sol/sol.hpp>
 #include <string>
 #include "../Logger/Logger.h"
@@ -92,9 +91,10 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	int mapNumCols = map["mapNumCols"];
 	int tileSize = map["tileSize"];
 	double tileScale = map["tileScale"];
-	int layer = map["layer"];
 
 	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);
+	tileMap.setTextureAssetId(mapTextureAssetId);
+
 	//Read the tile properties from the lua file
 	sol::table tileProperties = map["tile_properties"];
 	int tileIndex = 0;
@@ -144,22 +144,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		tileMap.setFriction(tileId, friction);
 		tileIndex++;
 	}
-
 	
-
-	for (int y = 0; y < mapNumRows; y++)
-	{
-		for (int x = 0; x < mapNumCols; x++)
-		{
-			int tileId = tileMap.tileAt(x, y);
-			int srcRectX = (tileId % 10) * tileSize;
-			int srcRectY = (tileId / 10) * tileSize;
-
-			Entity tile = registry->CreateEntity();
-			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
-			tile.AddComponent<SpriteComponent>(mapTextureAssetId, tileSize, tileSize, layer, false, srcRectX, srcRectY);
-		}
-	}
 
 	Game::mapWidth = mapNumCols * tileSize * tileScale;
 	Game::mapHeight = mapNumRows * tileSize * tileScale;
@@ -473,100 +458,4 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		i++;
 	}
 
-	//Adding assets to asset Store
-	/*assetStore->AddTexture(renderer, "tank-image", "./assets/images/tank-panther-right.png");
-	assetStore->AddTexture(renderer, "truck-image", "./assets/images/truck-ford-right.png");
-	assetStore->AddTexture(renderer, "chopper-image", "./assets/images/chopper-spritesheet.png");
-	assetStore->AddTexture(renderer, "tilemap-image", "./assets/tilemaps/jungle.png");
-	assetStore->AddTexture(renderer, "radar-image", "./assets/images/radar.png");
-	assetStore->AddTexture(renderer, "bullet-image", "./assets/images/bullet.png");
-	assetStore->AddTexture(renderer, "tree-image", "./assets/images/tree.png");
-	assetStore->AddFont("charriot-font", "./assets/fonts/charriot.ttf", 14);
-
-
-	//Load the titlemap
-	int tileSize = 32;
-	double tileScale = 4.0;
-	int mapNumCols = 25;
-	int mapNumRows = 20;
-	std::fstream mapFile;
-	mapFile.open("./assets/tilemaps/jungle.map");
-
-	for (int y = 0; y < mapNumRows; y++)
-	{
-		for (int x = 0; x < mapNumCols; x++)
-		{
-			char ch;
-			mapFile.get(ch);
-			int srcRectY = std::atoi(&ch) * tileSize;
-			mapFile.get(ch);
-			int srcRectX = std::atoi(&ch) * tileSize;
-			mapFile.ignore();
-
-			Entity tile = registry->CreateEntity();
-			tile.Group("tiles");
-			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
-			tile.AddComponent<SpriteComponent>("tilemap-image", tileSize, tileSize, SpriteComponent::LAYER_TILEMAP, false, srcRectX, srcRectY);
-		}
-	}
-	mapFile.close();
-	Game::mapWidth = mapNumCols * tileSize * tileScale;
-	Game::mapHeight = mapNumRows * tileSize * tileScale;
-
-	//entity creation example
-	Entity chopper = registry->CreateEntity();
-	chopper.Tag("player");
-	chopper.AddComponent<TransformComponent>(glm::vec2(100.0, 100.0), glm::vec2(4.0, 4.0), 0.0);
-	chopper.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));// we dont have to put velocity here becuse we are cahnging it with keyboard input 
-	//but for safty and requirenmsts of KeyBoardControlledComponent we put it here we start at inital speed 0
-	chopper.AddComponent<SpriteComponent>("chopper-image", 32, 32, SpriteComponent::LAYER_PLAYER_IN_AIR);
-	chopper.AddComponent<AnimationComponent>(2, 10, true);
-	chopper.AddComponent<BoxColliderComponent>(32, 32);
-	chopper.AddComponent<ProjectileEmitterComponent>(glm::vec2(350.0, 350.0), 0, 5000, 50, true);
-	chopper.AddComponent<KeyBoardControlledComponent>(glm::vec2(0, -250), glm::vec2(250, 0), glm::vec2(0, 250), glm::vec2(-250, 0), !false);
-	chopper.AddComponent<CameraHollderComponent>();
-	chopper.AddComponent<HealthComponent>(100);
-
-	Entity radar = registry->CreateEntity();
-	radar.AddComponent<TransformComponent>(glm::vec2(Game::windowWidth - 74, 10), glm::vec2(1.0, 1.0), 0.0);
-	radar.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	radar.AddComponent<SpriteComponent>("radar-image", 64, 64, SpriteComponent::LAYER_GUI, true);
-	radar.AddComponent<AnimationComponent>(8, 1, true);
-
-	Entity tank = registry->CreateEntity();
-	tank.Group("enemies");
-	tank.AddComponent<TransformComponent>(glm::vec2(1600.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	tank.AddComponent<RigidBodyComponent>(glm::vec2(50.0, 0.0));
-	tank.AddComponent<SpriteComponent>("tank-image", 32, 32, SpriteComponent::LAYER_ENEMIES);
-	tank.AddComponent<BoxColliderComponent>(32, 32);
-	tank.AddComponent<ProjectileEmitterComponent>(glm::vec2(0.0, 100.0), 3000, 3000, 10, false);
-	tank.AddComponent<HealthComponent>(100);
-
-	Entity truck = registry->CreateEntity();
-	truck.Group("enemies");
-	truck.AddComponent<TransformComponent>(glm::vec2(250.0, 980.0), glm::vec2(3.0, 3.0), 0.0);
-	truck.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	truck.AddComponent<SpriteComponent>("truck-image", 32, 32, SpriteComponent::LAYER_ENEMIES);
-	truck.AddComponent<BoxColliderComponent>(32, 32);
-	truck.AddComponent<ProjectileEmitterComponent>(glm::vec2(100.0, 0.0), 1000, 3000, 10, false);
-	truck.AddComponent<HealthComponent>(100);
-
-	Entity treeA = registry->CreateEntity();
-	treeA.Group("obstacles");
-	treeA.AddComponent<TransformComponent>(glm::vec2(2000.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	treeA.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	treeA.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
-	treeA.AddComponent<BoxColliderComponent>(16, 32);
-
-	Entity treeB = registry->CreateEntity();
-	treeB.Group("obstacles");
-	treeB.AddComponent<TransformComponent>(glm::vec2(1500.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	treeB.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	treeB.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
-	treeB.AddComponent<BoxColliderComponent>(16, 32);
-
-	Entity label = registry->CreateEntity();
-	SDL_Color white = { 255,255,255 };
-	label.AddComponent<TextLabelComponent>(glm::vec2(400, 400), "Test Label String", "charriot-font", white, false);
-	*/
 }

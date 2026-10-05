@@ -10,6 +10,7 @@ class TileMap {
 		int rows = 0;
 		int cols = 0;
 		int tileSize = 0;
+		std::string textureAssetId;
 		double tileScale = 0.0;
 		double tileWorldSize = 0.0;
 		static constexpr int tileIdCount = 100;
@@ -36,6 +37,7 @@ class TileMap {
 		void setSpeedMultiplier(int tileId, double speedMultiplier);
 		void setFriction(int tileId, double friction);
 		void setAcceleration(int tileId, double acceleration);
+		void setTextureAssetId(const std::string& id);
 
 		int colAt(double worldX) const;
 		int rowAt(double worldY) const;
@@ -52,6 +54,8 @@ class TileMap {
 		int Cols() const { return cols; }
 		int Rows() const { return rows; }
 		double TileWorldSize() const { return tileWorldSize; }
+		const std::string& TextureAssetId() const { return textureAssetId; }
+		int TileSize() const { return tileSize; }
 };
 
 

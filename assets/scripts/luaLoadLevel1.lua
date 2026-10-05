@@ -38,11 +38,10 @@ Level = {
 		mapNumCols = 25,
 		tileSize = 32,
 		tileScale = 4.0,
-		layer = 0,
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = true, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
