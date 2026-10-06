@@ -171,28 +171,46 @@ class RenderGUISystem
 
 						ImGui::Separator();
 
-						// The stat order is declared once, here, and reused by both the rows
-						// and the reset below. Two hand-written lists would only have to
-						// agree with each other, and would silently refund the wrong stat
-						// the day someone reordered one of them.
-						int* stats[Skill_Count] = {
-							&attributes.attackPower,
-							&attributes.defensePower,
-							&attributes.wisdomPower,
-							&attributes.vitalityPower,
-							&attributes.speedPower,
-							&attributes.dexterityPower
-						};
+						// The stat order comes from the SkillStat enum, so the rows, the labels and the
+						// reset below all index the same way. The labels only have to follow that order.
+						
 						const char* labels[Skill_Count] = {
 							"Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity"
 						};
 
+
 						for (int i = 0; i < Skill_Count; i++)
 						{
-							StatRow(labels[i], *stats[i], progression.spentPoints[i], progression);
+							StatRow(labels[i], attributes, static_cast<SkillStat>(i), progression);
+
+							//TEMP debug tool until equipment exists: sets a bonus by hand. Patching with += is
+							//fine for a test lever - real bonus owners must rebuild the array, never patch it
+							if (isDebug) {
+								ImGui::SameLine();
+								ImGui::PushID(i);
+
+								if (ImGui::SmallButton("bonus +5")) {
+									attributes.bonus[i] += 5;
+								}
+
+								ImGui::SameLine();
+
+								if (ImGui::SmallButton("bonus -5")) {
+									attributes.bonus[i] -= 5;
+								}
+
+								ImGui::PopID();
+							}
 						}
 
 						ImGui::Separator();
+
+						//TEMP debug tool, goes with the buttons above
+						if (isDebug && ImGui::Button("clear bonuses")) {
+							for (int i = 0; i < Skill_Count; i++) {
+								attributes.bonus[i] = 0;
+							}
+						}
 
 						int totalSpent = 0;
 						for (int i = 0; i < Skill_Count; i++)
@@ -207,7 +225,7 @@ class RenderGUISystem
 						{
 							for (int i = 0; i < Skill_Count; i++)
 							{
-								*stats[i] -= progression.spentPoints[i];
+								attributes.base[i] -= progression.spentPoints[i];
 								progression.unspentSkillPoints += progression.spentPoints[i];
 								progression.spentPoints[i] = 0;
 							}
@@ -227,23 +245,30 @@ class RenderGUISystem
 		}
 
 	private:
-		// One row of the character sheet. Takes the stat by reference so a single
-		// helper serves all six - the row doesn't need to know which stat it edits,
-		// only where it lives. When per-class caps arrive, the spend rule goes here
-		// rather than into six separate button conditions.
-		void StatRow(const char* label, int& stat, int& spent, ProgressionComponent& progression)
+		// One row of the character sheet. Takes the attributes and which stat it shows, so it can
+		// display the effective value and spend points into the base only. When per-class caps
+		// arrive, the spend rule goes here rather than into six separate button conditions.
+		void StatRow(const char* label, AttributesComponent& attributes, SkillStat stat, ProgressionComponent& progression)
 		{
 			// All six buttons are labelled "+", and ImGui derives widget identity from
 			// the label - without a unique id pushed around each row they would all be
 			// the same widget. The stat names are distinct, so they serve as the id.
 			ImGui::PushID(label);
 
+			int& spent = progression.spentPoints[stat];
+			const int effective = attributes.Effective(stat);
+			const int bonus = attributes.bonus[stat];
+
 			const bool canSpend = progression.unspentSkillPoints > 0;
 
 			// ImGui 1.79 has no BeginDisabled(), so the row is dimmed by hand
 			if (!canSpend) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
 
-			ImGui::Text("%-10s %6d (+%d)", label, stat, spent);
+			ImGui::Text("%-10s %6d (+%d)", label, effective, spent);
+			if (bonus != 0) {
+				ImGui::SameLine();
+				ImGui::Text("[base %d, item %+d]", attributes.base[stat], bonus);
+			}
 			ImGui::SameLine();
 
 			// Button() is called unconditionally and the result filtered afterwards.
@@ -252,7 +277,7 @@ class RenderGUISystem
 			if (ImGui::Button("+") && canSpend)
 			{
 				progression.unspentSkillPoints--;
-				stat++;
+				attributes.base[stat]++;
 				spent++;
 			}
 

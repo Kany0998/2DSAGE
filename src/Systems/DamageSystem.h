@@ -80,7 +80,7 @@ class DamageSystem
 				if (player.HasComponent<AttributesComponent>()) {
 					auto& attributes = player.GetComponent<AttributesComponent>();
 					
-					damgeTaken -= attributes.defensePower;
+					damgeTaken -= attributes.Effective(Skill_Defense);
 					if (damgeTaken<=0) {
 						damgeTaken = 1; //minimum damage taken is 1
 					}
@@ -141,7 +141,7 @@ class DamageSystem
 				if (enemy.HasComponent<AttributesComponent>()) {
 					auto& attributes = enemy.GetComponent<AttributesComponent>();
 
-					damgeTaken  -= attributes.defensePower;
+					damgeTaken  -= attributes.Effective(Skill_Defense);
 					if (damgeTaken <= 0) {
 						damgeTaken = 1; //minimum damage taken is 1
 					}

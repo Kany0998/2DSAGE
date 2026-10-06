@@ -186,7 +186,7 @@ class ProjectileEmitSystem
 			if (entity.HasComponent<AttributesComponent>())
 			{
 				const auto& attributes = entity.GetComponent<AttributesComponent>();
-				shotsPerSecond += (attributes.dexterityPower / DexterityPerStep) * DexterityShotsPerSecond;
+				shotsPerSecond += (attributes.Effective(Skill_Dexterity) / DexterityPerStep) * DexterityShotsPerSecond;
 			}
 
 			//guards against a zero/negative rate if dexterity ever goes negative
@@ -229,7 +229,7 @@ class ProjectileEmitSystem
 			if (entity.HasComponent<AttributesComponent>())
 			{
 				const auto& attributes = entity.GetComponent<AttributesComponent>();
-				scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.attackPower / 25.0f)));
+				scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.Effective(Skill_Attack) / 25.0f)));
 			}
 
 			//point the sprite in the direction it's travelling
