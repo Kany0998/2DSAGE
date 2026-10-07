@@ -13,20 +13,7 @@ end
 Level = {
 	--Table of assets
 
-	assets =
-	{
-		[0] =
-		{type = "texture", id = "tilemap-texture-day", file = "./assets/tilemaps/jungle.png"},
-		{type = "texture", id = "tilemap-texture-night", file = "./assets/tilemaps/jungle-night.png"},
-		{type = "texture" , id = "chopper-texture", file="./assets/images/chopper-spritesheet.png"},
-		{type = "texture" , id = "takeoff-texture", file="./assets/images/landing-base.png"},
-		{type = "texture" , id = "tank-texture", file="./assets/images/tank-panther-right.png"},
-		{type = "texture" , id = "truck-texture", file="./assets/images/truck-ford-right.png"},
-		{type = "texture" , id = "tree-texture", file="./assets/images/tree.png"},
-		{type = "texture" , id = "radar-texture", file="./assets/images/radar.png"},
-		{type = "texture" , id = "bullet-texture", file="./assets/images/bullet.png"},
-		{type = "font" , id = "charriot-font", file="./assets/fonts/charriot.ttf", font_size = 10}
-	},
+	assets = dofile("./assets/scripts/assets.lua"),
 
 	--map config values
 
@@ -141,6 +128,33 @@ Level = {
 				camera_follow =
 				{
 					follow = true
+				},
+				backpack = 
+				{
+					capacity = 30,			--0 means unlimited
+					items = 
+					{
+						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war"
+					}
+				},
+				equipment =
+				{
+					slots = 
+					{
+						{ name = "Weapon",  accepts = "weapon" },
+						{ name = "Helm",    accepts = "helm" },
+						{ name = "Chest",   accepts = "chest" },
+						{ name = "Legs",    accepts = "legs" },
+						{ name = "Feet",    accepts = "feet" },
+						{ name = "Ring",    accepts = "ring" },
+						{ name = "Amulet",  accepts = "amulet" },
+						{ name = "Trinket", accepts = "trinket" },
+						{ name = "Ability", accepts = "special_ability" },
+					},
+					equipped = 
+					{ 
+						Weapon = "iron_sword" 
+					}
 				}
 			}
 		},
@@ -700,6 +714,21 @@ Level = {
 		}
 	}
 }
+
+Controls = 
+{ 
+	equipment = "I",
+	backpack = "B", 
+	character = "C"
+}
+
+InventoryUI =
+{
+	icon_size = 24,
+	icon_scale = 2,
+	backpack_columns = 8
+}
+
 
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale
