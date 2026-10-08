@@ -1,7 +1,7 @@
 #ifndef  ATTRIBUTESCOMPONENT_H
 #define  ATTRIBUTESCOMPONENT_H
 
-
+#include <iterator>
 
 // Every attribute an entity has, in the order the character sheet lists them. Used as the
 // index into AttributesComponent's base/bonus arrays and ProgressionComponent's spentPoints,
@@ -17,6 +17,8 @@ enum SkillStat
 	Skill_Count
 };
 
+constexpr const char* SkillLuaNames[] = { "attack", "defense", "wisdom", "vitality", "speed", "dexterity" };
+static_assert(std::size(SkillLuaNames) == Skill_Count, "one Lua name per SkillStat");
 
 struct AttributesComponent
 {

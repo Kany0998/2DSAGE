@@ -5,6 +5,7 @@
 #include "../AssetStore/AssetStore.h"
 #include "../EventBus/EventBus.h"
 #include "../TileMap/TileMap.h"
+#include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
 #include "sol/sol.hpp"
 
@@ -61,6 +62,7 @@ class Game
 		std::unique_ptr<AssetStore> assetStore;
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
+		ItemDatabase itemDatabase;
 		Pathfinder pathfinder;
 		std::vector<int> debugPath;
 
