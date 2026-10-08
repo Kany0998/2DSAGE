@@ -196,7 +196,7 @@ void Game::Setup()
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
-	loader.LoadLevel(lua, registry, assetStore, tileMap, renderer, 1);
+	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, renderer, 1);
 	
 }
 

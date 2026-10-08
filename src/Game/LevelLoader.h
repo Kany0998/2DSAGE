@@ -4,6 +4,7 @@
 #include "../ECS/ECS.h"
 #include "../AssetStore/AssetStore.h"
 #include "../TileMap/TileMap.h"
+#include "../Inventory/ItemDatabase.h"
 
 #include <SDL.h>
 #include <sol/sol.hpp>
@@ -22,7 +23,8 @@ class LevelLoader
             sol::state& lua,
             const std::unique_ptr<Registry>& registry,
             const std::unique_ptr<AssetStore>& assetStore,
-			TileMap& tileMap,
+            TileMap& tileMap,
+            const ItemDatabase& itemDatabase,
             SDL_Renderer* renderer,
             int levelNumber
         );

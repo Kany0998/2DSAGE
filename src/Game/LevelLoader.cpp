@@ -19,8 +19,11 @@
 #include "../Components/MovementTypeComponent.h"
 #include "../Components/PushableComponent.h"
 #include "../Components/AIComponent.h"
+#include "../Components/BackpackComponent.h"
+#include "../Components/EquipmentComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
+#include "../Inventory/ItemDatabase.h"
 #include <sol/sol.hpp>
 #include <string>
 #include "../Logger/Logger.h"
@@ -36,7 +39,7 @@ LevelLoader::~LevelLoader()
 }
 
 void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
-	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,SDL_Renderer* renderer,int levelNumber)
+	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,const ItemDatabase& itemDatabase,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
 	//check the syntax to see if it is valid
@@ -421,6 +424,128 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			{
 				newEntity.AddComponent<CameraHollderComponent>();
 			}
+
+			//Backpack
+			sol::optional<sol::table> backpackTable = entity["components"]["backpack"];
+			if (backpackTable != sol::nullopt) 
+			{
+				BackpackComponent backpack;
+				backpack.capacity = (*backpackTable)["capacity"].get_or(0);
+
+				sol::optional<sol::table> items = (*backpackTable)["items"];
+				if (items) {
+					for (const auto& [key, value] : *items) {
+						if (value.get_type() != sol::type::string) {
+							Logger::Warn("backpack: an entry is not an item id, skipped");
+							continue;
+						}
+						std::string id = value.as<std::string>();
+
+						if (itemDatabase.Find(id) == nullptr) {
+							Logger::Warn("backpack: unknown item '" + id + "', skipped");
+							continue;
+						}
+
+						if (backpack.IsFull()) {
+							Logger::Warn("backpack: full (capacity " + std::to_string(backpack.capacity) + "), '" + id + "' not added");
+							continue;
+						}
+
+						backpack.items.push_back(id);
+
+					}
+				}
+
+				newEntity.AddComponent<BackpackComponent>(backpack);
+			}
+
+			//Equipment
+			sol::optional<sol::table> equipmentTable = entity["components"]["equipment"];
+			if (equipmentTable != sol::nullopt) 
+			{
+				
+				EquipmentComponent equipment;
+				sol::optional<sol::table> slots = (*equipmentTable)["slots"];
+				if (slots) {
+					for (const auto& [key, value] : *slots) {
+						if (value.get_type() != sol::type::table) {
+							Logger::Warn("equipment: slot " + std::to_string(key.as<int>()) +
+								" is not a table (write it as { name = \"...\", accepts = \"...\" }), skipped");
+							continue;
+						}
+						sol::table slot = value.as<sol::table>();
+						std::string name = slot["name"].get_or(std::string(""));
+						std::string accepts = slot["accepts"].get_or(std::string(""));
+
+						if (name.empty() || accepts.empty()) {
+							Logger::Warn("equipment: slot " + std::to_string(key.as<int>()) +
+								" needs both a name and accepts, skipped");
+							continue;
+						}
+
+						if (equipment.FindSlot(name) != -1) {
+							Logger::Warn("equipment: slot name '" + name + "' is used twice, skipped");
+							continue;
+						}
+						equipment.slots.push_back({ name, accepts, "" });
+					}
+				}
+				
+
+				sol::optional<sol::table> equipped = (*equipmentTable)["equipped"];
+				if (equipped) {
+					for (const auto& [key, value] : *equipped) {
+						
+						if (key.get_type() != sol::type::string || value.get_type() != sol::type::string) {
+							Logger::Warn("equipment: equipped entries must be written as SlotName = \"item_id\", skipped");
+							continue;
+						}
+
+						std::string slotName = key.as<std::string>();
+						std::string itemId = value.as<std::string>();
+
+						int index = equipment.FindSlot(slotName);
+						if (index == -1) {
+							Logger::Warn("equipment: no slot named '" + slotName + "', '" + itemId + "' not equipped");
+							continue;
+						}
+						const ItemDefinition* item = itemDatabase.Find(itemId);
+						if (item == nullptr) {
+							Logger::Warn("equipment: unknown item '" + itemId + "', slot '" + slotName + "' left empty");
+							continue;
+						}
+						
+						if (item->tag != equipment.slots[index].accepts) {
+							Logger::Warn("equipment: " + itemId + " (tag '" + item->tag + "') can't go in slot '" + slotName + "', left empty");
+							continue;
+						}
+
+						equipment.slots[index].itemId = itemId;
+					}
+				}
+				
+				for (const auto& s : equipment.slots) {
+					if (s.accepts == "weapon" && s.itemId.empty()) {
+						Logger::Warn("equipment: weapon slot '" + s.name + "' is empty, starts unarmed");
+					}
+				}
+
+				for (const auto& [id, definition] : itemDatabase.All()) {
+					bool accepted = false;
+					for (const auto& s : equipment.slots) {
+						if (s.accepts == definition.tag) {
+							accepted = true;
+							break;
+						}
+					}
+					if (!accepted) {
+						Logger::Warn("items: " + id + " (tag '" + definition.tag + "') can never be equipped");
+					}
+				}
+
+				newEntity.AddComponent<EquipmentComponent>(equipment);
+			}
+
 
 			//KeyBoardControlled
 			sol::optional<sol::table> keyboardControlled = entity["components"]["keyboard_controlled"];

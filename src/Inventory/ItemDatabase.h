@@ -10,7 +10,8 @@ class ItemDatabase {
 	public:
 
 		void Load(sol::state& lua, const std::string& path);
-		const ItemDefinition* Find(const std::string& id)const ;
+		const ItemDefinition* Find(const std::string& id)const;
+		const std::unordered_map<std::string, ItemDefinition>& All() const { return items; }
 
 	private:
 		std::unordered_map<std::string, ItemDefinition> items;
