@@ -303,6 +303,7 @@ class ProjectileEmitSystem
 		//(the unarmed player, and every enemy)
 		ProjectileProfile GetProfile(Entity entity, const ProjectileEmitterComponent& emitter) {
 			ProjectileProfile profile;
+			profile.texture = emitter.projectileTexture;
 			profile.minDamage = emitter.projectileDamage;
 			profile.maxDamage = emitter.projectileDamage;
 			profile.speed = glm::length(emitter.projectileVelocity);

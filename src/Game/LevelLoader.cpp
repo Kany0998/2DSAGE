@@ -347,7 +347,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
 					entity["components"]["projectile_emitter"]["aim_at_player"].get_or(false),
 					attack_range,
-					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
+					entity["components"]["projectile_emitter"]["friendly"].get_or(false),
+					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture"))
 				);
 			}
 
