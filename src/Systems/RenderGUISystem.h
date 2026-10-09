@@ -14,12 +14,30 @@
 #include "../Components/AttributesComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
+#include "../Game/Controls.h"
+#include "../EventBus/EventBus.h"
+#include "../Events/KeyPressedEvent.h"
 
 
 class RenderGUISystem
 {
 	public:
-		RenderGUISystem() = default;
+		RenderGUISystem(const Controls& controls) : controls(controls) {}
+
+		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		{
+			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &RenderGUISystem::OnKeyPressed);
+		}
+
+		void OnKeyPressed(KeyPressedEvent& event)
+		{
+			if (event.isRepeat) return;                          //holding a key must not flicker the window
+			if (ImGui::GetIO().WantCaptureKeyboard) return;      //typing into an ImGui field is not a toggle
+
+			if (event.symbol == controls.equipment) showEquipment = !showEquipment;
+			if (event.symbol == controls.backpack)  showBackpack = !showBackpack;
+			if (event.symbol == controls.character) showCharacter = !showCharacter;
+		}
 
 		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
@@ -162,56 +180,68 @@ class RenderGUISystem
 					auto& progression = player.GetComponent<ProgressionComponent>();
 					auto& attributes = player.GetComponent<AttributesComponent>();
 
-					ImGui::SetNextWindowPos(ImVec2(10, 60), ImGuiCond_FirstUseEver);
+					if (showCharacter) {
+						ImGui::SetNextWindowPos(ImVec2(10, 60), ImGuiCond_FirstUseEver);
 
-					if (ImGui::Begin("Character")) {
-						ImGui::Text("Level: %d", progression.currentLevel);
-						ImGui::Text("%d / %d exp", progression.currentExperience, progression.experienceToNextLevel);
-						ImGui::Text("Skill points: %d", progression.unspentSkillPoints);
+						if (ImGui::Begin("Character", &showCharacter)) {
+							ImGui::Text("Level: %d", progression.currentLevel);
+							ImGui::Text("%d / %d exp", progression.currentExperience, progression.experienceToNextLevel);
+							ImGui::Text("Skill points: %d", progression.unspentSkillPoints);
 
-						ImGui::Separator();
+							ImGui::Separator();
 
-						// The stat order comes from the SkillStat enum, so the rows, the labels and the
-						// reset below all index the same way. The labels only have to follow that order.
-						
-						const char* labels[Skill_Count] = {
-							"Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity"
-						};
+							// The stat order comes from the SkillStat enum, so the rows, the labels and the
+							// reset below all index the same way. The labels only have to follow that order.
 
-
-						for (int i = 0; i < Skill_Count; i++)
-						{
-							StatRow(labels[i], attributes, static_cast<SkillStat>(i), progression);
-						}
-
-						ImGui::Separator();
+							const char* labels[Skill_Count] = {
+								"Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity"
+							};
 
 
-						int totalSpent = 0;
-						for (int i = 0; i < Skill_Count; i++)
-						{
-							totalSpent += progression.spentPoints[i];
-						}
-
-						const bool canReset = totalSpent > 0;
-						if (!canReset) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
-
-						if (ImGui::Button("Reset points") && canReset)
-						{
 							for (int i = 0; i < Skill_Count; i++)
 							{
-								attributes.base[i] -= progression.spentPoints[i];
-								progression.unspentSkillPoints += progression.spentPoints[i];
-								progression.spentPoints[i] = 0;
+								StatRow(labels[i], attributes, static_cast<SkillStat>(i), progression);
 							}
+
+							ImGui::Separator();
+
+
+							int totalSpent = 0;
+							for (int i = 0; i < Skill_Count; i++)
+							{
+								totalSpent += progression.spentPoints[i];
+							}
+
+							const bool canReset = totalSpent > 0;
+							if (!canReset) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
+
+							if (ImGui::Button("Reset points") && canReset)
+							{
+								for (int i = 0; i < Skill_Count; i++)
+								{
+									attributes.base[i] -= progression.spentPoints[i];
+									progression.unspentSkillPoints += progression.spentPoints[i];
+									progression.spentPoints[i] = 0;
+								}
+							}
+
+							if (!canReset) { ImGui::PopStyleVar(); }
+
+							ImGui::SameLine();
+							ImGui::Text("(%d invested)", totalSpent);
 						}
-
-						if (!canReset) { ImGui::PopStyleVar(); }
-
-						ImGui::SameLine();
-						ImGui::Text("(%d invested)", totalSpent);
+						ImGui::End();
 					}
-					ImGui::End();
+
+					if (showEquipment) {
+						if (ImGui::Begin("Equipment", &showEquipment)) { ImGui::Text("slots come in step 9"); }
+						ImGui::End();
+					}
+					if (showBackpack) {
+						if (ImGui::Begin("Backpack", &showBackpack)) { ImGui::Text("grid comes in step 11"); }
+						ImGui::End();
+					}
+
 				}
 			}
 
@@ -260,6 +290,11 @@ class RenderGUISystem
 
 			ImGui::PopID();
 		}
+
+		const Controls& controls;
+		bool showEquipment = false;
+		bool showBackpack = false;
+		bool showCharacter = false;
 };
 
 #endif // !RENDERGUISYSTEM_H

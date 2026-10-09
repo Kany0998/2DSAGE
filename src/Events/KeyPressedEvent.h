@@ -7,10 +7,10 @@
 
 class KeyPressedEvent : public Event
 {
-	public:
-		SDL_Keycode symbol;
-		KeyPressedEvent(SDL_Keycode symbol) : symbol(symbol) {}
-		
+public:
+	SDL_Keycode symbol;
+	bool isRepeat;   //true while a held key auto-repeats; toggles ignore those
+	KeyPressedEvent(SDL_Keycode symbol, bool isRepeat = false) : symbol(symbol), isRepeat(isRepeat) {}
 };
 
 #endif

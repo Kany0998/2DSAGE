@@ -7,7 +7,8 @@
 #include "../TileMap/TileMap.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
-#include "sol/sol.hpp"
+#include "Controls.h"
+#include <sol/sol.hpp>
 
 const int FPS = 60;
 const int frameDelay = 1000 / FPS;
@@ -63,6 +64,7 @@ class Game
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
 		ItemDatabase itemDatabase;
+		Controls controls;
 		Pathfinder pathfinder;
 		std::vector<int> debugPath;
 

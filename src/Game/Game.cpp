@@ -173,7 +173,7 @@ void Game::ProccessInput()
 
 			}
 
-			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym);
+			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
 			break;
 
 		case SDL_MOUSEBUTTONDOWN:
@@ -211,7 +211,7 @@ void Game::Setup()
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>();
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls);
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 	progressionSystem = std::make_unique<ProgressionSystem>();
@@ -227,6 +227,7 @@ void Game::Setup()
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, renderer, 1);
+	controls = Controls::Load(lua);
 	
 }
 
@@ -254,6 +255,7 @@ void Game::Update()
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
+	renderGUISystem->SubscribeToEvents(eventBus);
 	progressionSystem->SubscribeToEvents(eventBus);
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
