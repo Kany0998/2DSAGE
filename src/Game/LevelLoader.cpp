@@ -24,6 +24,7 @@
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
+#include "../Inventory/InventoryRules.h"
 #include <sol/sol.hpp>
 #include <string>
 #include "../Logger/Logger.h"
@@ -544,6 +545,10 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				}
 
 				newEntity.AddComponent<EquipmentComponent>(equipment);
+
+				if (newEntity.HasComponent<AttributesComponent>()) {
+					InventoryRules::RebuildBonuses(newEntity.GetComponent<AttributesComponent>(), equipment, itemDatabase);
+				}
 			}
 
 

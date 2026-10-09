@@ -182,35 +182,10 @@ class RenderGUISystem
 						for (int i = 0; i < Skill_Count; i++)
 						{
 							StatRow(labels[i], attributes, static_cast<SkillStat>(i), progression);
-
-							//TEMP debug tool until equipment exists: sets a bonus by hand. Patching with += is
-							//fine for a test lever - real bonus owners must rebuild the array, never patch it
-							if (isDebug) {
-								ImGui::SameLine();
-								ImGui::PushID(i);
-
-								if (ImGui::SmallButton("bonus +5")) {
-									attributes.bonus[i] += 5;
-								}
-
-								ImGui::SameLine();
-
-								if (ImGui::SmallButton("bonus -5")) {
-									attributes.bonus[i] -= 5;
-								}
-
-								ImGui::PopID();
-							}
 						}
 
 						ImGui::Separator();
 
-						//TEMP debug tool, goes with the buttons above
-						if (isDebug && ImGui::Button("clear bonuses")) {
-							for (int i = 0; i < Skill_Count; i++) {
-								attributes.bonus[i] = 0;
-							}
-						}
 
 						int totalSpent = 0;
 						for (int i = 0; i < Skill_Count; i++)
