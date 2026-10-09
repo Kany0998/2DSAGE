@@ -8,12 +8,12 @@
 // and Skill_Count doubles as their size - so adding a stat here is the only edit needed.
 enum SkillStat
 {
-	Skill_Attack,		//Projectile damage: int(damage * 0.5) * (1 + attack / 25.0), truncated to int (ProjectileEmitSystem)
+	Skill_Attack,		//Projectile damage: rolled min..max * (1 + attack / 25.0), rounded, at least 1 (ProjectileEmitSystem)
 	Skill_Defense,		//Subtracted from every hit taken; a hit never does less than 1 damage (DamageSystem)
 	Skill_Wisdom,		//Mana regeneration per second: 1 + wisdom / 10.0 (ManaRegenerationSystem)
 	Skill_Vitality,		//Health regeneration per second: 1 + vitality / 10.0 (HealthRegenerationSystem)
 	Skill_Speed,		//Velocity multiplier: 1 + speed / 50.0, floored at 0.1 (MovementSystem)
-	Skill_Dexterity,	//Player shots per second: 1 + (dexterity / 75.0) * 5, floored at 0.1 (ProjectileEmitSystem)
+	Skill_Dexterity,	//Player shots per second: weapon rate * (1 + dexterity / 75.0), floored at 0.1 (ProjectileEmitSystem)
 	Skill_Count
 };
 

@@ -204,7 +204,7 @@ void Game::Setup()
 	damageSystem = std::make_unique<DamageSystem>(eventBus);
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
-	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera);
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, tileMap, itemDatabase, *assetStore);
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();

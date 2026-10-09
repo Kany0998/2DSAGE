@@ -11,30 +11,41 @@
 #include "../Components/CameraHollderComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/MovementTypeComponent.h"
+#include "../Components/EquipmentComponent.h"
 #include "../Components/AIComponent.h"
 #include "../Utils/EntityGeometry.h"
+#include "../TileMap/TileMap.h"
+#include "../Inventory/ItemDatabase.h"
+#include "../AssetStore/AssetStore.h"
 #include <SDL.h>
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
 #include <cmath>
 #include <vector>
+#include <random>
+#include <algorithm>
+
+struct ProjectileProfile {
+	std::string texture = "bullet-texture";
+	int minDamage = 1, maxDamage = 1;
+	float speed = 0.0f;
+	float shotsPerSecond = 1.0f;   //player only; enemies keep repeatRate
+	int lifetimeMs = 10000;
+};
+
 
 // Two kinds of emitter live here:
-//  - the player (CameraHollderComponent): holds the left mouse button to fire
-//    continuously toward the cursor, at a rate driven by dexterityPower.
+//  - the player (CameraHollderComponent): fires while the left mouse button is held,
+//    toward the cursor. Its bullet comes from the equipped weapon, otherwise from its
+//    own emitter (unarmed); the fire rate is the weapon's, scaled by dexterity.
 //  - everything else (enemies): fires on the fixed repeatRate timer loaded from Lua,
-//    straight along its configured projectileVelocity. Enemies have no dexterity,
-//    so their rate is deliberately left alone.
+//    with the bullet from its emitter. Enemies have no dexterity, so their rate is left alone.
 class ProjectileEmitSystem
 {
 	public:
-		// Registry + camera are kept as references for the lifetime of the system:
-		// Update() polls the mouse itself (that's what makes hold-to-fire possible at
-		// all - SDL_MOUSEBUTTONDOWN only fires once per physical press), and the
-		// cursor's screen position needs the camera offset to become a world-space aim
-		// target, the same way SpecialAbilitySystem does it.
-		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera)
-			: registry(registry), camera(camera) {}
+
+		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const TileMap& tileMap, const ItemDatabase& itemDatabase, AssetStore& assetStore)
+			: registry(registry), camera(camera), tileMap(tileMap), itemDatabase(itemDatabase), assetStore(assetStore) {}
 
 		void Update()
 		{
@@ -70,7 +81,7 @@ class ProjectileEmitSystem
 	private:
 		//Player shooting: fires for as long as the left button is held down, aimed at
 		//wherever the cursor currently is. repeatRate is ignored here on purpose - the
-		//player's fire rate comes from dexterity (see GetShotIntervalMs) instead.
+		//rate comes from the profile and dexterity (see GetShotIntervalMs).
 		void UpdateMouseAimedEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
 		{
 			//don't shoot through an ImGui window - the same guard Game::ProccessInput() applies
@@ -87,8 +98,9 @@ class ProjectileEmitSystem
 			{
 				return;
 			}
+			ProjectileProfile profile = GetProfile(entity, projectileEmitter);
 
-			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity))
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity, profile))
 			{
 				return;
 			}
@@ -106,18 +118,18 @@ class ProjectileEmitSystem
 			}
 			aimDirection /= distance;
 
-			//projectileVelocity is used as a speed magnitude here rather than a per-axis velocity
-			const float speed = glm::length(projectileEmitter.projectileVelocity);
 
-			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, aimDirection * speed);
+			const float speed = profile.speed;
+
+			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, aimDirection * speed, profile);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 		}
 
-		//Enemy shooting: unchanged fixed-interval timer along a fixed velocity
 		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
 		{
 
 			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
+			ProjectileProfile profile = GetProfile(entity, projectileEmitter);
 			//Default: the fixed velocity authored in Lua, for shooters with no AI
 			glm::vec2 shotVelocity = projectileEmitter.projectileVelocity;
 			
@@ -164,29 +176,28 @@ class ProjectileEmitSystem
 				return;
 			}
 
-			//check if it is time to re-emit a new projectile
 			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime <= projectileEmitter.repeatRate)
 			{
 				return;
 			}
 
 			
-			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, shotVelocity);
+			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, shotVelocity, profile);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 			
 		}
 
-		//Milliseconds the shooter has to wait between shots, derived from dexterity:
-		//BaseShotsPerSecond at 0 dexterity, plus DexterityShotsPerSecond extra shots per
-		//second for every DexterityPerStep points. All of it stays in float - integer
-		//division here would collapse whole ranges of dexterity into an identical rate.
-		int GetShotIntervalMs(Entity entity)
+		//Milliseconds the shooter has to wait between shots: the profile's shots per second
+		//(weapon, or the unarmed base), multiplied by 1 + dexterity / DexterityPerStep.
+		//All of it stays in float - integer division here would collapse whole ranges of
+		//dexterity into an identical rate.
+		int GetShotIntervalMs(Entity entity, const ProjectileProfile& profile)
 		{
-			float shotsPerSecond = BaseShotsPerSecond;
+			float shotsPerSecond = profile.shotsPerSecond;
 			if (entity.HasComponent<AttributesComponent>())
 			{
 				const auto& attributes = entity.GetComponent<AttributesComponent>();
-				shotsPerSecond += (attributes.Effective(Skill_Dexterity) / DexterityPerStep) * DexterityShotsPerSecond;
+				shotsPerSecond *= (1.0f + attributes.Effective(Skill_Dexterity) / DexterityPerStep);
 			}
 
 			//guards against a zero/negative rate if dexterity ever goes negative
@@ -222,38 +233,108 @@ class ProjectileEmitSystem
 			return projectilePosition;
 		}
 
-		void EmitProjectile(Entity entity, const ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform, glm::vec2 position, glm::vec2 velocity)
+		void EmitProjectile(Entity entity, const ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform,
+			glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile)
 		{
-			//Damage is scaled by the shooter's attackPower attribute, if it has one
-			int scaledDamage = static_cast<int>(projectileEmitter.projectileDamage * 0.5f);
-			if (entity.HasComponent<AttributesComponent>())
-			{
+			//Damage: rolled between the profile's min and max, scaled by attack in float, rounded, at least 1
+			std::uniform_int_distribution<int> roll(profile.minDamage, profile.maxDamage);
+			int damage = roll(rng);
+			float scaled = static_cast<float>(damage);
+
+			if (entity.HasComponent<AttributesComponent>()) {
 				const auto& attributes = entity.GetComponent<AttributesComponent>();
-				scaledDamage = static_cast<int>(scaledDamage + (scaledDamage * (attributes.Effective(Skill_Attack) / 25.0f)));
+				scaled = damage * (1.0f + attributes.Effective(Skill_Attack) / 25.0f);
 			}
 
-			//point the sprite in the direction it's travelling
+			//round to the nearest whole number, and never less than 1
+			const int finalDamage = std::max(1, static_cast<int>(std::lround(scaled)));
 			const double rotation = glm::degrees(std::atan2(velocity.y, velocity.x));
+
+			int width = 4; 
+			int height = 4;
+
+			//Bullet look and size from its texture; a missing texture falls back to bullet-texture
+
+			std::string textureId = profile.texture;
+			SDL_Texture* texture = assetStore.GetTexture(textureId);
+			if (texture == nullptr) {
+				textureId = "bullet-texture";
+				texture = assetStore.GetTexture(textureId);
+			}
+
+			if (texture != nullptr) {
+				SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+			}
+
+			//square hitbox centred on the sprite - colliders don't rotate, the sprite does
+			const int hitboxSize = std::max(width, height);
+			const glm::vec2 offset(
+				(width - hitboxSize) / 2.0f * transform.scale.x,
+				(height - hitboxSize) / 2.0f * transform.scale.y);
+
+			position -= glm::vec2(width * transform.scale.x / 2.0f, height * transform.scale.y / 2.0f);
 
 			Entity projectile = registry.CreateEntity();
 			projectile.Group("projectiles");
 			projectile.AddComponent<TransformComponent>(position, glm::vec2(transform.scale.x, transform.scale.y), rotation);
 			projectile.AddComponent<RigidBodyComponent>(velocity);
-			projectile.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
-			projectile.AddComponent<BoxColliderComponent>(4, 4);
+			projectile.AddComponent<SpriteComponent>(textureId, width, height, 8);
+			projectile.AddComponent<BoxColliderComponent>(hitboxSize, hitboxSize, offset);
 			//`entity` is recorded as the owner so whatever this shot kills can be
 			//credited back to the shooter
-			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, scaledDamage, projectileEmitter.projectileDuration, entity);
+			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, finalDamage, profile.lifetimeMs, entity);
 			projectile.AddComponent<MovementTypeComponent>(MovementType_Projectile);
 		}
 
 		Registry& registry;
 		const SDL_Rect& camera;
+		const TileMap& tileMap;            
+		const ItemDatabase& itemDatabase;  
+		AssetStore& assetStore;            
 
 		static constexpr float BaseShotsPerSecond = 1.0f;        //fire rate with no dexterity at all
 		static constexpr float DexterityPerStep = 75.0f;         //dexterity needed for one full step
-		static constexpr float DexterityShotsPerSecond = 5.0f;   //extra shots per second per full step
 		static constexpr float MinShotsPerSecond = 0.1f;         //floor, so the interval can never blow up
 		static constexpr int MinShotIntervalMs = 1;              //floor, so the interval can never reach zero
+		std::mt19937 rng{ std::random_device{}() };
+
+
+		//The bullet a shooter fires: its equipped weapon's, otherwise its own emitter's
+		//(the unarmed player, and every enemy)
+		ProjectileProfile GetProfile(Entity entity, const ProjectileEmitterComponent& emitter) {
+			ProjectileProfile profile;
+			profile.minDamage = emitter.projectileDamage;
+			profile.maxDamage = emitter.projectileDamage;
+			profile.speed = glm::length(emitter.projectileVelocity);
+			profile.lifetimeMs = emitter.projectileDuration;
+			profile.shotsPerSecond = BaseShotsPerSecond;
+
+			if (!entity.HasComponent<EquipmentComponent>()) {
+				return profile;
+			}
+
+			const auto& equipment = entity.GetComponent<EquipmentComponent>();
+			for (const auto& slot : equipment.slots) {
+				if (slot.accepts != "weapon" || slot.itemId.empty()) {
+					continue;
+				}
+
+				const ItemDefinition* definition = itemDatabase.Find(slot.itemId);
+				if (definition == nullptr || !definition->isWeapon) {
+					continue;
+				}
+
+				const WeaponStats& weapon = definition->weapon;
+				profile.texture = weapon.projectileTexture;
+				profile.minDamage = weapon.minDamage;
+				profile.maxDamage = weapon.maxDamage;
+				profile.speed = weapon.projectileSpeed;
+				profile.shotsPerSecond = weapon.shotPerSecond;
+				profile.lifetimeMs = static_cast<int>(std::lround(weapon.rangeTiles * tileMap.TileWorldSize() / weapon.projectileSpeed * 1000.0));
+				break;
+			}
+			return profile;
+		}
+
 };
 #endif
