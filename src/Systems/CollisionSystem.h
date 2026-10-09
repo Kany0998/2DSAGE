@@ -8,6 +8,7 @@
 #include "../Components/ProjectileComponent.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
+#include "../Utils/EntityGeometry.h"
 
 class CollisionSystem
 {
@@ -52,17 +53,10 @@ class CollisionSystem
 					auto bTransform = b.GetComponent<TransformComponent>();
 					auto& bCollider = b.GetComponent<BoxColliderComponent>();
 					const int bLayer = b.GetComponent<SpriteComponent>().layer;
-					//collison check AABB between A B
-					bool collisonHappend = CheckAABBCollison(
-						aTransform.position.x,
-						aTransform.position.y,
-						aCollider.width * aTransform.scale.x,
-						aCollider.height * aTransform.scale.y,
-						bTransform.position.x,
-						bTransform.position.y,
-						bCollider.width * bTransform.scale.x,
-						bCollider.height * bTransform.scale.y
-					);
+					//BoxAt applies the collider offset, the same box MovementSystem and PushResolver use
+					const Box aBox = BoxAt(a, aTransform.position.x, aTransform.position.y);
+					const Box bBox = BoxAt(b, bTransform.position.x, bTransform.position.y);
+					bool collisonHappend = Overlaps(aBox, bBox);
 
 					if (collisonHappend)
 					{
@@ -108,15 +102,6 @@ class CollisionSystem
 			}
 		}
 
-		bool CheckAABBCollison(double aX, double aY, double aW, double aH, double bX, double bY, double bW, double bH)
-		{
-			return (
-				aX < bX + bW &&
-				aX + aW > bX &&
-				aY < bY + bH &&
-				aY + aH > bY
-				);
-		}
 
 		// Pairs that overlap spatially but should never be treated as a real collision:
 		//  - two enemies overlapping each other
