@@ -7,12 +7,12 @@ Items = {
 		bonuses = {attack = 10},
 		weapon = 
 			{ 
-				min_damage = 3,
-				max_damage = 7,
+				min_damage = 30,
+				max_damage = 70,
 				projectile_texture = "iron-sword-bullet",
-                projectile_speed = 400,
-				shots_per_second = 2.0,
-				range_tiles = 6 
+                projectile_speed = 100,
+				shots_per_second = 0.5,
+				range_tiles = 2 
 			}
 	},
 

@@ -89,7 +89,7 @@ Level = {
 				},
 				attributes =
 				{
-					attack = 1500,
+					attack = 50,
 					defense = 10000,
 					wisdom = 100,
 					vitality = 1000,
@@ -139,21 +139,23 @@ Level = {
 				},
 				equipment =
 				{
-					slots = 
+					slots =
 					{
-						{ name = "Weapon",  accepts = "weapon" },
-						{ name = "Helm",    accepts = "helm" },
-						{ name = "Chest",   accepts = "chest" },
-						{ name = "Legs",    accepts = "legs" },
-						{ name = "Feet",    accepts = "feet" },
-						{ name = "Ring",    accepts = "ring" },
-						{ name = "Amulet",  accepts = "amulet" },
-						{ name = "Trinket", accepts = "trinket" },
-						{ name = "Ability", accepts = "special_ability" },
+						{ name = "Helm",    accepts = "helm",            column = 0, row = 0 },
+						{ name = "Amulet",  accepts = "amulet",          column = 0, row = 1 },
+						{ name = "Chest",   accepts = "chest",           column = 0, row = 2 },
+						{ name = "Legs",    accepts = "legs",            column = 0, row = 3 },
+						{ name = "Feet",    accepts = "feet",            column = 0, row = 4 },
+
+						{ name = "Ring",    accepts = "ring",            column = 5, row = 0 },
+						{ name = "Trinket", accepts = "trinket",         column = 5, row = 1 },
+						{ name = "Ability", accepts = "special_ability", column = 3, row = 5 },
+
+						{ name = "Weapon",  accepts = "weapon",          column = 2, row = 5 },
 					},
 					equipped = 
 					{ 
-						Weapon = "iron_sword" 
+						Weapon = "iron_sword"
 					}
 				}
 			}

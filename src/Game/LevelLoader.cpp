@@ -27,6 +27,7 @@
 #include "../Inventory/InventoryRules.h"
 #include <sol/sol.hpp>
 #include <string>
+#include <algorithm>
 #include "../Logger/Logger.h"
 
 LevelLoader::LevelLoader()
@@ -489,7 +490,40 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 							Logger::Warn("equipment: slot name '" + name + "' is used twice, skipped");
 							continue;
 						}
-						equipment.slots.push_back({ name, accepts, "" });
+						
+						//optional position in the equipment window, in grid cells
+						int column = slot["column"].get_or(-1);
+						int row = slot["row"].get_or(-1);
+
+						if (column < 0 || row < 0) {
+							if (column != -1 || row != -1) {
+								Logger::Warn("equipment: slot '" + name + "' needs both column and row >= 0, placed automatically");
+							}
+							column = -1;
+							row = -1;
+						}
+						else if (equipment.FindSlotAt(column, row) != -1) {
+							Logger::Warn("equipment: slot '" + name + "' uses a cell another slot already has, placed automatically");
+							column = -1;
+							row = -1;
+						}
+						EquipmentSlot newSlot{ name, accepts, "" };
+						newSlot.column = column;
+						newSlot.row = row;
+						equipment.slots.push_back(newSlot);
+					}
+
+					//slots without a Lua position go in a row under the lowest placed one, in Lua order
+					int lowestRow = -1;
+					for (const auto& s : equipment.slots) {
+						lowestRow = std::max(lowestRow, s.row);
+					}
+					int nextColumn = 0;
+					for (auto& slot : equipment.slots) {
+						if (slot.column < 0) {
+							slot.column = nextColumn++;
+							slot.row = lowestRow + 1;
+						}
 					}
 				}
 				

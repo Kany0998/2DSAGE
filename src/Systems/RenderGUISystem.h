@@ -13,6 +13,7 @@
 #include "../Components/ProgressionComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Components/BackpackComponent.h"
+#include "../Components/EquipmentComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Game/Controls.h"
@@ -20,6 +21,7 @@
 #include "../Events/KeyPressedEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
+#include "../Inventory/InventoryRules.h"
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <cmath>
@@ -201,14 +203,11 @@ class RenderGUISystem
 							// The stat order comes from the SkillStat enum, so the rows, the labels and the
 							// reset below all index the same way. The labels only have to follow that order.
 
-							const char* labels[Skill_Count] = {
-								"Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity"
-							};
 
 
 							for (int i = 0; i < Skill_Count; i++)
 							{
-								StatRow(labels[i], attributes, static_cast<SkillStat>(i), progression);
+								StatRow(StatLabels[i], attributes, static_cast<SkillStat>(i), progression);
 							}
 
 							ImGui::Separator();
@@ -242,7 +241,53 @@ class RenderGUISystem
 					}
 
 					if (showEquipment) {
-						if (ImGui::Begin("Equipment", &showEquipment)) { ImGui::Text("slots come in step 9"); }
+						if (ImGui::Begin("Equipment", &showEquipment, ImGuiWindowFlags_AlwaysAutoResize)) {
+							if (player.HasComponent<EquipmentComponent>() && player.HasComponent<BackpackComponent>() && player.HasComponent<AttributesComponent>()) {
+								auto& equipment = player.GetComponent<EquipmentComponent>();
+								auto& backpack = player.GetComponent<BackpackComponent>();
+								auto& attributes = player.GetComponent<AttributesComponent>();
+
+								//paper doll: every placed slot sits on its Lua grid cell, measured from here
+								const ImVec2 origin = ImGui::GetCursorPos();
+								const float cell = inventoryUI.SlotPixels() + 6.0f;		//6px gap
+								int lowestRow = -1;
+
+								for (int i = 0; i < static_cast<int>(equipment.slots.size()); i++) {
+									const EquipmentSlot& slot = equipment.slots[i];
+									const ItemDefinition* item = slot.itemId.empty() ? nullptr : itemDatabase.Find(slot.itemId);
+
+									ImGui::PushID(i);
+									ImGui::SetCursorPos(ImVec2(origin.x + slot.column * cell, origin.y + slot.row * cell));
+									DrawItemIcon(item);
+
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										std::string message;
+										if (!InventoryRules::Unequip(i, backpack, equipment, attributes, itemDatabase, message)) {
+											ShowInventoryMessage(message);
+										}
+									}
+
+									if (ImGui::IsItemHovered()) {
+										DrawSlotTooltip(slot, item);
+									}
+
+									ImGui::PopID();
+
+									lowestRow = std::max(lowestRow, slot.row);
+								}
+								//continue under the paper doll: the message, then the stats
+								ImGui::SetCursorPos(ImVec2(origin.x, origin.y + (lowestRow + 1) * cell));
+
+								if (!inventoryMessage.empty() && SDL_GetTicks() - inventoryMessageTime < 3000) {
+									ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", inventoryMessage.c_str());
+								}
+
+								ImGui::Separator();
+								for (int i = 0; i < Skill_Count; i++) {
+									StatText(static_cast<SkillStat>(i), attributes);
+								}
+							}
+						}
 						ImGui::End();
 					}
 					if (showBackpack) {
@@ -277,19 +322,14 @@ class RenderGUISystem
 			ImGui::PushID(label);
 
 			int& spent = progression.spentPoints[stat];
-			const int effective = attributes.Effective(stat);
-			const int bonus = attributes.bonus[stat];
-
 			const bool canSpend = progression.unspentSkillPoints > 0;
 
 			// ImGui 1.79 has no BeginDisabled(), so the row is dimmed by hand
 			if (!canSpend) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
 
-			ImGui::Text("%-10s %6d (+%d)", label, effective, spent);
-			if (bonus != 0) {
-				ImGui::SameLine();
-				ImGui::Text("[base %d, item %+d]", attributes.base[stat], bonus);
-			}
+			StatText(stat, attributes);
+			ImGui::SameLine();
+			ImGui::Text("(+%d)", spent);
 			ImGui::SameLine();
 
 			// Button() is called unconditionally and the result filtered afterwards.
@@ -305,6 +345,18 @@ class RenderGUISystem
 			if (!canSpend) { ImGui::PopStyleVar(); }
 
 			ImGui::PopID();
+		}
+
+		//One stat as text: name, effective value, and the base/item split when an item adds to it.
+		//Shared by the character sheet (which adds spending) and the equipment window (read-only).
+		void StatText(SkillStat stat, const AttributesComponent& attributes)
+		{
+			const int bonus = attributes.bonus[stat];
+			ImGui::Text("%-10s %6d", StatLabels[stat], attributes.Effective(stat));
+			if (bonus != 0) {
+				ImGui::SameLine();
+				ImGui::Text("[base %d, item %+d]", attributes.base[stat], bonus);
+			}
 		}
 
 
@@ -351,6 +403,42 @@ class RenderGUISystem
 			ImGui::Dummy(ImVec2(slot, slot));
 		}
 
+		//Shows a refusal from Equip/Unequip in the inventory windows for a few seconds
+		void ShowInventoryMessage(const std::string& message){
+			inventoryMessage = message;
+			inventoryMessageTime = SDL_GetTicks();
+		}
+
+		//Hover tooltip for an equipment slot: the slot's name, then the item's details, or that it is empty
+		void DrawSlotTooltip(const EquipmentSlot& slot, const ItemDefinition* item) {
+			ImGui::BeginTooltip();
+			ImGui::TextDisabled("%s", slot.name.c_str());	//slot name, greyed out on top
+
+			if (item == nullptr) {
+				ImGui::Text(slot.accepts == "special_ability" ? "No special ability" : "Empty");
+			}
+
+			else {
+				ImGui::Text("%s", item->name.c_str());
+
+				if (item->isWeapon) {
+					ImGui::Text("Damage %d-%d", item->weapon.minDamage, item->weapon.maxDamage);
+					ImGui::Text("%g shots/s", item->weapon.shotPerSecond);
+					ImGui::Text("range %g", item->weapon.rangeTiles);
+				}
+
+				for (int i = 0; i < Skill_Count; i++) {
+					if (item->bonus[i] != 0) {
+						ImGui::Text("%+d %s", item->bonus[i], StatLabels[i]);
+					}
+				}
+				if (!item->ability.empty()) {
+					ImGui::Text("Ability: %s", item->ability.c_str());
+				}
+			}
+			ImGui::EndTooltip();
+		}
+
 		const Controls& controls;
 		bool showEquipment = false;
 		bool showBackpack = false;
@@ -358,6 +446,11 @@ class RenderGUISystem
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
 		AssetStore& assetStore;
+
+
+		std::string inventoryMessage;        //last refusal from an inventory rule, e.g. "Backpack is full"
+		Uint32 inventoryMessageTime = 0;     //when it was shown, in SDL ticks
+		static constexpr const char* StatLabels[Skill_Count] = { "Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity" };
 };
 
 #endif // !RENDERGUISYSTEM_H
