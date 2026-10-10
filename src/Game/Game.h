@@ -7,6 +7,7 @@
 #include "../TileMap/TileMap.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
+#include "../Inventory/InventoryUISettings.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -65,6 +66,7 @@ class Game
 		TileMap tileMap;
 		ItemDatabase itemDatabase;
 		Controls controls;
+		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
 		std::vector<int> debugPath;
 

@@ -12,17 +12,25 @@
 #include "../Components/HealthComponent.h"
 #include "../Components/ProgressionComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/BackpackComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Game/Controls.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/KeyPressedEvent.h"
+#include "../Inventory/InventoryUISettings.h"
+#include "../Inventory/ItemDatabase.h"
+#include "../AssetStore/AssetStore.h"
+#include <algorithm>
+#include <cmath>
 
 
 class RenderGUISystem
 {
 	public:
-		RenderGUISystem(const Controls& controls) : controls(controls) {}
+		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
+			const ItemDatabase& itemDatabase, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), assetStore(assetStore){}
 
 		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
@@ -238,7 +246,15 @@ class RenderGUISystem
 						ImGui::End();
 					}
 					if (showBackpack) {
-						if (ImGui::Begin("Backpack", &showBackpack)) { ImGui::Text("grid comes in step 11"); }
+						if (ImGui::Begin("Backpack", &showBackpack)) { 
+							if (player.HasComponent<BackpackComponent>()) {
+								const auto& backpack = player.GetComponent<BackpackComponent>();
+								for (int i = 0; i < static_cast<int>(backpack.items.size()); i++) {
+									if (i > 0) ImGui::SameLine();
+									DrawItemIcon(itemDatabase.Find(backpack.items[i]));
+								}
+							}
+						}
 						ImGui::End();
 					}
 
@@ -291,10 +307,57 @@ class RenderGUISystem
 			ImGui::PopID();
 		}
 
+
+		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
+		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
+		void DrawItemIcon(const ItemDefinition* item){
+			
+			//layout position where ImGui places the next widget (not the mouse)
+			const float slot = inventoryUI.SlotPixels();
+			const ImVec2 corner = ImGui::GetCursorScreenPos();
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			
+			//frame: dark background, lighter border
+			const ImVec2 farCorner(corner.x + slot, corner.y + slot);
+			drawList->AddRectFilled(corner, farCorner, IM_COL32(30, 30, 30, 255));
+			drawList->AddRect(corner, farCorner, IM_COL32(90, 90, 90, 255));
+			
+			//icon: fitted without stretching, whole-number scale when it fits, centred
+			SDL_Texture* texture = nullptr;
+			if (item != nullptr && !item->icon.empty()) {
+				texture = assetStore.GetTexture(item->icon);
+			}
+
+			if (texture != nullptr) {
+				int width = 0;
+				int height = 0;
+				SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+
+				if (width > 0 && height > 0) {
+					float fit = std::min(slot / width, slot / height);
+
+					if (fit >= 1.0f) {
+						fit = std::floor(fit);
+					}
+					const float drawWidth = width * fit;
+					const float drawHeigth = height * fit;
+
+					const ImVec2 iconMin(corner.x + (slot - drawWidth) / 2.0f, corner.y + (slot - drawHeigth) / 2.0f);
+					const ImVec2 iconMax(iconMin.x + drawWidth, iconMin.y + drawHeigth);
+					drawList->AddImage(texture, iconMin, iconMax);
+				}
+			}
+			//reserve the slot's space: the next widget goes after it, and hover/click cover the whole slot
+			ImGui::Dummy(ImVec2(slot, slot));
+		}
+
 		const Controls& controls;
 		bool showEquipment = false;
 		bool showBackpack = false;
 		bool showCharacter = false;
+		const InventoryUISettings& inventoryUI;
+		const ItemDatabase& itemDatabase;
+		AssetStore& assetStore;
 };
 
 #endif // !RENDERGUISYSTEM_H

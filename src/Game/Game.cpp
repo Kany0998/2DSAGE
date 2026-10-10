@@ -211,7 +211,7 @@ void Game::Setup()
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>(controls);
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 	progressionSystem = std::make_unique<ProgressionSystem>();
@@ -228,7 +228,7 @@ void Game::Setup()
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, renderer, 1);
 	controls = Controls::Load(lua);
-	
+	inventoryUI = InventoryUISettings::Load(lua);
 }
 
 void Game::Update()
