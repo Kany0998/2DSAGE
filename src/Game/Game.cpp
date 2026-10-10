@@ -26,10 +26,7 @@
 #include "../Systems/RenderTileMapSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
-#include "../Components/BackpackComponent.h"
-#include "../Components/EquipmentComponent.h"
 #include "../Components/AttributesComponent.h"
-#include "../Inventory/InventoryRules.h"
 #include "../Events/MouseButtonPressedEvent.h"
 #include "../TileMap/MovementType.h"
 #include "../Pathfinding/Pathfinder.h"
@@ -146,31 +143,6 @@ void Game::ProccessInput()
 			if (sdlEvent.key.keysym.sym == SDLK_x)
 			{
 				isDebug = !isDebug;
-			}
-			//TEMP step 4 test keys, remove in step 9: 1 = equip first backpack item, 2 = unequip first filled slot
-			if ((sdlEvent.key.keysym.sym == SDLK_1 || sdlEvent.key.keysym.sym == SDLK_2)
-				&& registry->HasEntityWithTag("player"))
-			{
-				Entity player = registry->GetEntityByTag("player");
-				auto& backpack = player.GetComponent<BackpackComponent>();
-				auto& equipment = player.GetComponent<EquipmentComponent>();
-				auto& attributes = player.GetComponent<AttributesComponent>();
-
-				std::string message;
-
-				int filled = -1;
-				for (int i = 0; i < static_cast<int>(equipment.slots.size()); i++) {
-					if (!equipment.slots[i].itemId.empty()) { filled = i; break; }
-				}
-
-				bool ok = (sdlEvent.key.keysym.sym == SDLK_1)
-					? InventoryRules::Equip(0, backpack, equipment, attributes, itemDatabase, message)
-					: InventoryRules::Unequip(filled, backpack, equipment, attributes, itemDatabase, message);
-
-				if (ok) Logger::Log("step 4 test: done, backpack has " + std::to_string(backpack.items.size()) + " items");
-				else    Logger::Warn("step 4 test: " + message);
-
-
 			}
 
 			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);

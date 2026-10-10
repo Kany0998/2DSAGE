@@ -33,6 +33,11 @@ bool InventoryRules::Equip(int backpackIndex, BackpackComponent& backpack, Equip
         return false;
     }
 
+    if (backpack.items[backpackIndex].empty()) {
+        outMessage = "No such item";
+        return false;
+    }
+
     const std::string itemId = backpack.items[backpackIndex];
     const ItemDefinition* definition = items.Find(itemId);
     if (definition == nullptr) {
@@ -50,8 +55,8 @@ bool InventoryRules::Equip(int backpackIndex, BackpackComponent& backpack, Equip
     equipment.slots[slotIndex].itemId = itemId;
 
     if (oldId.empty()) {
-        // slot was free: the item leaves the backpack
-        backpack.items.erase(backpack.items.begin() + backpackIndex);
+        //slot was free: the item leaves its square, which stays empty
+        backpack.items[backpackIndex].clear();
     }
     else {
         // swap: the old item takes the new one's place in the backpack
@@ -79,7 +84,7 @@ bool InventoryRules::Unequip(int slotIndex, BackpackComponent& backpack, Equipme
         return false;
     }
 
-    backpack.items.push_back(equipment.slots[slotIndex].itemId);
+    backpack.Add(equipment.slots[slotIndex].itemId);    //into the first free square
     equipment.slots[slotIndex].itemId.clear();
 
     RebuildBonuses(attributes, equipment, items);

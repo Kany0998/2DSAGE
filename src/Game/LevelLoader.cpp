@@ -454,7 +454,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 							continue;
 						}
 
-						backpack.items.push_back(id);
+						backpack.Add(id);
 
 					}
 				}

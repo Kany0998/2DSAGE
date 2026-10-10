@@ -278,9 +278,7 @@ class RenderGUISystem
 								//continue under the paper doll: the message, then the stats
 								ImGui::SetCursorPos(ImVec2(origin.x, origin.y + (lowestRow + 1) * cell));
 
-								if (!inventoryMessage.empty() && SDL_GetTicks() - inventoryMessageTime < 3000) {
-									ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", inventoryMessage.c_str());
-								}
+								DrawInventoryMessage();
 
 								ImGui::Separator();
 								for (int i = 0; i < Skill_Count; i++) {
@@ -291,16 +289,65 @@ class RenderGUISystem
 						ImGui::End();
 					}
 					if (showBackpack) {
-						if (ImGui::Begin("Backpack", &showBackpack)) { 
-							if (player.HasComponent<BackpackComponent>()) {
-								const auto& backpack = player.GetComponent<BackpackComponent>();
-								for (int i = 0; i < static_cast<int>(backpack.items.size()); i++) {
-									if (i > 0) ImGui::SameLine();
-									DrawItemIcon(itemDatabase.Find(backpack.items[i]));
-								}
+						
+						if (player.HasComponent<BackpackComponent>() &&
+							player.HasComponent<EquipmentComponent>() &&
+							player.HasComponent<AttributesComponent>()) {
+
+							auto& backpack = player.GetComponent<BackpackComponent>();
+							auto& equipment = player.GetComponent<EquipmentComponent>();
+							auto& attributes = player.GetComponent<AttributesComponent>();
+							std::string fillText;
+
+							if (backpack.capacity <= 0) {
+								fillText = std::to_string(backpack.Count()) + " items";
 							}
+
+							else {
+								fillText = std::to_string(backpack.Count()) + " / " + std::to_string(backpack.capacity);
+							}
+
+							const std::string title = "Backpack (" + fillText + ")###Backpack";
+
+							if (ImGui::Begin(title.c_str(), &showBackpack, ImGuiWindowFlags_AlwaysAutoResize)) {
+								
+								const int columns = inventoryUI.backpackColumns;
+								const int itemCount = static_cast<int>(backpack.items.size());
+
+								//with a limit every square shows; unlimited shows the items plus a free row
+								const int slotCount = backpack.capacity > 0 ? backpack.capacity : (itemCount / columns + 1) * columns;
+
+								for (int i = 0; i < slotCount; i++) {
+									if (i % columns != 0) {
+										ImGui::SameLine();
+									}
+
+									const ItemDefinition* item = (i < static_cast<int>(backpack.items.size()) && !backpack.items[i].empty()) ? itemDatabase.Find(backpack.items[i]) : nullptr;
+
+									ImGui::PushID(i);
+									DrawItemIcon(item);
+
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										std::string message;
+										if (!InventoryRules::Equip(i, backpack, equipment, attributes, itemDatabase, message)) {
+											ShowInventoryMessage(message);
+										}
+									}
+
+									if (item != nullptr && ImGui::IsItemHovered()) {
+										ImGui::BeginTooltip();
+										DrawItemDetails(*item);
+										ImGui::TextDisabled("Right-click to equip (%s)", item->tag.c_str());
+										ImGui::EndTooltip();
+									}
+
+									ImGui::PopID();
+								}
+								DrawInventoryMessage();
+							}
+							ImGui::End();
 						}
-						ImGui::End();
+						
 					}
 
 				}
@@ -409,6 +456,13 @@ class RenderGUISystem
 			inventoryMessageTime = SDL_GetTicks();
 		}
 
+		//The last refusal from an inventory rule, shown for 3 seconds
+		void DrawInventoryMessage() {
+			if (!inventoryMessage.empty() && SDL_GetTicks() - inventoryMessageTime < 3000) {
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", inventoryMessage.c_str());
+			}
+		}
+
 		//Hover tooltip for an equipment slot: the slot's name, then the item's details, or that it is empty
 		void DrawSlotTooltip(const EquipmentSlot& slot, const ItemDefinition* item) {
 			ImGui::BeginTooltip();
@@ -419,24 +473,28 @@ class RenderGUISystem
 			}
 
 			else {
-				ImGui::Text("%s", item->name.c_str());
-
-				if (item->isWeapon) {
-					ImGui::Text("Damage %d-%d", item->weapon.minDamage, item->weapon.maxDamage);
-					ImGui::Text("%g shots/s", item->weapon.shotPerSecond);
-					ImGui::Text("range %g", item->weapon.rangeTiles);
-				}
-
-				for (int i = 0; i < Skill_Count; i++) {
-					if (item->bonus[i] != 0) {
-						ImGui::Text("%+d %s", item->bonus[i], StatLabels[i]);
-					}
-				}
-				if (!item->ability.empty()) {
-					ImGui::Text("Ability: %s", item->ability.c_str());
-				}
+				DrawItemDetails(*item);
 			}
 			ImGui::EndTooltip();
+		}
+
+		//An item's details: name, weapon numbers, bonuses, ability. Used inside both tooltips.
+		void DrawItemDetails(const ItemDefinition& item) {
+			ImGui::Text("%s", item.name.c_str());
+
+			if (item.isWeapon) {
+				ImGui::Text("Damage %d-%d", item.weapon.minDamage, item.weapon.maxDamage);
+				ImGui::Text("%g shots/s", item.weapon.shotPerSecond);
+				ImGui::Text("range %g tiles", item.weapon.rangeTiles);
+			}
+			for (int i = 0; i < Skill_Count; i++) {
+				if (item.bonus[i] != 0) {
+					ImGui::Text("%+d %s", item.bonus[i], StatLabels[i]);
+				}
+			}
+			if (!item.ability.empty()) {
+				ImGui::Text("Ability: %s", item.ability.c_str());
+			}
 		}
 
 		const Controls& controls;
