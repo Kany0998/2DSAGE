@@ -131,7 +131,7 @@ Level = {
 				},
 				backpack = 
 				{
-					capacity = 30,			--0 means unlimited
+					capacity = 0,			--0 means unlimited
 					items = 
 					{
 						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war"
@@ -276,7 +276,8 @@ Level = {
 					repeat_frequency = 3,
 					projectile_damage = 49,
 					aim_at_player = true,
-					friendly = false
+					friendly = false,
+					projectile_texture = "black-shield-shot"
 				},
 				movement_type =
 				{

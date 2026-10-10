@@ -10,8 +10,8 @@ Items = {
 				min_damage = 30,
 				max_damage = 70,
 				projectile_texture = "iron-sword-bullet",
-                projectile_speed = 100,
-				shots_per_second = 0.5,
+                projectile_speed = 500,
+				shots_per_second = 2.0,
 				range_tiles = 2 
 			}
 	},
@@ -39,7 +39,7 @@ Items = {
 		name = "Black Helm",
 		tag = "helm",
 		icon = "black-helm",
-        bonuses = { dexterity = 40 } 
+        bonuses = { dexterity = 400 } 
 	},
 
 	black_chest = 
