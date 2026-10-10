@@ -42,7 +42,11 @@ void AssetStore::AddTexture(SDL_Renderer* renderer , const std::string& assetId,
 
 SDL_Texture* AssetStore::GetTexture(const std::string& assetId)
 {
-	return textures[assetId];
+	auto it = textures.find(assetId);
+	if (it == textures.end()) {
+		return nullptr;
+	}
+	return it->second;
 }
 
 void AssetStore::AddFont(const std::string& assetId, const std::string& filePath, int fontSize)

@@ -5,8 +5,11 @@
 #include "../AssetStore/AssetStore.h"
 #include "../EventBus/EventBus.h"
 #include "../TileMap/TileMap.h"
+#include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
-#include "sol/sol.hpp"
+#include "../Inventory/InventoryUISettings.h"
+#include "Controls.h"
+#include <sol/sol.hpp>
 
 const int FPS = 60;
 const int frameDelay = 1000 / FPS;
@@ -35,6 +38,7 @@ class SpecialAbilitySystem;
 class ProgressionSystem;
 class RenderExperienceBarSystem;
 class AISystem;
+class RenderTileMapSystem;
 
 class Game
 {
@@ -49,12 +53,20 @@ class Game
 
 		sol::state lua;
 
+		//Render-time measurement (debug mode only): summed over a batch of frames, then averaged
+		double renderTimeSumMs = 0.0;
+		int renderTimeFrames = 0;
+		static constexpr int renderTimeBatch = 300;	//about 5 s at 60 FPS
+
 		//entt-backed registry (component storage/sparse sets); see ECS.h
 		std::unique_ptr<Registry> registry;
 
 		std::unique_ptr<AssetStore> assetStore;
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
+		ItemDatabase itemDatabase;
+		Controls controls;
+		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
 		std::vector<int> debugPath;
 
@@ -82,6 +94,7 @@ class Game
 		std::unique_ptr<ProgressionSystem> progressionSystem;
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
 		std::unique_ptr<AISystem> aiSystem;
+		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
 
 
 

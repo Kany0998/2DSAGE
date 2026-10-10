@@ -13,20 +13,7 @@ end
 Level = {
 	--Table of assets
 
-	assets =
-	{
-		[0] =
-		{type = "texture", id = "tilemap-texture-day", file = "./assets/tilemaps/jungle.png"},
-		{type = "texture", id = "tilemap-texture-night", file = "./assets/tilemaps/jungle-night.png"},
-		{type = "texture" , id = "chopper-texture", file="./assets/images/chopper-spritesheet.png"},
-		{type = "texture" , id = "takeoff-texture", file="./assets/images/landing-base.png"},
-		{type = "texture" , id = "tank-texture", file="./assets/images/tank-panther-right.png"},
-		{type = "texture" , id = "truck-texture", file="./assets/images/truck-ford-right.png"},
-		{type = "texture" , id = "tree-texture", file="./assets/images/tree.png"},
-		{type = "texture" , id = "radar-texture", file="./assets/images/radar.png"},
-		{type = "texture" , id = "bullet-texture", file="./assets/images/bullet.png"},
-		{type = "font" , id = "charriot-font", file="./assets/fonts/charriot.ttf", font_size = 10}
-	},
+	assets = dofile("./assets/scripts/assets.lua"),
 
 	--map config values
 
@@ -38,11 +25,10 @@ Level = {
 		mapNumCols = 25,
 		tileSize = 32,
 		tileScale = 4.0,
-		layer = 0,
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = true, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
@@ -103,7 +89,7 @@ Level = {
 				},
 				attributes =
 				{
-					attack = 1500,
+					attack = 50,
 					defense = 10000,
 					wisdom = 100,
 					vitality = 1000,
@@ -142,6 +128,35 @@ Level = {
 				camera_follow =
 				{
 					follow = true
+				},
+				backpack = 
+				{
+					capacity = 0,			--0 means unlimited
+					items = 
+					{
+						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war"
+					}
+				},
+				equipment =
+				{
+					slots =
+					{
+						{ name = "Helm",    accepts = "helm",            column = 0, row = 0 },
+						{ name = "Amulet",  accepts = "amulet",          column = 0, row = 1 },
+						{ name = "Chest",   accepts = "chest",           column = 0, row = 2 },
+						{ name = "Legs",    accepts = "legs",            column = 0, row = 3 },
+						{ name = "Feet",    accepts = "feet",            column = 0, row = 4 },
+
+						{ name = "Ring",    accepts = "ring",            column = 5, row = 0 },
+						{ name = "Trinket", accepts = "trinket",         column = 5, row = 1 },
+						{ name = "Ability", accepts = "special_ability", column = 3, row = 5 },
+
+						{ name = "Weapon",  accepts = "weapon",          column = 2, row = 5 },
+					},
+					equipped = 
+					{ 
+						Weapon = "iron_sword"
+					}
 				}
 			}
 		},
@@ -261,7 +276,8 @@ Level = {
 					repeat_frequency = 3,
 					projectile_damage = 49,
 					aim_at_player = true,
-					friendly = false
+					friendly = false,
+					projectile_texture = "black-shield-shot"
 				},
 				movement_type =
 				{
@@ -701,6 +717,21 @@ Level = {
 		}
 	}
 }
+
+Controls = 
+{ 
+	equipment = "I",
+	backpack = "B", 
+	character = "C"
+}
+
+InventoryUI =
+{
+	icon_size = 24,
+	icon_scale = 2,
+	backpack_columns = 8
+}
+
 
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale

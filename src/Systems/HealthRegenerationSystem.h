@@ -18,7 +18,7 @@ public:
 			const auto& attributes = entity.GetComponent<AttributesComponent>();
 
 			if (health.healthPoints < health.maxHealthPoints) {
-				health.healthRegenAccumulator += (1 + attributes.vitalityPower / 10.0f) * deltaTime;
+				health.healthRegenAccumulator += (1 + attributes.Effective(Skill_Vitality) / 10.0f) * deltaTime;
 			}
 			while (health.healthRegenAccumulator >= 1.0f) {
 				health.healthRegenAccumulator -= 1.0f;

@@ -18,7 +18,7 @@ public:
 			const auto& attributes = entity.GetComponent<AttributesComponent>();
 
 			if (mana.manaPoints < mana.maxManaPoints) {
-				mana.manaRegenAccumulator += (1 + attributes.wisdomPower / 10.0f) * deltaTime;
+				mana.manaRegenAccumulator += (1 + attributes.Effective(Skill_Wisdom) / 10.0f) * deltaTime;
 			}
 			while (mana.manaRegenAccumulator >= 1.0f) {
 				mana.manaRegenAccumulator -= 1.0f;

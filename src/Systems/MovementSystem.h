@@ -42,7 +42,7 @@ class MovementSystem
 					//Kept in float on purpose: written as an int division, every speedPower
 					//from 1 to 49 would truncate to 0 and the attribute would do nothing at
 					//all, while 50 would jump straight to double speed.
-					speedMultiplier += attribute.speedPower / SpeedPowerPerStep;
+					speedMultiplier += attribute.Effective(Skill_Speed) / SpeedPowerPerStep;
 
 					//Floor rather than clamping the attribute itself - a movement system has
 					//no business rewriting an entity's stats, and without this a speedPower

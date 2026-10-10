@@ -1,19 +1,7 @@
 #ifndef  PROGRESSIONCOMPONENT_H
 #define  PROGRESSIONCOMPONENT_H
 
-// The six attributes skill points can be spent on, in the order the character sheet
-// lists them. Skill_Count doubles as the array size, so adding a stat here is the
-// only edit needed.
-enum SkillStat
-{
-	Skill_Attack,
-	Skill_Defense,
-	Skill_Wisdom,
-	Skill_Vitality,
-	Skill_Speed,
-	Skill_Dexterity,
-	Skill_Count
-};
+#include "AttributesComponent.h"
 
 struct ProgressionComponent
 {

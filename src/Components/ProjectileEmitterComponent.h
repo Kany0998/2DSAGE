@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 #include <SDL.h>
+#include <string>
 
 struct ProjectileEmitterComponent
 {
@@ -14,8 +15,10 @@ struct ProjectileEmitterComponent
 	bool isFriendly;			//true if fired by player false if fired by enemy
 	bool aimAtPlayer;
 	double attackRange;			//Stored In pixels convent from tiles
+	std::string projectileTexture;
 
-	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int projectileDamage = 10, bool aimAtPlayer = false, double attackRange = 0.0, bool isFriendly = false)
+	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int projectileDamage = 10,
+		bool aimAtPlayer = false, double attackRange = 0.0, bool isFriendly = false, std::string projectileTexture = "bullet-texture")
 	{
 		this->projectileVelocity = projectileVelocity;
 		this->repeatRate = repeatRate;
@@ -24,6 +27,7 @@ struct ProjectileEmitterComponent
 		this->aimAtPlayer = aimAtPlayer;
 		this->attackRange = attackRange;
 		this->isFriendly = isFriendly;
+		this->projectileTexture = projectileTexture;
 		this->lastEmittedTime = SDL_GetTicks();
 	}
 };

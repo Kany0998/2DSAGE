@@ -12,14 +12,42 @@
 #include "../Components/HealthComponent.h"
 #include "../Components/ProgressionComponent.h"
 #include "../Components/AttributesComponent.h"
+#include "../Components/BackpackComponent.h"
+#include "../Components/EquipmentComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
+#include "../Game/Controls.h"
+#include "../EventBus/EventBus.h"
+#include "../Events/KeyPressedEvent.h"
+#include "../Inventory/InventoryUISettings.h"
+#include "../Inventory/ItemDatabase.h"
+#include "../Inventory/InventoryRules.h"
+#include "../AssetStore/AssetStore.h"
+#include <algorithm>
+#include <cmath>
 
 
 class RenderGUISystem
 {
 	public:
-		RenderGUISystem() = default;
+		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
+			const ItemDatabase& itemDatabase, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), assetStore(assetStore){}
+
+		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		{
+			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &RenderGUISystem::OnKeyPressed);
+		}
+
+		void OnKeyPressed(KeyPressedEvent& event)
+		{
+			if (event.isRepeat) return;                          //holding a key must not flicker the window
+			if (ImGui::GetIO().WantCaptureKeyboard) return;      //typing into an ImGui field is not a toggle
+
+			if (event.symbol == controls.equipment) showEquipment = !showEquipment;
+			if (event.symbol == controls.backpack)  showBackpack = !showBackpack;
+			if (event.symbol == controls.character) showCharacter = !showCharacter;
+		}
 
 		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
@@ -162,63 +190,166 @@ class RenderGUISystem
 					auto& progression = player.GetComponent<ProgressionComponent>();
 					auto& attributes = player.GetComponent<AttributesComponent>();
 
-					ImGui::SetNextWindowPos(ImVec2(10, 60), ImGuiCond_FirstUseEver);
+					if (showCharacter) {
+						ImGui::SetNextWindowPos(ImVec2(10, 60), ImGuiCond_FirstUseEver);
 
-					if (ImGui::Begin("Character")) {
-						ImGui::Text("Level: %d", progression.currentLevel);
-						ImGui::Text("%d / %d exp", progression.currentExperience, progression.experienceToNextLevel);
-						ImGui::Text("Skill points: %d", progression.unspentSkillPoints);
+						if (ImGui::Begin("Character", &showCharacter)) {
+							ImGui::Text("Level: %d", progression.currentLevel);
+							ImGui::Text("%d / %d exp", progression.currentExperience, progression.experienceToNextLevel);
+							ImGui::Text("Skill points: %d", progression.unspentSkillPoints);
 
-						ImGui::Separator();
+							ImGui::Separator();
 
-						// The stat order is declared once, here, and reused by both the rows
-						// and the reset below. Two hand-written lists would only have to
-						// agree with each other, and would silently refund the wrong stat
-						// the day someone reordered one of them.
-						int* stats[Skill_Count] = {
-							&attributes.attackPower,
-							&attributes.defensePower,
-							&attributes.wisdomPower,
-							&attributes.vitalityPower,
-							&attributes.speedPower,
-							&attributes.dexterityPower
-						};
-						const char* labels[Skill_Count] = {
-							"Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity"
-						};
+							// The stat order comes from the SkillStat enum, so the rows, the labels and the
+							// reset below all index the same way. The labels only have to follow that order.
 
-						for (int i = 0; i < Skill_Count; i++)
-						{
-							StatRow(labels[i], *stats[i], progression.spentPoints[i], progression);
-						}
 
-						ImGui::Separator();
 
-						int totalSpent = 0;
-						for (int i = 0; i < Skill_Count; i++)
-						{
-							totalSpent += progression.spentPoints[i];
-						}
-
-						const bool canReset = totalSpent > 0;
-						if (!canReset) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
-
-						if (ImGui::Button("Reset points") && canReset)
-						{
 							for (int i = 0; i < Skill_Count; i++)
 							{
-								*stats[i] -= progression.spentPoints[i];
-								progression.unspentSkillPoints += progression.spentPoints[i];
-								progression.spentPoints[i] = 0;
+								StatRow(StatLabels[i], attributes, static_cast<SkillStat>(i), progression);
+							}
+
+							ImGui::Separator();
+
+
+							int totalSpent = 0;
+							for (int i = 0; i < Skill_Count; i++)
+							{
+								totalSpent += progression.spentPoints[i];
+							}
+
+							const bool canReset = totalSpent > 0;
+							if (!canReset) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
+
+							if (ImGui::Button("Reset points") && canReset)
+							{
+								for (int i = 0; i < Skill_Count; i++)
+								{
+									attributes.base[i] -= progression.spentPoints[i];
+									progression.unspentSkillPoints += progression.spentPoints[i];
+									progression.spentPoints[i] = 0;
+								}
+							}
+
+							if (!canReset) { ImGui::PopStyleVar(); }
+
+							ImGui::SameLine();
+							ImGui::Text("(%d invested)", totalSpent);
+						}
+						ImGui::End();
+					}
+
+					if (showEquipment) {
+						if (ImGui::Begin("Equipment", &showEquipment, ImGuiWindowFlags_AlwaysAutoResize)) {
+							if (player.HasComponent<EquipmentComponent>() && player.HasComponent<BackpackComponent>() && player.HasComponent<AttributesComponent>()) {
+								auto& equipment = player.GetComponent<EquipmentComponent>();
+								auto& backpack = player.GetComponent<BackpackComponent>();
+								auto& attributes = player.GetComponent<AttributesComponent>();
+
+								//paper doll: every placed slot sits on its Lua grid cell, measured from here
+								const ImVec2 origin = ImGui::GetCursorPos();
+								const float cell = inventoryUI.SlotPixels() + 6.0f;		//6px gap
+								int lowestRow = -1;
+
+								for (int i = 0; i < static_cast<int>(equipment.slots.size()); i++) {
+									const EquipmentSlot& slot = equipment.slots[i];
+									const ItemDefinition* item = slot.itemId.empty() ? nullptr : itemDatabase.Find(slot.itemId);
+
+									ImGui::PushID(i);
+									ImGui::SetCursorPos(ImVec2(origin.x + slot.column * cell, origin.y + slot.row * cell));
+									DrawItemIcon(item);
+
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										std::string message;
+										if (!InventoryRules::Unequip(i, backpack, equipment, attributes, itemDatabase, message)) {
+											ShowInventoryMessage(message);
+										}
+									}
+
+									if (ImGui::IsItemHovered()) {
+										DrawSlotTooltip(slot, item);
+									}
+
+									ImGui::PopID();
+
+									lowestRow = std::max(lowestRow, slot.row);
+								}
+								//continue under the paper doll: the message, then the stats
+								ImGui::SetCursorPos(ImVec2(origin.x, origin.y + (lowestRow + 1) * cell));
+
+								DrawInventoryMessage();
+
+								ImGui::Separator();
+								for (int i = 0; i < Skill_Count; i++) {
+									StatText(static_cast<SkillStat>(i), attributes);
+								}
 							}
 						}
-
-						if (!canReset) { ImGui::PopStyleVar(); }
-
-						ImGui::SameLine();
-						ImGui::Text("(%d invested)", totalSpent);
+						ImGui::End();
 					}
-					ImGui::End();
+					if (showBackpack) {
+						
+						if (player.HasComponent<BackpackComponent>() &&
+							player.HasComponent<EquipmentComponent>() &&
+							player.HasComponent<AttributesComponent>()) {
+
+							auto& backpack = player.GetComponent<BackpackComponent>();
+							auto& equipment = player.GetComponent<EquipmentComponent>();
+							auto& attributes = player.GetComponent<AttributesComponent>();
+							std::string fillText;
+
+							if (backpack.capacity <= 0) {
+								fillText = std::to_string(backpack.Count()) + " items";
+							}
+
+							else {
+								fillText = std::to_string(backpack.Count()) + " / " + std::to_string(backpack.capacity);
+							}
+
+							const std::string title = "Backpack (" + fillText + ")###Backpack";
+
+							if (ImGui::Begin(title.c_str(), &showBackpack, ImGuiWindowFlags_AlwaysAutoResize)) {
+								
+								const int columns = inventoryUI.backpackColumns;
+								const int itemCount = static_cast<int>(backpack.items.size());
+
+								//with a limit every square shows; unlimited shows the items plus a free row
+								const int slotCount = backpack.capacity > 0 ? backpack.capacity : (itemCount / columns + 1) * columns;
+
+								for (int i = 0; i < slotCount; i++) {
+									if (i % columns != 0) {
+										ImGui::SameLine();
+									}
+
+									const ItemDefinition* item = (i < static_cast<int>(backpack.items.size()) && !backpack.items[i].empty()) ? itemDatabase.Find(backpack.items[i]) : nullptr;
+
+									ImGui::PushID(i);
+									DrawItemIcon(item);
+
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										std::string message;
+										if (!InventoryRules::Equip(i, backpack, equipment, attributes, itemDatabase, message)) {
+											ShowInventoryMessage(message);
+										}
+									}
+
+									if (item != nullptr && ImGui::IsItemHovered()) {
+										ImGui::BeginTooltip();
+										DrawItemDetails(*item);
+										ImGui::TextDisabled("Right-click to equip (%s)", item->tag.c_str());
+										ImGui::EndTooltip();
+									}
+
+									ImGui::PopID();
+								}
+								DrawInventoryMessage();
+							}
+							ImGui::End();
+						}
+						
+					}
+
 				}
 			}
 
@@ -227,23 +358,25 @@ class RenderGUISystem
 		}
 
 	private:
-		// One row of the character sheet. Takes the stat by reference so a single
-		// helper serves all six - the row doesn't need to know which stat it edits,
-		// only where it lives. When per-class caps arrive, the spend rule goes here
-		// rather than into six separate button conditions.
-		void StatRow(const char* label, int& stat, int& spent, ProgressionComponent& progression)
+		// One row of the character sheet. Takes the attributes and which stat it shows, so it can
+		// display the effective value and spend points into the base only. When per-class caps
+		// arrive, the spend rule goes here rather than into six separate button conditions.
+		void StatRow(const char* label, AttributesComponent& attributes, SkillStat stat, ProgressionComponent& progression)
 		{
 			// All six buttons are labelled "+", and ImGui derives widget identity from
 			// the label - without a unique id pushed around each row they would all be
 			// the same widget. The stat names are distinct, so they serve as the id.
 			ImGui::PushID(label);
 
+			int& spent = progression.spentPoints[stat];
 			const bool canSpend = progression.unspentSkillPoints > 0;
 
 			// ImGui 1.79 has no BeginDisabled(), so the row is dimmed by hand
 			if (!canSpend) { ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f); }
 
-			ImGui::Text("%-10s %6d (+%d)", label, stat, spent);
+			StatText(stat, attributes);
+			ImGui::SameLine();
+			ImGui::Text("(+%d)", spent);
 			ImGui::SameLine();
 
 			// Button() is called unconditionally and the result filtered afterwards.
@@ -252,7 +385,7 @@ class RenderGUISystem
 			if (ImGui::Button("+") && canSpend)
 			{
 				progression.unspentSkillPoints--;
-				stat++;
+				attributes.base[stat]++;
 				spent++;
 			}
 
@@ -260,6 +393,122 @@ class RenderGUISystem
 
 			ImGui::PopID();
 		}
+
+		//One stat as text: name, effective value, and the base/item split when an item adds to it.
+		//Shared by the character sheet (which adds spending) and the equipment window (read-only).
+		void StatText(SkillStat stat, const AttributesComponent& attributes)
+		{
+			const int bonus = attributes.bonus[stat];
+			ImGui::Text("%-10s %6d", StatLabels[stat], attributes.Effective(stat));
+			if (bonus != 0) {
+				ImGui::SameLine();
+				ImGui::Text("[base %d, item %+d]", attributes.base[stat], bonus);
+			}
+		}
+
+
+		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
+		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
+		void DrawItemIcon(const ItemDefinition* item){
+			
+			//layout position where ImGui places the next widget (not the mouse)
+			const float slot = inventoryUI.SlotPixels();
+			const ImVec2 corner = ImGui::GetCursorScreenPos();
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			
+			//frame: dark background, lighter border
+			const ImVec2 farCorner(corner.x + slot, corner.y + slot);
+			drawList->AddRectFilled(corner, farCorner, IM_COL32(30, 30, 30, 255));
+			drawList->AddRect(corner, farCorner, IM_COL32(90, 90, 90, 255));
+			
+			//icon: fitted without stretching, whole-number scale when it fits, centred
+			SDL_Texture* texture = nullptr;
+			if (item != nullptr && !item->icon.empty()) {
+				texture = assetStore.GetTexture(item->icon);
+			}
+
+			if (texture != nullptr) {
+				int width = 0;
+				int height = 0;
+				SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+
+				if (width > 0 && height > 0) {
+					float fit = std::min(slot / width, slot / height);
+
+					if (fit >= 1.0f) {
+						fit = std::floor(fit);
+					}
+					const float drawWidth = width * fit;
+					const float drawHeigth = height * fit;
+
+					const ImVec2 iconMin(corner.x + (slot - drawWidth) / 2.0f, corner.y + (slot - drawHeigth) / 2.0f);
+					const ImVec2 iconMax(iconMin.x + drawWidth, iconMin.y + drawHeigth);
+					drawList->AddImage(texture, iconMin, iconMax);
+				}
+			}
+			//reserve the slot's space: the next widget goes after it, and hover/click cover the whole slot
+			ImGui::Dummy(ImVec2(slot, slot));
+		}
+
+		//Shows a refusal from Equip/Unequip in the inventory windows for a few seconds
+		void ShowInventoryMessage(const std::string& message){
+			inventoryMessage = message;
+			inventoryMessageTime = SDL_GetTicks();
+		}
+
+		//The last refusal from an inventory rule, shown for 3 seconds
+		void DrawInventoryMessage() {
+			if (!inventoryMessage.empty() && SDL_GetTicks() - inventoryMessageTime < 3000) {
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", inventoryMessage.c_str());
+			}
+		}
+
+		//Hover tooltip for an equipment slot: the slot's name, then the item's details, or that it is empty
+		void DrawSlotTooltip(const EquipmentSlot& slot, const ItemDefinition* item) {
+			ImGui::BeginTooltip();
+			ImGui::TextDisabled("%s", slot.name.c_str());	//slot name, greyed out on top
+
+			if (item == nullptr) {
+				ImGui::Text(slot.accepts == "special_ability" ? "No special ability" : "Empty");
+			}
+
+			else {
+				DrawItemDetails(*item);
+			}
+			ImGui::EndTooltip();
+		}
+
+		//An item's details: name, weapon numbers, bonuses, ability. Used inside both tooltips.
+		void DrawItemDetails(const ItemDefinition& item) {
+			ImGui::Text("%s", item.name.c_str());
+
+			if (item.isWeapon) {
+				ImGui::Text("Damage %d-%d", item.weapon.minDamage, item.weapon.maxDamage);
+				ImGui::Text("%g shots/s", item.weapon.shotPerSecond);
+				ImGui::Text("range %g tiles", item.weapon.rangeTiles);
+			}
+			for (int i = 0; i < Skill_Count; i++) {
+				if (item.bonus[i] != 0) {
+					ImGui::Text("%+d %s", item.bonus[i], StatLabels[i]);
+				}
+			}
+			if (!item.ability.empty()) {
+				ImGui::Text("Ability: %s", item.ability.c_str());
+			}
+		}
+
+		const Controls& controls;
+		bool showEquipment = false;
+		bool showBackpack = false;
+		bool showCharacter = false;
+		const InventoryUISettings& inventoryUI;
+		const ItemDatabase& itemDatabase;
+		AssetStore& assetStore;
+
+
+		std::string inventoryMessage;        //last refusal from an inventory rule, e.g. "Backpack is full"
+		Uint32 inventoryMessageTime = 0;     //when it was shown, in SDL ticks
+		static constexpr const char* StatLabels[Skill_Count] = { "Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity" };
 };
 
 #endif // !RENDERGUISYSTEM_H

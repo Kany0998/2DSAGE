@@ -19,11 +19,15 @@
 #include "../Components/MovementTypeComponent.h"
 #include "../Components/PushableComponent.h"
 #include "../Components/AIComponent.h"
+#include "../Components/BackpackComponent.h"
+#include "../Components/EquipmentComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
-#include <fstream>
+#include "../Inventory/ItemDatabase.h"
+#include "../Inventory/InventoryRules.h"
 #include <sol/sol.hpp>
 #include <string>
+#include <algorithm>
 #include "../Logger/Logger.h"
 
 LevelLoader::LevelLoader()
@@ -37,7 +41,7 @@ LevelLoader::~LevelLoader()
 }
 
 void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
-	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,SDL_Renderer* renderer,int levelNumber)
+	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,const ItemDatabase& itemDatabase,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
 	//check the syntax to see if it is valid
@@ -92,9 +96,10 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	int mapNumCols = map["mapNumCols"];
 	int tileSize = map["tileSize"];
 	double tileScale = map["tileScale"];
-	int layer = map["layer"];
 
 	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);
+	tileMap.setTextureAssetId(mapTextureAssetId);
+
 	//Read the tile properties from the lua file
 	sol::table tileProperties = map["tile_properties"];
 	int tileIndex = 0;
@@ -144,22 +149,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		tileMap.setFriction(tileId, friction);
 		tileIndex++;
 	}
-
 	
-
-	for (int y = 0; y < mapNumRows; y++)
-	{
-		for (int x = 0; x < mapNumCols; x++)
-		{
-			int tileId = tileMap.tileAt(x, y);
-			int srcRectX = (tileId % 10) * tileSize;
-			int srcRectY = (tileId / 10) * tileSize;
-
-			Entity tile = registry->CreateEntity();
-			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
-			tile.AddComponent<SpriteComponent>(mapTextureAssetId, tileSize, tileSize, layer, false, srcRectX, srcRectY);
-		}
-	}
 
 	Game::mapWidth = mapNumCols * tileSize * tileScale;
 	Game::mapHeight = mapNumRows * tileSize * tileScale;
@@ -358,7 +348,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_damage"].get_or(10)),
 					entity["components"]["projectile_emitter"]["aim_at_player"].get_or(false),
 					attack_range,
-					entity["components"]["projectile_emitter"]["friendly"].get_or(false)
+					entity["components"]["projectile_emitter"]["friendly"].get_or(false),
+					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture"))
 				);
 			}
 
@@ -437,6 +428,165 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				newEntity.AddComponent<CameraHollderComponent>();
 			}
 
+			//Backpack
+			sol::optional<sol::table> backpackTable = entity["components"]["backpack"];
+			if (backpackTable != sol::nullopt) 
+			{
+				BackpackComponent backpack;
+				backpack.capacity = (*backpackTable)["capacity"].get_or(0);
+
+				sol::optional<sol::table> items = (*backpackTable)["items"];
+				if (items) {
+					for (const auto& [key, value] : *items) {
+						if (value.get_type() != sol::type::string) {
+							Logger::Warn("backpack: an entry is not an item id, skipped");
+							continue;
+						}
+						std::string id = value.as<std::string>();
+
+						if (itemDatabase.Find(id) == nullptr) {
+							Logger::Warn("backpack: unknown item '" + id + "', skipped");
+							continue;
+						}
+
+						if (backpack.IsFull()) {
+							Logger::Warn("backpack: full (capacity " + std::to_string(backpack.capacity) + "), '" + id + "' not added");
+							continue;
+						}
+
+						backpack.Add(id);
+
+					}
+				}
+
+				newEntity.AddComponent<BackpackComponent>(backpack);
+			}
+
+			//Equipment
+			sol::optional<sol::table> equipmentTable = entity["components"]["equipment"];
+			if (equipmentTable != sol::nullopt) 
+			{
+				
+				EquipmentComponent equipment;
+				sol::optional<sol::table> slots = (*equipmentTable)["slots"];
+				if (slots) {
+					for (const auto& [key, value] : *slots) {
+						if (value.get_type() != sol::type::table) {
+							Logger::Warn("equipment: slot " + std::to_string(key.as<int>()) +
+								" is not a table (write it as { name = \"...\", accepts = \"...\" }), skipped");
+							continue;
+						}
+						sol::table slot = value.as<sol::table>();
+						std::string name = slot["name"].get_or(std::string(""));
+						std::string accepts = slot["accepts"].get_or(std::string(""));
+
+						if (name.empty() || accepts.empty()) {
+							Logger::Warn("equipment: slot " + std::to_string(key.as<int>()) +
+								" needs both a name and accepts, skipped");
+							continue;
+						}
+
+						if (equipment.FindSlot(name) != -1) {
+							Logger::Warn("equipment: slot name '" + name + "' is used twice, skipped");
+							continue;
+						}
+						
+						//optional position in the equipment window, in grid cells
+						int column = slot["column"].get_or(-1);
+						int row = slot["row"].get_or(-1);
+
+						if (column < 0 || row < 0) {
+							if (column != -1 || row != -1) {
+								Logger::Warn("equipment: slot '" + name + "' needs both column and row >= 0, placed automatically");
+							}
+							column = -1;
+							row = -1;
+						}
+						else if (equipment.FindSlotAt(column, row) != -1) {
+							Logger::Warn("equipment: slot '" + name + "' uses a cell another slot already has, placed automatically");
+							column = -1;
+							row = -1;
+						}
+						EquipmentSlot newSlot{ name, accepts, "" };
+						newSlot.column = column;
+						newSlot.row = row;
+						equipment.slots.push_back(newSlot);
+					}
+
+					//slots without a Lua position go in a row under the lowest placed one, in Lua order
+					int lowestRow = -1;
+					for (const auto& s : equipment.slots) {
+						lowestRow = std::max(lowestRow, s.row);
+					}
+					int nextColumn = 0;
+					for (auto& slot : equipment.slots) {
+						if (slot.column < 0) {
+							slot.column = nextColumn++;
+							slot.row = lowestRow + 1;
+						}
+					}
+				}
+				
+
+				sol::optional<sol::table> equipped = (*equipmentTable)["equipped"];
+				if (equipped) {
+					for (const auto& [key, value] : *equipped) {
+						
+						if (key.get_type() != sol::type::string || value.get_type() != sol::type::string) {
+							Logger::Warn("equipment: equipped entries must be written as SlotName = \"item_id\", skipped");
+							continue;
+						}
+
+						std::string slotName = key.as<std::string>();
+						std::string itemId = value.as<std::string>();
+
+						int index = equipment.FindSlot(slotName);
+						if (index == -1) {
+							Logger::Warn("equipment: no slot named '" + slotName + "', '" + itemId + "' not equipped");
+							continue;
+						}
+						const ItemDefinition* item = itemDatabase.Find(itemId);
+						if (item == nullptr) {
+							Logger::Warn("equipment: unknown item '" + itemId + "', slot '" + slotName + "' left empty");
+							continue;
+						}
+						
+						if (item->tag != equipment.slots[index].accepts) {
+							Logger::Warn("equipment: " + itemId + " (tag '" + item->tag + "') can't go in slot '" + slotName + "', left empty");
+							continue;
+						}
+
+						equipment.slots[index].itemId = itemId;
+					}
+				}
+				
+				for (const auto& s : equipment.slots) {
+					if (s.accepts == "weapon" && s.itemId.empty()) {
+						Logger::Warn("equipment: weapon slot '" + s.name + "' is empty, starts unarmed");
+					}
+				}
+
+				for (const auto& [id, definition] : itemDatabase.All()) {
+					bool accepted = false;
+					for (const auto& s : equipment.slots) {
+						if (s.accepts == definition.tag) {
+							accepted = true;
+							break;
+						}
+					}
+					if (!accepted) {
+						Logger::Warn("items: " + id + " (tag '" + definition.tag + "') can never be equipped");
+					}
+				}
+
+				newEntity.AddComponent<EquipmentComponent>(equipment);
+
+				if (newEntity.HasComponent<AttributesComponent>()) {
+					InventoryRules::RebuildBonuses(newEntity.GetComponent<AttributesComponent>(), equipment, itemDatabase);
+				}
+			}
+
+
 			//KeyBoardControlled
 			sol::optional<sol::table> keyboardControlled = entity["components"]["keyboard_controlled"];
 			if (keyboardControlled != sol::nullopt)
@@ -473,100 +623,4 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		i++;
 	}
 
-	//Adding assets to asset Store
-	/*assetStore->AddTexture(renderer, "tank-image", "./assets/images/tank-panther-right.png");
-	assetStore->AddTexture(renderer, "truck-image", "./assets/images/truck-ford-right.png");
-	assetStore->AddTexture(renderer, "chopper-image", "./assets/images/chopper-spritesheet.png");
-	assetStore->AddTexture(renderer, "tilemap-image", "./assets/tilemaps/jungle.png");
-	assetStore->AddTexture(renderer, "radar-image", "./assets/images/radar.png");
-	assetStore->AddTexture(renderer, "bullet-image", "./assets/images/bullet.png");
-	assetStore->AddTexture(renderer, "tree-image", "./assets/images/tree.png");
-	assetStore->AddFont("charriot-font", "./assets/fonts/charriot.ttf", 14);
-
-
-	//Load the titlemap
-	int tileSize = 32;
-	double tileScale = 4.0;
-	int mapNumCols = 25;
-	int mapNumRows = 20;
-	std::fstream mapFile;
-	mapFile.open("./assets/tilemaps/jungle.map");
-
-	for (int y = 0; y < mapNumRows; y++)
-	{
-		for (int x = 0; x < mapNumCols; x++)
-		{
-			char ch;
-			mapFile.get(ch);
-			int srcRectY = std::atoi(&ch) * tileSize;
-			mapFile.get(ch);
-			int srcRectX = std::atoi(&ch) * tileSize;
-			mapFile.ignore();
-
-			Entity tile = registry->CreateEntity();
-			tile.Group("tiles");
-			tile.AddComponent<TransformComponent>(glm::vec2(x * (tileScale * tileSize), y * (tileScale * tileSize)), glm::vec2(tileScale, tileScale), 0.0);
-			tile.AddComponent<SpriteComponent>("tilemap-image", tileSize, tileSize, SpriteComponent::LAYER_TILEMAP, false, srcRectX, srcRectY);
-		}
-	}
-	mapFile.close();
-	Game::mapWidth = mapNumCols * tileSize * tileScale;
-	Game::mapHeight = mapNumRows * tileSize * tileScale;
-
-	//entity creation example
-	Entity chopper = registry->CreateEntity();
-	chopper.Tag("player");
-	chopper.AddComponent<TransformComponent>(glm::vec2(100.0, 100.0), glm::vec2(4.0, 4.0), 0.0);
-	chopper.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));// we dont have to put velocity here becuse we are cahnging it with keyboard input 
-	//but for safty and requirenmsts of KeyBoardControlledComponent we put it here we start at inital speed 0
-	chopper.AddComponent<SpriteComponent>("chopper-image", 32, 32, SpriteComponent::LAYER_PLAYER_IN_AIR);
-	chopper.AddComponent<AnimationComponent>(2, 10, true);
-	chopper.AddComponent<BoxColliderComponent>(32, 32);
-	chopper.AddComponent<ProjectileEmitterComponent>(glm::vec2(350.0, 350.0), 0, 5000, 50, true);
-	chopper.AddComponent<KeyBoardControlledComponent>(glm::vec2(0, -250), glm::vec2(250, 0), glm::vec2(0, 250), glm::vec2(-250, 0), !false);
-	chopper.AddComponent<CameraHollderComponent>();
-	chopper.AddComponent<HealthComponent>(100);
-
-	Entity radar = registry->CreateEntity();
-	radar.AddComponent<TransformComponent>(glm::vec2(Game::windowWidth - 74, 10), glm::vec2(1.0, 1.0), 0.0);
-	radar.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	radar.AddComponent<SpriteComponent>("radar-image", 64, 64, SpriteComponent::LAYER_GUI, true);
-	radar.AddComponent<AnimationComponent>(8, 1, true);
-
-	Entity tank = registry->CreateEntity();
-	tank.Group("enemies");
-	tank.AddComponent<TransformComponent>(glm::vec2(1600.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	tank.AddComponent<RigidBodyComponent>(glm::vec2(50.0, 0.0));
-	tank.AddComponent<SpriteComponent>("tank-image", 32, 32, SpriteComponent::LAYER_ENEMIES);
-	tank.AddComponent<BoxColliderComponent>(32, 32);
-	tank.AddComponent<ProjectileEmitterComponent>(glm::vec2(0.0, 100.0), 3000, 3000, 10, false);
-	tank.AddComponent<HealthComponent>(100);
-
-	Entity truck = registry->CreateEntity();
-	truck.Group("enemies");
-	truck.AddComponent<TransformComponent>(glm::vec2(250.0, 980.0), glm::vec2(3.0, 3.0), 0.0);
-	truck.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	truck.AddComponent<SpriteComponent>("truck-image", 32, 32, SpriteComponent::LAYER_ENEMIES);
-	truck.AddComponent<BoxColliderComponent>(32, 32);
-	truck.AddComponent<ProjectileEmitterComponent>(glm::vec2(100.0, 0.0), 1000, 3000, 10, false);
-	truck.AddComponent<HealthComponent>(100);
-
-	Entity treeA = registry->CreateEntity();
-	treeA.Group("obstacles");
-	treeA.AddComponent<TransformComponent>(glm::vec2(2000.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	treeA.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	treeA.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
-	treeA.AddComponent<BoxColliderComponent>(16, 32);
-
-	Entity treeB = registry->CreateEntity();
-	treeB.Group("obstacles");
-	treeB.AddComponent<TransformComponent>(glm::vec2(1500.0, 225.0), glm::vec2(2.0, 2.0), 0.0);
-	treeB.AddComponent<RigidBodyComponent>(glm::vec2(0.0, 0.0));
-	treeB.AddComponent<SpriteComponent>("tree-image", 16, 32, SpriteComponent::LAYER_OBSTACLE);
-	treeB.AddComponent<BoxColliderComponent>(16, 32);
-
-	Entity label = registry->CreateEntity();
-	SDL_Color white = { 255,255,255 };
-	label.AddComponent<TextLabelComponent>(glm::vec2(400, 400), "Test Label String", "charriot-font", white, false);
-	*/
 }
