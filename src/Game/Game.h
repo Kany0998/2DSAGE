@@ -8,6 +8,7 @@
 #include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
 #include "../Inventory/InventoryUISettings.h"
+#include "../Loot/LootDatabase.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -65,6 +66,7 @@ class Game
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
 		ItemDatabase itemDatabase;
+		LootDatabase lootDatabase;
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
