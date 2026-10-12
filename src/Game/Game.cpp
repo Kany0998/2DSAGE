@@ -199,7 +199,7 @@ void Game::Setup()
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
-	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, renderer, 1);
+	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 }
