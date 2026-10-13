@@ -386,6 +386,67 @@ class RenderGUISystem
 						}
 						
 					}
+
+					if (hasOpenBag) {
+						if (!openBag.IsAlive() || !openBag.HasComponent<LootBagComponent>()) {
+							hasOpenBag = false;
+						}
+
+						else {
+							const glm::vec2 playerCenter = EntityCenter(player.GetComponent<TransformComponent>(), player.GetComponent<SpriteComponent>());
+							const glm::vec2 bagCenter = EntityCenter(openBag.GetComponent<TransformComponent>(), openBag.GetComponent<SpriteComponent>());
+							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
+
+							if (glm::length(playerCenter - bagCenter) > range) {
+								hasOpenBag = false;
+							}
+						}
+					}
+
+					if (hasOpenBag) {
+						auto& bag = openBag.GetComponent<LootBagComponent>();
+						const std::string title = "Loot: " + bag.tierId + "###LootBag";
+						if (ImGui::Begin(title.c_str(), &hasOpenBag, ImGuiWindowFlags_AlwaysAutoResize)) {
+							
+							const int columns = inventoryUI.backpackColumns;
+							if (player.HasComponent<BackpackComponent>()) {
+								auto& backpack = player.GetComponent<BackpackComponent>();
+								for (int i = 0; i < static_cast<int>(bag.items.size()); i++) {
+									if (i % columns != 0) {
+										ImGui::SameLine();
+									}
+
+									const ItemDefinition* item = itemDatabase.Find(bag.items[i]);
+									ImGui::PushID(i);
+									DrawItemIcon(item);
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										const bool taken = backpack.Add(bag.items[i]);
+
+										if (taken) {
+											bag.items.erase(bag.items.begin() + i);
+											ImGui::PopID();
+											break;
+										}
+
+										else {
+											ShowInventoryMessage("Backpack is full");
+										}
+									}
+									ImGui::PopID();
+									if (item != nullptr && ImGui::IsItemHovered()) {
+										ImGui::BeginTooltip();
+										DrawItemDetails(*item);
+										ImGui::TextDisabled("Right-click to take");
+										ImGui::EndTooltip();
+									}
+								}
+								DrawInventoryMessage();
+							}
+							
+						}
+						ImGui::End();
+					}
+
 					if (!cursorMessage.empty() && SDL_GetTicks() - cursorMessageTime < 3000) {
 						ImGui::GetForegroundDrawList()->AddText(ImVec2(io.MousePos.x + 16, io.MousePos.y),
 							IM_COL32(255, 100, 100, 255), cursorMessage.c_str());
