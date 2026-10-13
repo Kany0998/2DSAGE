@@ -40,6 +40,7 @@ class ProgressionSystem;
 class RenderExperienceBarSystem;
 class AISystem;
 class RenderTileMapSystem;
+class LootSystem;
 
 class Game
 {
@@ -97,6 +98,7 @@ class Game
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
 		std::unique_ptr<AISystem> aiSystem;
 		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
+		std::unique_ptr<LootSystem> lootSystem;
 
 
 

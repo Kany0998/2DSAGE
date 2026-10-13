@@ -24,6 +24,7 @@
 #include "../Systems/RenderExperienceBarSystem.h"
 #include "../Systems/AISystem.h"
 #include "../Systems/RenderTileMapSystem.h"
+#include "../Systems/LootSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -190,6 +191,7 @@ void Game::Setup()
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
+	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -230,10 +232,12 @@ void Game::Update()
 	specialAbilitySystem->SubscribeToEvents(eventBus);
 	renderGUISystem->SubscribeToEvents(eventBus);
 	progressionSystem->SubscribeToEvents(eventBus);
+	lootSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
 	// invoke all the systems to update
+	lootSystem->Update();
 	keyboardControlSystem->Update(*registry);
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	movementSystem->Update(*registry, deltaTime, tileMap);
