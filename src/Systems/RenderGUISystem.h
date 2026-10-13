@@ -14,6 +14,7 @@
 #include "../Components/AttributesComponent.h"
 #include "../Components/BackpackComponent.h"
 #include "../Components/EquipmentComponent.h"
+#include "../Components/LootBagComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Game/Controls.h"
@@ -22,6 +23,8 @@
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
+#include "../Loot/LootDatabase.h"
+#include "../Utils/EntityGeometry.h"
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <cmath>
@@ -31,8 +34,8 @@ class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), assetStore(assetStore){}
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), assetStore(assetStore) { }
 
 		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
@@ -54,7 +57,41 @@ class RenderGUISystem
 			//Render GUI elements here
 			ImGui::NewFrame();
 
+			ImGuiIO& io = ImGui::GetIO();
 			
+			if (!io.WantCaptureMouse) {
+				const glm::vec2 mouseWorld(io.MousePos.x + camera.x, io.MousePos.y + camera.y);
+				Entity hoveredBag;
+				if (FindBagAt(registry, mouseWorld, hoveredBag)) {
+					const auto& transform = hoveredBag.GetComponent<TransformComponent>();
+					const auto& sprite = hoveredBag.GetComponent<SpriteComponent>();
+
+					const ImVec2 min(transform.position.x - camera.x,transform.position.y - camera.y);
+					const ImVec2 max(min.x + sprite.width * transform.scale.x,min.y + sprite.height * transform.scale.y);
+					ImGui::GetBackgroundDrawList()->AddRect(min , max, IM_COL32(255, 255, 255, 200), 0.0f, 0, 2.0f);
+
+					if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+						if (registry.HasEntityWithTag("player")) {
+
+							Entity player = registry.GetEntityByTag("player");
+							const glm::vec2 playerCentre = EntityCenter(player.GetComponent<TransformComponent>(),player.GetComponent<SpriteComponent>());
+							
+							const glm::vec2 bagCentre = EntityCenter(transform, sprite);
+							const float distance = glm::length(playerCentre - bagCentre);
+							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
+
+							if (distance <= range) {
+								openBag = hoveredBag;
+								hasOpenBag = true;
+							}
+							else {
+								ShowCursorMessage("Too far away");
+							}
+						}
+					}
+				}
+			}
+
 			if (isDebug) {
 				if (ImGui::Begin("Spawn enemies"))
 				{
@@ -349,6 +386,10 @@ class RenderGUISystem
 						}
 						
 					}
+					if (!cursorMessage.empty() && SDL_GetTicks() - cursorMessageTime < 3000) {
+						ImGui::GetForegroundDrawList()->AddText(ImVec2(io.MousePos.x + 16, io.MousePos.y),
+							IM_COL32(255, 100, 100, 255), cursorMessage.c_str());
+					}
 
 				}
 			}
@@ -456,6 +497,12 @@ class RenderGUISystem
 			inventoryMessageTime = SDL_GetTicks();
 		}
 
+		//Shows a refusal from pickup near cursor for a few seconds
+		void ShowCursorMessage(const std::string& message) {
+			cursorMessage = message;
+			cursorMessageTime = SDL_GetTicks();
+		}
+
 		//The last refusal from an inventory rule, shown for 3 seconds
 		void DrawInventoryMessage() {
 			if (!inventoryMessage.empty() && SDL_GetTicks() - inventoryMessageTime < 3000) {
@@ -497,16 +544,50 @@ class RenderGUISystem
 			}
 		}
 
+		//Find bag for hovering
+		bool FindBagAt(Registry& registry, glm::vec2 worldPoint, Entity& outBag) {
+
+			bool found = false;        //has any bag contained the point yet?
+			Uint32 newest = 0;         //spawn time of the best bag so far
+			for (auto rawEntity : registry.Raw().view<TransformComponent, SpriteComponent, LootBagComponent>()) {
+				
+				Entity bag(rawEntity, &registry);
+				const auto& bagTransform = bag.GetComponent<TransformComponent>();
+				const auto& bagSprite = bag.GetComponent<SpriteComponent>();
+				const auto& bagLoot = bag.GetComponent<LootBagComponent>();
+
+				const glm::vec2 topLeft = bagTransform.position;
+				const double width = bagSprite.width * bagTransform.scale.x;
+				const double height = bagSprite.height * bagTransform.scale.y;
+
+				if (!(worldPoint.x >= topLeft.x && worldPoint.x < topLeft.x + width && worldPoint.y >= topLeft.y && worldPoint.y < topLeft.y + height)) {
+					continue;
+				}
+
+				if (!found || bagLoot.spawnTime > newest) {
+					outBag = bag;
+					newest = bagLoot.spawnTime;
+					found = true;
+				}
+			}
+			return found;
+		}
+
 		const Controls& controls;
 		bool showEquipment = false;
 		bool showBackpack = false;
 		bool showCharacter = false;
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
+		const LootDatabase& lootDatabase;
 		AssetStore& assetStore;
 
 
+		Entity openBag;						 //the loot bag whose window is open
+		bool hasOpenBag = false;			 //whether a bag window is open at all
 		std::string inventoryMessage;        //last refusal from an inventory rule, e.g. "Backpack is full"
+		std::string cursorMessage;          //world feedback shown next to the mouse, e.g. "Too far away"
+		Uint32 cursorMessageTime = 0;
 		Uint32 inventoryMessageTime = 0;     //when it was shown, in SDL ticks
 		static constexpr const char* StatLabels[Skill_Count] = { "Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity" };
 };
