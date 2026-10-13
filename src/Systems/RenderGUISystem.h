@@ -20,6 +20,7 @@
 #include "../Game/Controls.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/KeyPressedEvent.h"
+#include "../Events/LootDroppedEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
@@ -28,6 +29,7 @@
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <cmath>
+#include <SDL.h>
 
 
 class RenderGUISystem
@@ -40,10 +42,10 @@ class RenderGUISystem
 		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
 			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &RenderGUISystem::OnKeyPressed);
+			eventBus->SubscribeToEvent<LootDroppedEvent>(this, &RenderGUISystem::OnLootDropped);
 		}
 
-		void OnKeyPressed(KeyPressedEvent& event)
-		{
+		void OnKeyPressed(KeyPressedEvent& event){
 			if (event.isRepeat) return;                          //holding a key must not flicker the window
 			if (ImGui::GetIO().WantCaptureKeyboard) return;      //typing into an ImGui field is not a toggle
 
@@ -52,10 +54,48 @@ class RenderGUISystem
 			if (event.symbol == controls.character) showCharacter = !showCharacter;
 		}
 
+		void OnLootDropped(LootDroppedEvent& event) {
+			const BagTier* tier = lootDatabase.FindBag(event.tierId);
+			if (tier == nullptr || tier->announceImage.empty()) {
+				return;
+			}
+
+			bannerImage = tier->announceImage;
+			bannerMs = tier->announceMs;
+			bannerScale = tier->announceScale;
+			bannerTime = SDL_GetTicks();
+		}
+
 		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
 			//Render GUI elements here
 			ImGui::NewFrame();
+
+			if (!bannerImage.empty()) {
+				const Uint32 age = SDL_GetTicks() - bannerTime;
+				if (age < static_cast<Uint32>(bannerMs)) {
+
+					SDL_Texture *texture = assetStore.GetTexture(bannerImage);
+					if (texture != nullptr) {
+						int width = 0;
+						int height = 0;
+						SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+
+						const float drawWidth = static_cast<float>(width * bannerScale);
+						const float drawHeight = static_cast<float>(height * bannerScale);
+
+						const float timeLeft = static_cast<float>(bannerMs - static_cast<int>(age));
+						const float fade = timeLeft < 1000.0f ? timeLeft / 1000.0f : 1.0f; //1 = fully visible, 0 = gone
+						const int alpha = static_cast<int>(255.0f * fade);
+
+						const ImVec2 min(16.0f, 16.0f);
+						const ImVec2 max(min.x + drawWidth, min.y + drawHeight);
+						ImGui::GetForegroundDrawList()->AddImage(texture, min, max, ImVec2(0, 0), ImVec2(1, 1),
+							IM_COL32(255, 255, 255, alpha));
+					}
+				}
+			}
+
 
 			ImGuiIO& io = ImGui::GetIO();
 			
@@ -651,6 +691,11 @@ class RenderGUISystem
 		Uint32 cursorMessageTime = 0;
 		Uint32 inventoryMessageTime = 0;     //when it was shown, in SDL ticks
 		static constexpr const char* StatLabels[Skill_Count] = { "Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity" };
+
+		std::string bannerImage;		//Texture for announce on legendary drops
+		Uint32 bannerTime = 0;			//when it starts
+		int bannerMs = 0;				//how long it lasts
+		int bannerScale = 1;
 };
 
 #endif // !RENDERGUISYSTEM_H
