@@ -20,4 +20,4 @@ LootTables = {
     },
 }
 
-LootSettings = { pickup_range_tiles = 2, default_bag = "common", blink_seconds = 5, bag_scale = 1 }
+LootSettings = { pickup_range_tiles = 2, default_bag = "common", blink_seconds = 5, bag_scale = 1, player_drop_bag = "common" }

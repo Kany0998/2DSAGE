@@ -129,6 +129,7 @@ void LootDatabase::Load(sol::state& lua, const std::string& path, const ItemData
 		blinkMs = static_cast<int>(settings["blink_seconds"].get_or(blinkMs / 1000.0f) * 1000.0f);
 		bagScale = settings["bag_scale"].get_or(bagScale);
 		defaultBag = settings["default_bag"].get_or(std::string(""));
+		playerDropBag = settings["player_drop_bag"].get_or(std::string(""));
 
 		if (pickupRangeTiles <= 0.0f) {
 			Logger::Warn("loot: pickup_range_tiles must be > 0, using " + std::to_string(defaultRange));
@@ -165,6 +166,12 @@ void LootDatabase::Load(sol::state& lua, const std::string& path, const ItemData
 		defaultBag = lowestId;
 	}
 
+	//player drop bag: optional; a wrong name falls back to the default bag
+	if (!playerDropBag.empty() && FindBag(playerDropBag) == nullptr) {
+		Logger::Warn("loot: player_drop_bag '" + playerDropBag + "' is not a bag, using '" + defaultBag + "'");
+		playerDropBag = defaultBag;
+	}
+
 	//items whose bag names no tier: they fall back to the default, but the author should know
 	for (const auto& [itemId, item] : items.All()) {
 		if (item.bag.empty()) {
@@ -186,6 +193,13 @@ const BagTier* LootDatabase::FindBag(const std::string& id) const {
 		return nullptr;
 	}
 	return &bag->second;
+}
+
+const BagTier* LootDatabase::PlayerDropBag() const {
+	if (playerDropBag.empty()) {
+		return nullptr;
+	}
+	return FindBag(playerDropBag);
 }
 
 const std::vector<LootEntry>* LootDatabase::FindTable(const std::string& id) const {

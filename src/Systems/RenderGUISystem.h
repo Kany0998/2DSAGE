@@ -21,6 +21,7 @@
 #include "../EventBus/EventBus.h"
 #include "../Events/KeyPressedEvent.h"
 #include "../Events/LootDroppedEvent.h"
+#include "../Events/ItemDroppedEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
@@ -36,10 +37,10 @@ class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), assetStore(assetStore) { }
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), eventBus(eventBus), assetStore(assetStore) { }
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		void SubscribeToEvents()
 		{
 			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &RenderGUISystem::OnKeyPressed);
 			eventBus->SubscribeToEvent<LootDroppedEvent>(this, &RenderGUISystem::OnLootDropped);
@@ -55,10 +56,16 @@ class RenderGUISystem
 		}
 
 		void OnLootDropped(LootDroppedEvent& event) {
+			
+			//Do not use banner when item is dropped by player
+			if (!event.fromKill) {
+				return;
+			}
 			const BagTier* tier = lootDatabase.FindBag(event.tierId);
 			if (tier == nullptr || tier->announceImage.empty()) {
 				return;
 			}
+
 
 			bannerImage = tier->announceImage;
 			bannerMs = tier->announceMs;
@@ -402,7 +409,14 @@ class RenderGUISystem
 									const ItemDefinition* item = (i < static_cast<int>(backpack.items.size()) && !backpack.items[i].empty()) ? itemDatabase.Find(backpack.items[i]) : nullptr;
 
 									ImGui::PushID(i);
-									DrawItemIcon(item);
+
+									//the square being dragged out shows its item darker, so you can see where it came from
+									const ImGuiPayload* dragged = ImGui::GetDragDropPayload();
+									const bool isDragged = dragged != nullptr && dragged->IsDataType("BACKPACK_ITEM") && *static_cast<const int*>(dragged->Data) == i;
+
+									DrawItemIcon(item, isDragged ? 100 : 255);
+									const ImVec2 slotMin = ImGui::GetItemRectMin();      //topleft of the slot button just drawn
+
 
 									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 										std::string message;
@@ -411,11 +425,22 @@ class RenderGUISystem
 										}
 									}
 
-									if (item != nullptr && ImGui::IsItemHovered()) {
+									if (item != nullptr && ImGui::IsItemHovered() && dragged == nullptr) {
 										ImGui::BeginTooltip();
 										DrawItemDetails(*item);
 										ImGui::TextDisabled("Right-click to equip (%s)", item->tag.c_str());
 										ImGui::EndTooltip();
+									}
+
+									//hold left mouse on an item and move: start dragging it; the payload is this square's index
+									if(item != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)){
+										ImGui::SetDragDropPayload("BACKPACK_ITEM", &i, sizeof(int));
+										//keep the point you grabbed under the cursor
+										const ImGuiIO& io = ImGui::GetIO();
+										const ImVec2 grab(io.MouseClickedPos[0].x - slotMin.x, io.MouseClickedPos[0].y - slotMin.y);
+										const ImVec2 corner(io.MousePos.x - grab.x, io.MousePos.y - grab.y);
+										DrawItemPicture(ImGui::GetForegroundDrawList(), corner, item);
+										ImGui::EndDragDropSource();
 									}
 
 									ImGui::PopID();
@@ -487,6 +512,27 @@ class RenderGUISystem
 						ImGui::End();
 					}
 
+					//a dragged backpack item released over the map (not over any window): drop it at the player's feet
+					const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+					if (payload != nullptr && payload->IsDataType("BACKPACK_ITEM")
+						&& ImGui::IsMouseReleased(ImGuiMouseButton_Left)
+						&& !ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)
+						&& player.HasComponent<BackpackComponent>()) {
+
+						auto& backpack = player.GetComponent<BackpackComponent>();
+						const int index = *static_cast<const int*>(payload->Data);
+
+						//the square must still exist and hold an item
+						if (index >= 0 && index < static_cast<int>(backpack.items.size()) && !backpack.items[index].empty()) {
+							const std::string itemId = backpack.items[index];		//copy before emptying the square
+							backpack.items[index] = "";								//free square
+							const glm::vec2 playerCenter = EntityCenter(player.GetComponent<TransformComponent>(), player.GetComponent<SpriteComponent>());
+							eventBus->EmitEvent<ItemDroppedEvent>(playerCenter, itemId);
+						}
+					}
+
+
+
 					if (!cursorMessage.empty() && SDL_GetTicks() - cursorMessageTime < 3000) {
 						ImGui::GetForegroundDrawList()->AddText(ImVec2(io.MousePos.x + 16, io.MousePos.y),
 							IM_COL32(255, 100, 100, 255), cursorMessage.c_str());
@@ -548,21 +594,18 @@ class RenderGUISystem
 			}
 		}
 
-
-		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
-		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
-		void DrawItemIcon(const ItemDefinition* item){
+		//Draws a slot's frame and the item's icon with its top-left at corner, on any draw list - no widget, no ID.
+		//Used by DrawItemIcon (in a window) and by the drag preview (on the foreground). brightness < 255 darkens the icon.
+		void DrawItemPicture(ImDrawList* drawList, ImVec2 corner, const ItemDefinition* item, Uint8 brightness = 255) {
 			
-			//layout position where ImGui places the next widget (not the mouse)
+			//Size of one slot in pixels
 			const float slot = inventoryUI.SlotPixels();
-			const ImVec2 corner = ImGui::GetCursorScreenPos();
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
-			
+
 			//frame: dark background, lighter border
 			const ImVec2 farCorner(corner.x + slot, corner.y + slot);
 			drawList->AddRectFilled(corner, farCorner, IM_COL32(30, 30, 30, 255));
 			drawList->AddRect(corner, farCorner, IM_COL32(90, 90, 90, 255));
-			
+
 			//icon: fitted without stretching, whole-number scale when it fits, centred
 			SDL_Texture* texture = nullptr;
 			if (item != nullptr && !item->icon.empty()) {
@@ -585,11 +628,21 @@ class RenderGUISystem
 
 					const ImVec2 iconMin(corner.x + (slot - drawWidth) / 2.0f, corner.y + (slot - drawHeigth) / 2.0f);
 					const ImVec2 iconMax(iconMin.x + drawWidth, iconMin.y + drawHeigth);
-					drawList->AddImage(texture, iconMin, iconMax);
+					drawList->AddImage(texture, iconMin, iconMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(brightness, brightness, brightness, 255));
 				}
 			}
-			//reserve the slot's space: the next widget goes after it, and hover/click cover the whole slot
-			ImGui::Dummy(ImVec2(slot, slot));
+		}
+
+
+		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
+		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
+		void DrawItemIcon(const ItemDefinition* item, Uint8 brightness = 255){
+			
+			//Size of one slot in pixels
+			const float slot = inventoryUI.SlotPixels();
+			DrawItemPicture(ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), item, brightness);
+			//an invisible button: reserves the space and gives the slot an ID, so it can be dragged and doesn't drag the window.
+			ImGui::InvisibleButton("##slot", ImVec2(slot, slot));
 		}
 
 		//Shows a refusal from Equip/Unequip in the inventory windows for a few seconds
@@ -681,6 +734,7 @@ class RenderGUISystem
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
 		const LootDatabase& lootDatabase;
+		std::unique_ptr<EventBus>& eventBus;
 		AssetStore& assetStore;
 
 

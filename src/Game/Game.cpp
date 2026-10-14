@@ -184,7 +184,7 @@ void Game::Setup()
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, *assetStore);
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, eventBus, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 	progressionSystem = std::make_unique<ProgressionSystem>();
@@ -230,7 +230,7 @@ void Game::Update()
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
-	renderGUISystem->SubscribeToEvents(eventBus);
+	renderGUISystem->SubscribeToEvents();
 	progressionSystem->SubscribeToEvents(eventBus);
 	lootSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted

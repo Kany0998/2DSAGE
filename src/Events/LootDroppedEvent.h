@@ -13,9 +13,10 @@ class LootDroppedEvent : public Event
 
 		glm::vec2 bagPosition;
 		std::string tierId;
+		bool fromKill;
 
-		LootDroppedEvent(glm::vec2 bagPosition, std::string tierId)
-			: bagPosition(bagPosition), tierId(tierId) {
+		LootDroppedEvent(glm::vec2 bagPosition, std::string tierId, bool fromKill)
+			: bagPosition(bagPosition), tierId(tierId), fromKill(fromKill) {
 		}
 };
 

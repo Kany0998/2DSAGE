@@ -5,6 +5,7 @@
 #include "../ECS/ECS.h"
 #include "../Events/LootDroppedEvent.h"
 #include "../Events/EntityKilledEvent.h"
+#include "../Events/ItemDroppedEvent.h"
 #include "../EventBus/EventBus.h"
 #include "../Loot/LootDatabase.h"
 #include "../Components/LootDropComponent.h"
@@ -31,6 +32,7 @@ class LootSystem {
 		void SubscribeToEvents()
 		{
 			eventBus->SubscribeToEvent<EntityKilledEvent>(this, &LootSystem::OnEntityKilled);
+			eventBus->SubscribeToEvent<ItemDroppedEvent>(this, &LootSystem::OnItemDropped);
 		}
 
 
@@ -65,8 +67,9 @@ class LootSystem {
 				bag.AddComponent<TransformComponent>(corner, glm::vec2(scale, scale));
 				bag.AddComponent<SpriteComponent>(tier->texture, width, height, 1);
 				bag.AddComponent<LootBagComponent>(tier->id, drop.items, tier->lifetimeMs);
-				eventBus->EmitEvent<LootDroppedEvent>(drop.position, tier->id);
+				eventBus->EmitEvent<LootDroppedEvent>(drop.position, tier->id, drop.fromKill);
 			}
+
 			pendingDrops.clear();
 			std::vector<Entity> bags;
 			for (auto rawEntity : registry.Raw().view<LootBagComponent, SpriteComponent>()) {
@@ -164,6 +167,22 @@ class LootSystem {
 			pendingDrops.push_back({ bagPosition, best->id, dropped });
 		}
 
+		void OnItemDropped(ItemDroppedEvent& event) {
+
+			const ItemDefinition* item = itemDatabase.Find(event.itemId);
+			if (item == nullptr) {
+				Logger::Warn("loot: item " + event.itemId + " has unknown id");
+				return;
+			}
+
+			const BagTier* bag = lootDatabase.PlayerDropBag();
+			if (bag == nullptr) {
+				bag = lootDatabase.BagFor(*item);
+			}
+
+			pendingDrops.push_back({ event.position, bag->id, { event.itemId }, false });
+		}
+
 
 
 	private:
@@ -173,6 +192,7 @@ class LootSystem {
 			glm::vec2 position;
 			std::string tierId;
 			std::vector<std::string> items;
+			bool fromKill = true;
 		};
 
 		std::vector<PendingDrop> pendingDrops;
