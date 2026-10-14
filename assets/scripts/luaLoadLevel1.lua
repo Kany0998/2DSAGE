@@ -131,7 +131,7 @@ Level = {
 				},
 				backpack = 
 				{
-					capacity = 0,			--0 means unlimited
+					capacity = 30,			--0 means unlimited
 					items = 
 					{
 						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war"
@@ -225,6 +225,7 @@ Level = {
 					patrol_pause = 2.0  -- seconds to wait after reaching a point
 
 				},
+				loot = { table = "forest_tank" }
 			}
 
 		},
@@ -289,7 +290,8 @@ Level = {
 					stop_distance = 1,
 					leash_range = 10,
 					move_speed = 100
-				}
+				},
+				loot = { table = "forest_tank" }
 			}
 
 		},
@@ -636,7 +638,8 @@ Level = {
 							set_projectile_velocity(entity, 0 , 200) --shoot up
 						end
 					end
-				}
+				},
+				loot = { table = "forest_tank" }
 
 			}
 
@@ -710,7 +713,8 @@ Level = {
 						local new_y = 200 + (math.sin(ellapsed_time * 0.001)* 50)
 						set_position(entity, new_x, new_y)-- set new position to c++
 					end
-				}
+				},
+				loot = { table = "forest_tank" }
 
 			}
 

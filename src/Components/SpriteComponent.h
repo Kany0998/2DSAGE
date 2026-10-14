@@ -13,7 +13,8 @@ struct SpriteComponent
 	int layer;
 	SDL_RendererFlip flip;
 	bool isFixed;
-
+	Uint8 brightness;			//this value is used mainly for bag blinking 255 = normal , 0 = dark 
+ 
 	//Recomended use for layers
 	/*
 		LAYER_TILEMAP, = 0
@@ -36,6 +37,7 @@ struct SpriteComponent
 		this->layer = layer;
 		this->srcRect = { srcRectX, srcRectY, width, height };
 		this->flip = SDL_FLIP_NONE;
+		this->brightness = 255;
 		this->isFixed = isFixed;
 	}
 };

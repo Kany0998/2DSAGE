@@ -59,7 +59,7 @@ class RenderSystem
 				renderableEntities.emplace_back(renderableEntity);
 			}
 			//Sorting the vector by orderLayer
-			std::sort(renderableEntities.begin(), renderableEntities.end(), [](const RenderableEntity& a, const RenderableEntity& b) {
+			std::stable_sort(renderableEntities.begin(), renderableEntities.end(), [](const RenderableEntity& a, const RenderableEntity& b) {
 				return a.spriteComponent.layer < b.spriteComponent.layer;
 				});
 
@@ -87,6 +87,7 @@ class RenderSystem
 				};
 				SDL_Texture* texture = assetStore->GetTexture(sprite.assetId);
 				SDL_SetTextureAlphaMod(texture, entity.alpha);
+				SDL_SetTextureColorMod(texture, sprite.brightness, sprite.brightness, sprite.brightness);
 
 				SDL_RenderCopyEx(
 					renderer,
@@ -99,6 +100,7 @@ class RenderSystem
 				);
 
 				SDL_SetTextureAlphaMod(texture, 255);
+				SDL_SetTextureColorMod(texture, 255, 255, 255);
 				//draw png texute based on spriteId
 			}
 		}

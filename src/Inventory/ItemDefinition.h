@@ -19,6 +19,7 @@ struct ItemDefinition {
 	std::string name;
 	std::string tag;
 	std::string icon;
+	std::string bag;
 	int bonus[Skill_Count] = {};		//zeroed, then filled from Lua
 	bool isWeapon = false;
 	WeaponStats weapon;			//only meaningful when isWeapon

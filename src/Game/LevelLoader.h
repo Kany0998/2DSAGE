@@ -5,6 +5,7 @@
 #include "../AssetStore/AssetStore.h"
 #include "../TileMap/TileMap.h"
 #include "../Inventory/ItemDatabase.h"
+#include "../Loot/LootDatabase.h"
 
 #include <SDL.h>
 #include <sol/sol.hpp>
@@ -25,6 +26,7 @@ class LevelLoader
             const std::unique_ptr<AssetStore>& assetStore,
             TileMap& tileMap,
             const ItemDatabase& itemDatabase,
+            const LootDatabase& lootDatabase,
             SDL_Renderer* renderer,
             int levelNumber
         );

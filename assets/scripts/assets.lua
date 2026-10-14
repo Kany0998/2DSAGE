@@ -32,6 +32,12 @@ return {
 	{type = "texture", id = "black-legs",    file = "./assets/images/armor/legs/black-legs.png"},
 	{type = "texture", id = "black-boots",   file = "./assets/images/armor/feet/black-boots.png"},
 
+	-- loot bags/banners
+	{type = "texture", id = "common-loot-bag",   file = "./assets/images/loot_bags/common-loot-bag.png"},
+	{type = "texture", id = "epic-loot-bag",   file = "./assets/images/loot_bags/epic-loot-bag.png"},
+	{type = "texture", id = "legendary-loot-bag",   file = "./assets/images/loot_bags/legendary-loot-bag.png"},
+	{type = "texture", id = "legendary-loot-banner",   file = "./assets/images/loot_bags/legendary-loot-banner.png"},
+
 	-- fonts
 	{type = "font", id = "charriot-font", file = "./assets/fonts/charriot.ttf", font_size = 10},
 }

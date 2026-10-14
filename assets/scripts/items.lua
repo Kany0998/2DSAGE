@@ -13,7 +13,8 @@ Items = {
                 projectile_speed = 500,
 				shots_per_second = 2.0,
 				range_tiles = 2 
-			}
+			},
+			bag = "common"
 	},
 
 	golden_ring = 
@@ -21,7 +22,8 @@ Items = {
 		name = "Golden Ring",
 		tag = "ring",
 		icon = "golden-ring",
-        bonuses = { defense = 20 } 
+        bonuses = { defense = 20 } ,
+		bag = "epic"
 	},
 
 	shield_of_war = 
@@ -30,7 +32,8 @@ Items = {
 		tag = "special_ability",
         icon = "black-shield",
 		ability = "stun_and_dmg",
-		bonuses = { defense = 15, attack = 60 }
+		bonuses = { defense = 15, attack = 60 },
+		bag = "legendary"
 		
 	},
 
@@ -39,7 +42,8 @@ Items = {
 		name = "Black Helm",
 		tag = "helm",
 		icon = "black-helm",
-        bonuses = { dexterity = 400 } 
+        bonuses = { dexterity = 400 },
+		bag = "legendary"
 	},
 
 	black_chest = 
@@ -47,7 +51,8 @@ Items = {
 		name = "Black Chest",
 		tag = "chest",
 		icon = "black-chest",
-        bonuses = { defense = 60, speed = -10 } 
+        bonuses = { defense = 60, speed = -10 },
+		bag = "legendary"
 	},
 
 	black_legs = 
@@ -55,7 +60,8 @@ Items = {
 		name = "Black Legs",
 		tag = "legs",
 		icon = "black-legs",
-        bonuses = { vitality = 40, speed = 5 } 
+        bonuses = { vitality = 40, speed = 5 },
+		bag = "legendary"
 	},
 
 	black_boots = 
@@ -63,7 +69,8 @@ Items = {
 		name = "Black Boots",
 		tag = "feet",
 		icon = "black-boots",
-        bonuses = { wisdom = 10, speed = 25 } 
+        bonuses = { wisdom = 10, speed = 25 },
+		bag = "legendary"
 	},
 	
 	golden_amulet = 
@@ -71,7 +78,8 @@ Items = {
 		name = "Golden Amulet",
 		tag = "amulet",
 		icon = "golden-amulet",
-        bonuses = { defense = 3, vitality = 3, attack = 3, wisdom = 3, speed = 3, dexterity = 3 } 
+        bonuses = { defense = 3, vitality = 3, attack = 3, wisdom = 3, speed = 3, dexterity = 3 },
+		bag = "epic"
 	},
 
 	horse_trinket = 
@@ -79,7 +87,8 @@ Items = {
 		name = "Trojan Horse Trinket",
 		tag = "trinket",
 		icon = "horse-trinket",
-        bonuses = { defense = 1, vitality = 1, attack = 1, wisdom = 1, speed = 1, dexterity = 1 } 
+        bonuses = { defense = 1, vitality = 1, attack = 1, wisdom = 1, speed = 1, dexterity = 1 },
+		bag = "common"
 	},
 
 }

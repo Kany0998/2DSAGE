@@ -8,6 +8,7 @@
 #include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
 #include "../Inventory/InventoryUISettings.h"
+#include "../Loot/LootDatabase.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -39,6 +40,7 @@ class ProgressionSystem;
 class RenderExperienceBarSystem;
 class AISystem;
 class RenderTileMapSystem;
+class LootSystem;
 
 class Game
 {
@@ -65,6 +67,7 @@ class Game
 		std::unique_ptr<EventBus> eventBus;
 		TileMap tileMap;
 		ItemDatabase itemDatabase;
+		LootDatabase lootDatabase;
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
@@ -95,6 +98,7 @@ class Game
 		std::unique_ptr<RenderExperienceBarSystem> renderExperienceBarSystem;
 		std::unique_ptr<AISystem> aiSystem;
 		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
+		std::unique_ptr<LootSystem> lootSystem;
 
 
 

@@ -36,6 +36,7 @@ void ItemDatabase::Load(sol::state& lua, const std::string& path) {
 		definition.id = id;
 		definition.name = item["name"].get_or(id);
 		definition.icon = item["icon"].get_or(std::string(""));
+		definition.bag = item["bag"].get_or(std::string(""));
 		definition.tag = item["tag"].get_or(std::string(""));
 		if (definition.tag.empty()) {
 			Logger::Warn("items: " + id + ": has no tag");

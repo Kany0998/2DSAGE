@@ -14,33 +14,39 @@
 #include "../Components/AttributesComponent.h"
 #include "../Components/BackpackComponent.h"
 #include "../Components/EquipmentComponent.h"
+#include "../Components/LootBagComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Game/Controls.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/KeyPressedEvent.h"
+#include "../Events/LootDroppedEvent.h"
+#include "../Events/ItemDroppedEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
+#include "../Loot/LootDatabase.h"
+#include "../Utils/EntityGeometry.h"
 #include "../AssetStore/AssetStore.h"
 #include <algorithm>
 #include <cmath>
+#include <SDL.h>
 
 
 class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), assetStore(assetStore){}
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), eventBus(eventBus), assetStore(assetStore) { }
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		void SubscribeToEvents()
 		{
 			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &RenderGUISystem::OnKeyPressed);
+			eventBus->SubscribeToEvent<LootDroppedEvent>(this, &RenderGUISystem::OnLootDropped);
 		}
 
-		void OnKeyPressed(KeyPressedEvent& event)
-		{
+		void OnKeyPressed(KeyPressedEvent& event){
 			if (event.isRepeat) return;                          //holding a key must not flicker the window
 			if (ImGui::GetIO().WantCaptureKeyboard) return;      //typing into an ImGui field is not a toggle
 
@@ -49,12 +55,90 @@ class RenderGUISystem
 			if (event.symbol == controls.character) showCharacter = !showCharacter;
 		}
 
+		void OnLootDropped(LootDroppedEvent& event) {
+			
+			//Do not use banner when item is dropped by player
+			if (!event.fromKill) {
+				return;
+			}
+			const BagTier* tier = lootDatabase.FindBag(event.tierId);
+			if (tier == nullptr || tier->announceImage.empty()) {
+				return;
+			}
+
+
+			bannerImage = tier->announceImage;
+			bannerMs = tier->announceMs;
+			bannerScale = tier->announceScale;
+			bannerTime = SDL_GetTicks();
+		}
+
 		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
 			//Render GUI elements here
 			ImGui::NewFrame();
 
+			if (!bannerImage.empty()) {
+				const Uint32 age = SDL_GetTicks() - bannerTime;
+				if (age < static_cast<Uint32>(bannerMs)) {
+
+					SDL_Texture *texture = assetStore.GetTexture(bannerImage);
+					if (texture != nullptr) {
+						int width = 0;
+						int height = 0;
+						SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+
+						const float drawWidth = static_cast<float>(width * bannerScale);
+						const float drawHeight = static_cast<float>(height * bannerScale);
+
+						const float timeLeft = static_cast<float>(bannerMs - static_cast<int>(age));
+						const float fade = timeLeft < 1000.0f ? timeLeft / 1000.0f : 1.0f; //1 = fully visible, 0 = gone
+						const int alpha = static_cast<int>(255.0f * fade);
+
+						const ImVec2 min(16.0f, 16.0f);
+						const ImVec2 max(min.x + drawWidth, min.y + drawHeight);
+						ImGui::GetForegroundDrawList()->AddImage(texture, min, max, ImVec2(0, 0), ImVec2(1, 1),
+							IM_COL32(255, 255, 255, alpha));
+					}
+				}
+			}
+
+
+			ImGuiIO& io = ImGui::GetIO();
 			
+			if (!io.WantCaptureMouse) {
+				const glm::vec2 mouseWorld(io.MousePos.x + camera.x, io.MousePos.y + camera.y);
+				Entity hoveredBag;
+				if (FindBagAt(registry, mouseWorld, hoveredBag)) {
+					const auto& transform = hoveredBag.GetComponent<TransformComponent>();
+					const auto& sprite = hoveredBag.GetComponent<SpriteComponent>();
+
+					const ImVec2 min(transform.position.x - camera.x,transform.position.y - camera.y);
+					const ImVec2 max(min.x + sprite.width * transform.scale.x,min.y + sprite.height * transform.scale.y);
+					ImGui::GetBackgroundDrawList()->AddRect(min , max, IM_COL32(255, 255, 255, 200), 0.0f, 0, 2.0f);
+
+					if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+						if (registry.HasEntityWithTag("player")) {
+
+							Entity player = registry.GetEntityByTag("player");
+							const glm::vec2 playerCentre = EntityCenter(player.GetComponent<TransformComponent>(),player.GetComponent<SpriteComponent>());
+							
+							const glm::vec2 bagCentre = EntityCenter(transform, sprite);
+							const float distance = glm::length(playerCentre - bagCentre);
+							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
+
+							if (distance <= range) {
+								openBag = hoveredBag;
+								hasOpenBag = true;
+							}
+							else {
+								ShowCursorMessage("Too far away");
+							}
+						}
+					}
+				}
+			}
+
 			if (isDebug) {
 				if (ImGui::Begin("Spawn enemies"))
 				{
@@ -325,7 +409,14 @@ class RenderGUISystem
 									const ItemDefinition* item = (i < static_cast<int>(backpack.items.size()) && !backpack.items[i].empty()) ? itemDatabase.Find(backpack.items[i]) : nullptr;
 
 									ImGui::PushID(i);
-									DrawItemIcon(item);
+
+									//the square being dragged out shows its item darker, so you can see where it came from
+									const ImGuiPayload* dragged = ImGui::GetDragDropPayload();
+									const bool isDragged = dragged != nullptr && dragged->IsDataType("BACKPACK_ITEM") && *static_cast<const int*>(dragged->Data) == i;
+
+									DrawItemIcon(item, isDragged ? 100 : 255);
+									const ImVec2 slotMin = ImGui::GetItemRectMin();      //topleft of the slot button just drawn
+
 
 									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 										std::string message;
@@ -334,11 +425,22 @@ class RenderGUISystem
 										}
 									}
 
-									if (item != nullptr && ImGui::IsItemHovered()) {
+									if (item != nullptr && ImGui::IsItemHovered() && dragged == nullptr) {
 										ImGui::BeginTooltip();
 										DrawItemDetails(*item);
 										ImGui::TextDisabled("Right-click to equip (%s)", item->tag.c_str());
 										ImGui::EndTooltip();
+									}
+
+									//hold left mouse on an item and move: start dragging it; the payload is this square's index
+									if(item != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoPreviewTooltip)){
+										ImGui::SetDragDropPayload("BACKPACK_ITEM", &i, sizeof(int));
+										//keep the point you grabbed under the cursor
+										const ImGuiIO& io = ImGui::GetIO();
+										const ImVec2 grab(io.MouseClickedPos[0].x - slotMin.x, io.MouseClickedPos[0].y - slotMin.y);
+										const ImVec2 corner(io.MousePos.x - grab.x, io.MousePos.y - grab.y);
+										DrawItemPicture(ImGui::GetForegroundDrawList(), corner, item);
+										ImGui::EndDragDropSource();
 									}
 
 									ImGui::PopID();
@@ -348,6 +450,92 @@ class RenderGUISystem
 							ImGui::End();
 						}
 						
+					}
+
+					if (hasOpenBag) {
+						if (!openBag.IsAlive() || !openBag.HasComponent<LootBagComponent>()) {
+							hasOpenBag = false;
+						}
+
+						else {
+							const glm::vec2 playerCenter = EntityCenter(player.GetComponent<TransformComponent>(), player.GetComponent<SpriteComponent>());
+							const glm::vec2 bagCenter = EntityCenter(openBag.GetComponent<TransformComponent>(), openBag.GetComponent<SpriteComponent>());
+							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
+
+							if (glm::length(playerCenter - bagCenter) > range) {
+								hasOpenBag = false;
+							}
+						}
+					}
+
+					if (hasOpenBag) {
+						auto& bag = openBag.GetComponent<LootBagComponent>();
+						const std::string title = "Loot: " + bag.tierId + "###LootBag";
+						if (ImGui::Begin(title.c_str(), &hasOpenBag, ImGuiWindowFlags_AlwaysAutoResize)) {
+							
+							const int columns = inventoryUI.backpackColumns;
+							if (player.HasComponent<BackpackComponent>()) {
+								auto& backpack = player.GetComponent<BackpackComponent>();
+								for (int i = 0; i < static_cast<int>(bag.items.size()); i++) {
+									if (i % columns != 0) {
+										ImGui::SameLine();
+									}
+
+									const ItemDefinition* item = itemDatabase.Find(bag.items[i]);
+									ImGui::PushID(i);
+									DrawItemIcon(item);
+									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+										const bool taken = backpack.Add(bag.items[i]);
+
+										if (taken) {
+											bag.items.erase(bag.items.begin() + i);
+											ImGui::PopID();
+											break;
+										}
+
+										else {
+											ShowInventoryMessage("Backpack is full");
+										}
+									}
+									ImGui::PopID();
+									if (item != nullptr && ImGui::IsItemHovered()) {
+										ImGui::BeginTooltip();
+										DrawItemDetails(*item);
+										ImGui::TextDisabled("Right-click to take");
+										ImGui::EndTooltip();
+									}
+								}
+								DrawInventoryMessage();
+							}
+							
+						}
+						ImGui::End();
+					}
+
+					//a dragged backpack item released over the map (not over any window): drop it at the player's feet
+					const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+					if (payload != nullptr && payload->IsDataType("BACKPACK_ITEM")
+						&& ImGui::IsMouseReleased(ImGuiMouseButton_Left)
+						&& !ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)
+						&& player.HasComponent<BackpackComponent>()) {
+
+						auto& backpack = player.GetComponent<BackpackComponent>();
+						const int index = *static_cast<const int*>(payload->Data);
+
+						//the square must still exist and hold an item
+						if (index >= 0 && index < static_cast<int>(backpack.items.size()) && !backpack.items[index].empty()) {
+							const std::string itemId = backpack.items[index];		//copy before emptying the square
+							backpack.items[index] = "";								//free square
+							const glm::vec2 playerCenter = EntityCenter(player.GetComponent<TransformComponent>(), player.GetComponent<SpriteComponent>());
+							eventBus->EmitEvent<ItemDroppedEvent>(playerCenter, itemId);
+						}
+					}
+
+
+
+					if (!cursorMessage.empty() && SDL_GetTicks() - cursorMessageTime < 3000) {
+						ImGui::GetForegroundDrawList()->AddText(ImVec2(io.MousePos.x + 16, io.MousePos.y),
+							IM_COL32(255, 100, 100, 255), cursorMessage.c_str());
 					}
 
 				}
@@ -406,21 +594,18 @@ class RenderGUISystem
 			}
 		}
 
-
-		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
-		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
-		void DrawItemIcon(const ItemDefinition* item){
+		//Draws a slot's frame and the item's icon with its top-left at corner, on any draw list - no widget, no ID.
+		//Used by DrawItemIcon (in a window) and by the drag preview (on the foreground). brightness < 255 darkens the icon.
+		void DrawItemPicture(ImDrawList* drawList, ImVec2 corner, const ItemDefinition* item, Uint8 brightness = 255) {
 			
-			//layout position where ImGui places the next widget (not the mouse)
+			//Size of one slot in pixels
 			const float slot = inventoryUI.SlotPixels();
-			const ImVec2 corner = ImGui::GetCursorScreenPos();
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
-			
+
 			//frame: dark background, lighter border
 			const ImVec2 farCorner(corner.x + slot, corner.y + slot);
 			drawList->AddRectFilled(corner, farCorner, IM_COL32(30, 30, 30, 255));
 			drawList->AddRect(corner, farCorner, IM_COL32(90, 90, 90, 255));
-			
+
 			//icon: fitted without stretching, whole-number scale when it fits, centred
 			SDL_Texture* texture = nullptr;
 			if (item != nullptr && !item->icon.empty()) {
@@ -443,17 +628,33 @@ class RenderGUISystem
 
 					const ImVec2 iconMin(corner.x + (slot - drawWidth) / 2.0f, corner.y + (slot - drawHeigth) / 2.0f);
 					const ImVec2 iconMax(iconMin.x + drawWidth, iconMin.y + drawHeigth);
-					drawList->AddImage(texture, iconMin, iconMax);
+					drawList->AddImage(texture, iconMin, iconMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(brightness, brightness, brightness, 255));
 				}
 			}
-			//reserve the slot's space: the next widget goes after it, and hover/click cover the whole slot
-			ImGui::Dummy(ImVec2(slot, slot));
+		}
+
+
+		//Draws one inventory slot at the cursor: a frame, then the item's icon fitted inside it.
+		//Always takes exactly one slot of space, so rows and grids line up; item may be nullptr (empty slot).
+		void DrawItemIcon(const ItemDefinition* item, Uint8 brightness = 255){
+			
+			//Size of one slot in pixels
+			const float slot = inventoryUI.SlotPixels();
+			DrawItemPicture(ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), item, brightness);
+			//an invisible button: reserves the space and gives the slot an ID, so it can be dragged and doesn't drag the window.
+			ImGui::InvisibleButton("##slot", ImVec2(slot, slot));
 		}
 
 		//Shows a refusal from Equip/Unequip in the inventory windows for a few seconds
 		void ShowInventoryMessage(const std::string& message){
 			inventoryMessage = message;
 			inventoryMessageTime = SDL_GetTicks();
+		}
+
+		//Shows a refusal from pickup near cursor for a few seconds
+		void ShowCursorMessage(const std::string& message) {
+			cursorMessage = message;
+			cursorMessageTime = SDL_GetTicks();
 		}
 
 		//The last refusal from an inventory rule, shown for 3 seconds
@@ -497,18 +698,58 @@ class RenderGUISystem
 			}
 		}
 
+		//Find bag for hovering
+		bool FindBagAt(Registry& registry, glm::vec2 worldPoint, Entity& outBag) {
+
+			bool found = false;        //has any bag contained the point yet?
+			Uint32 newest = 0;         //spawn time of the best bag so far
+			for (auto rawEntity : registry.Raw().view<TransformComponent, SpriteComponent, LootBagComponent>()) {
+				
+				Entity bag(rawEntity, &registry);
+				const auto& bagTransform = bag.GetComponent<TransformComponent>();
+				const auto& bagSprite = bag.GetComponent<SpriteComponent>();
+				const auto& bagLoot = bag.GetComponent<LootBagComponent>();
+
+				const glm::vec2 topLeft = bagTransform.position;
+				const double width = bagSprite.width * bagTransform.scale.x;
+				const double height = bagSprite.height * bagTransform.scale.y;
+
+				if (!(worldPoint.x >= topLeft.x && worldPoint.x < topLeft.x + width && worldPoint.y >= topLeft.y && worldPoint.y < topLeft.y + height)) {
+					continue;
+				}
+
+				if (!found || bagLoot.spawnTime > newest) {
+					outBag = bag;
+					newest = bagLoot.spawnTime;
+					found = true;
+				}
+			}
+			return found;
+		}
+
 		const Controls& controls;
 		bool showEquipment = false;
 		bool showBackpack = false;
 		bool showCharacter = false;
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
+		const LootDatabase& lootDatabase;
+		std::unique_ptr<EventBus>& eventBus;
 		AssetStore& assetStore;
 
 
+		Entity openBag;						 //the loot bag whose window is open
+		bool hasOpenBag = false;			 //whether a bag window is open at all
 		std::string inventoryMessage;        //last refusal from an inventory rule, e.g. "Backpack is full"
+		std::string cursorMessage;          //world feedback shown next to the mouse, e.g. "Too far away"
+		Uint32 cursorMessageTime = 0;
 		Uint32 inventoryMessageTime = 0;     //when it was shown, in SDL ticks
 		static constexpr const char* StatLabels[Skill_Count] = { "Attack", "Defense", "Wisdom", "Vitality", "Speed", "Dexterity" };
+
+		std::string bannerImage;		//Texture for announce on legendary drops
+		Uint32 bannerTime = 0;			//when it starts
+		int bannerMs = 0;				//how long it lasts
+		int bannerScale = 1;
 };
 
 #endif // !RENDERGUISYSTEM_H

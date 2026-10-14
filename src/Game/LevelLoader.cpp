@@ -21,6 +21,7 @@
 #include "../Components/AIComponent.h"
 #include "../Components/BackpackComponent.h"
 #include "../Components/EquipmentComponent.h"
+#include "../Components/LootDropComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
@@ -41,7 +42,7 @@ LevelLoader::~LevelLoader()
 }
 
 void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& registry,
-	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,const ItemDatabase& itemDatabase,SDL_Renderer* renderer,int levelNumber)
+	const std::unique_ptr<AssetStore>& assetStore,TileMap& tileMap,const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase,SDL_Renderer* renderer,int levelNumber)
 {
 	sol::load_result check = lua.load_file("./assets/scripts/luaLoadLevel" + std::to_string(levelNumber) + ".lua");
 	//check the syntax to see if it is valid
@@ -428,6 +429,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				newEntity.AddComponent<CameraHollderComponent>();
 			}
 
+
 			//Backpack
 			sol::optional<sol::table> backpackTable = entity["components"]["backpack"];
 			if (backpackTable != sol::nullopt) 
@@ -586,6 +588,20 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 				}
 			}
 
+
+			//Loot
+			sol::optional<sol::table> lootTable = entity["components"]["loot"];
+			if (lootTable != sol::nullopt)
+			{
+				const std::string table = entity["components"]["loot"]["table"].get_or(std::string(""));
+				if (lootDatabase.FindTable(table) == nullptr) {
+					Logger::Warn("The loot table: " + table + " has unknown name or it is empty, skipped");
+				}
+				
+				else {
+					newEntity.AddComponent<LootDropComponent>(table);
+				}
+			}
 
 			//KeyBoardControlled
 			sol::optional<sol::table> keyboardControlled = entity["components"]["keyboard_controlled"];

@@ -24,6 +24,7 @@
 #include "../Systems/RenderExperienceBarSystem.h"
 #include "../Systems/AISystem.h"
 #include "../Systems/RenderTileMapSystem.h"
+#include "../Systems/LootSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -183,13 +184,14 @@ void Game::Setup()
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, *assetStore);
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, eventBus, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
 	progressionSystem = std::make_unique<ProgressionSystem>();
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
+	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua);
@@ -198,7 +200,8 @@ void Game::Setup()
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
-	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, renderer, 1);
+	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
+	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 }
@@ -227,12 +230,14 @@ void Game::Update()
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
-	renderGUISystem->SubscribeToEvents(eventBus);
+	renderGUISystem->SubscribeToEvents();
 	progressionSystem->SubscribeToEvents(eventBus);
+	lootSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
 	// invoke all the systems to update
+	lootSystem->Update();
 	keyboardControlSystem->Update(*registry);
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	movementSystem->Update(*registry, deltaTime, tileMap);
