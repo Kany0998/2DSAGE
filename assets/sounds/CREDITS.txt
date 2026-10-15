@@ -1,0 +1,51 @@
+2DSAGE - sound credits
+======================
+One entry per sound file: file - title by author (source), link - licence.
+Only CC0, CC-BY or own sounds belong in this public repository. Sounds under
+licences that forbid redistributing the files themselves (e.g. Pixabay) must
+not be committed here. CC-BY sounds must also be credited in the game itself.
+All files were cut and/or converted to 16-bit 44.1 kHz WAV for the engine.
+
+--- CREDIT REQUIRED (CC BY) ---------------------------------------------------
+
+player-hurt.wav - "punch 7.aif" by CastIronCarousel (Freesound)
+    https://freesound.org/people/CastIronCarousel/sounds/216785/
+    CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/) - converted to WAV
+
+bag-open.wav - "OpenBag.wav" by TriqyStudio (Freesound)
+    https://freesound.org/people/TriqyStudio/sounds/467604/
+    CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) - converted to mono
+
+legendary-aura.wav - "Mystic Rune Stinger - Viking Percussion Magic" by TommasoMotteran (Freesound)
+    https://freesound.org/people/TommasoMotteran/sounds/868220/
+    CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) - converted to 16-bit
+
+--- CC0 (credit not required) -------------------------------------------------
+
+sword-swing.wav - "SwingSound" by TheArbuzikYT (Freesound), one swing cut out
+    https://freesound.org/people/TheArbuzikYT/sounds/863770/
+
+enemy-hurt.wav - "Punch #1.mp3" by lewisisminted (Freesound)
+    https://freesound.org/people/lewisisminted/sounds/162370/
+
+level-up.wav - "level up.wav" by Marregheriti (Freesound)
+    https://freesound.org/people/Marregheriti/sounds/266100/
+
+bag-drop.wav, ui-equip.wav, ui-unequip.wav - three parts cut from
+    "Dropping bag of money on a table" by hz37 (Freesound)
+    https://freesound.org/people/hz37/sounds/792317/
+
+footstep-grass.wav - "running in grass" by EvanSki (Freesound)
+    https://freesound.org/people/EvanSki/sounds/411148/
+
+footstep-ice.wav, footstep-snow.wav - cut from "footsteps - ice 09.wav" by Anthousai (Freesound)
+    https://freesound.org/people/Anthousai/sounds/539683/
+
+fire-loop.wav - "Fireplace Sound loop" by PagDev (OpenGameArt)
+    https://opengameart.org/content/fireplace-sound-loop
+
+birds-1.wav, birds-2.wav, birds-3.wav - cut from "birds.wav" by naveenboy87 (Freesound)
+    https://freesound.org/people/naveenboy87/sounds/464278/
+
+wind-1.wav, wind-2.wav, wind-3.wav - "Wind" by IgnasD (OpenGameArt)
+    https://opengameart.org/content/wind
