@@ -6,6 +6,7 @@
 #include "../Components/SpriteComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
+#include "../Audio/LevelAmbience.h"
 #include "../TileMap/TileMap.h"
 #include "../Utils/EntityGeometry.h"
 #include "../Logger/Logger.h"
@@ -13,6 +14,7 @@
 #include <SDL_mixer.h>
 #include <glm/glm.hpp>
 #include <string>
+#include <random>
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
@@ -119,6 +121,42 @@ class AudioSystem {
 			Mix_FadeInMusic(music, -1, 1000);
 		}
 
+		void StartAmbience(const LevelAmbience& newAmbience) {
+			if (!audioReady) {
+				return;
+			}
+
+			ambience = newAmbience;
+
+			if (!ambience.loop.empty()) {
+				if (audioSettings.channels < 2) {
+					Logger::Warn("audio: ambience loop '" + ambience.loop + "' needs its own channel, but only 1 is available - not played");
+				}
+
+				else {
+					//channel 0 belongs to the background from now on: Mix_PlayChannel(-1, ...) will never pick it
+					Mix_ReserveChannels(1);
+
+					Mix_Chunk* loopSound = FindSound(ambience.loop);
+					if (loopSound != nullptr) {
+						//channel 0 (the reserved one), -1 = repeat forever
+						if (Mix_PlayChannel(0, loopSound, -1) != -1) {
+							Mix_SetPanning(0, 255, 255);      //centred: the background is everywhere
+							Mix_SetDistance(0, 0);
+							ambienceLoopPlaying = true;
+							appliedAmbienceVolume = -1.0f;    //forces Update to set the loop volume next frame
+						}
+					}
+				}
+			}
+			//random sounds
+			const Uint32 now = SDL_GetTicks();
+			for (auto& sound : ambience.random) {
+				std::uniform_int_distribution<Uint32> delay(sound.minMs, sound.maxMs);
+				sound.nextAt = now + delay(rng);
+			}
+		}
+
 		//every frame: keeps the music volume current
 		void Update() {
 			if (!audioReady) {
@@ -131,6 +169,49 @@ class AudioSystem {
 			if (wanted != appliedMusicVolume) {
 				Mix_VolumeMusic(static_cast<int>(wanted * MIX_MAX_VOLUME));
 				appliedMusicVolume = wanted;
+			}
+
+			//the background loop's volume
+			const float wantedAmbience = audioSettings.ambience * audioSettings.master;
+			if (ambienceLoopPlaying && wantedAmbience != appliedAmbienceVolume) 
+			{
+				Mix_Volume(0, static_cast<int>(wantedAmbience * MIX_MAX_VOLUME));
+				appliedAmbienceVolume = wantedAmbience;
+			}
+
+			//random ambience sounds that are due
+			const Uint32 now = SDL_GetTicks();
+			for (auto& sound : ambience.random) {
+				
+				//waiting for its turn
+				if (now < sound.nextAt) {
+					continue;
+				}
+
+				//pick the next time now, so a sound that can't play waits too
+				std::uniform_int_distribution<Uint32> delay(sound.minMs, sound.maxMs);
+				sound.nextAt = now + delay(rng);
+
+				Mix_Chunk* chunk = FindSound(sound.soundId);
+				if (chunk == nullptr) {
+					continue;
+				}
+
+				int channel = Mix_PlayChannel(-1, chunk, 0);
+				if (channel == -1) {
+					continue;
+				}
+
+
+				Mix_Volume(channel, static_cast<int>(wantedAmbience * MIX_MAX_VOLUME));
+				Mix_SetDistance(channel, 0);
+				std::uniform_real_distribution<float> sideRoll(-0.5f, 0.5f);
+				const float side = sideRoll(rng);
+
+				Uint8 left = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(side, 0.0f)));
+				Uint8 right = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(-side, 0.0f)));
+
+				Mix_SetPanning(channel, left, right);
 			}
 		}
 
@@ -183,6 +264,11 @@ class AudioSystem {
 		const SDL_Rect& camera;
 		const TileMap& tileMap;
 		bool audioReady = false;
+
+		LevelAmbience ambience;			//the current level's ambience
+		std::mt19937 rng{ std::random_device{}() };
+		float appliedAmbienceVolume = -1.0f;
+		bool ambienceLoopPlaying = false;	//whether channel 0 holds the loop
 
 };
 

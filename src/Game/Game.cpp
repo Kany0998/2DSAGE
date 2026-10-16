@@ -32,6 +32,7 @@
 #include "../Events/MouseButtonPressedEvent.h"
 #include "../TileMap/MovementType.h"
 #include "../Pathfinding/Pathfinder.h"
+#include "../Audio/LevelAmbience.h"
 #include <iostream>
 #include <SDL.h>
 #include <glm/glm.hpp>
@@ -143,34 +144,35 @@ void Game::ProccessInput()
 		//Handle core SDl events
 		switch (sdlEvent.type)
 		{
-		case SDL_QUIT:
-			isRunning = false;
-			break;
-		case SDL_KEYDOWN:
-			if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
-			{
+			case SDL_QUIT:
 				isRunning = false;
-			}
+				break;
 
-			if (sdlEvent.key.keysym.sym == SDLK_x)
-			{
-				isDebug = !isDebug;
-			}
+			case SDL_KEYDOWN:
+				if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
+				{
+					isRunning = false;
+				}
 
-			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
-			break;
+				if (sdlEvent.key.keysym.sym == SDLK_x)
+				{
+					isDebug = !isDebug;
+				}
 
-		case SDL_MOUSEBUTTONDOWN:
-			//Don't let a click meant for the ImGui debug panel also fire a projectile
-			if (!io.WantCaptureMouse)
-			{
-				glm::vec2 worldPosition(
-					sdlEvent.button.x + camera.x,
-					sdlEvent.button.y + camera.y
-				);
-				eventBus->EmitEvent<MouseButtonPressedEvent>(sdlEvent.button.button, worldPosition);
-			}
-			break;
+				eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
+				break;
+
+			case SDL_MOUSEBUTTONDOWN:
+				//Don't let a click meant for the ImGui debug panel also fire a projectile
+				if (!io.WantCaptureMouse)
+				{
+					glm::vec2 worldPosition(
+						sdlEvent.button.x + camera.x,
+						sdlEvent.button.y + camera.y
+					);
+					eventBus->EmitEvent<MouseButtonPressedEvent>(sdlEvent.button.button, worldPosition);
+				}
+				break;
 
 		}
 	}
@@ -218,6 +220,7 @@ void Game::Setup()
 	audioSettings = AudioSettings::Load(lua);
 	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
+	audioSystem->StartAmbience(LevelAmbience::Load(lua));
 }
 
 void Game::Update()
