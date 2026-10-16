@@ -15,6 +15,22 @@ Level = {
 
 	assets = dofile("./assets/scripts/assets.lua"),
 
+	--map sounds
+	music = "",
+	ambience = 
+	{
+		loop = "",
+		random =
+		{
+			{sound = "wind-1", min_seconds = 25, max_seconds = 40},
+			{sound = "wind-2", min_seconds = 25, max_seconds = 40},
+			{sound = "wind-3", min_seconds = 25, max_seconds = 40},
+			{sound = "birds-1", min_seconds = 25, max_seconds = 40},
+			{sound = "birds-2", min_seconds = 25, max_seconds = 40},
+			{sound = "birds-3", min_seconds = 25, max_seconds = 40},
+		},
+	},
+
 	--map config values
 
 	tilemap =
@@ -28,7 +44,7 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400, step_sound = "footstep-ice"},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
@@ -96,13 +112,20 @@ Level = {
 					speed = 100,
 					dexterity = 100
 				},
+				sounds =
+				{
+					hurt = "player-hurt",
+					level_up = "level-up",
+					footsteps = true
+				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 100},
 					projectile_duration = 10, --sec
 					repeat_frequency = 0,
 					projectile_damage = 15,
-					friendly = true
+					friendly = true,
+					shot_sound = "sword-swing"
 				},
 				keyboard_controlled =
 				{
@@ -157,7 +180,7 @@ Level = {
 					{ 
 						Weapon = "iron_sword"
 					}
-				}
+				},
 			}
 		},
 		{
@@ -200,6 +223,10 @@ Level = {
 				experience_reward =
 				{
 					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt" 
 				},
 				projectile_emitter =
 				{
@@ -269,6 +296,10 @@ Level = {
 				experience_reward =
 				{
 					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt" 
 				},
 				projectile_emitter =
 				{
@@ -600,6 +631,10 @@ Level = {
 				{
 					experience = 50
 				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt" 
+				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
@@ -694,6 +729,10 @@ Level = {
 					speed = 10,
 					dexterity = 10
 				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt" 
+				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
@@ -726,7 +765,8 @@ Controls =
 { 
 	equipment = "I",
 	backpack = "B", 
-	character = "C"
+	character = "C",
+	options = "O"
 }
 
 InventoryUI =
@@ -736,6 +776,23 @@ InventoryUI =
 	backpack_columns = 8
 }
 
+AudioSettings =
+{
+	master = 0.8,
+	music = 0.5,
+	effects = 1.0,
+	ambience = 0.6,
+	hearing_range_tiles = 12,
+	channels = 32,
+	repeat_gap_ms = 40,
+	ui = 
+	{ 
+		equip = "ui-equip", 
+		unequip = "ui-unequip", 
+		open_bag = "bag-open", 
+		take_item = "ui-equip" 
+	},
+}
 
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale

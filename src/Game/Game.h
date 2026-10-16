@@ -47,6 +47,7 @@ class Game
 	private:
 		bool isRunning;
 		bool isDebug;
+		bool audioReady = false;     //false = no audio device, the game runs silently
 		SDL_Window* window;
 		SDL_Renderer* renderer;
 		int millisecondsPreviousFrame = 0;

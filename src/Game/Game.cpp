@@ -35,6 +35,7 @@
 #include <SDL.h>
 #include <glm/glm.hpp>
 #include <SDL_image.h>
+#include <SDL_mixer.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_sdl.h>
 #include <imgui/imgui_impl_sdl.h>
@@ -73,6 +74,15 @@ void Game::Initialize()
 	{
 		Logger::Err("Error initializing SDL TTF.");
 		return;
+	}
+
+	//44.1 kHz, default format, stereo, 2048-sample buffer
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) {
+		Logger::Warn(std::string("Audio device could not be opened, playing without sound: ") + Mix_GetError());
+	}
+	
+	else {
+		audioReady = true;
 	}
 	//Create window
 	SDL_DisplayMode displayMode;
@@ -389,6 +399,12 @@ void Game::Destroy()
 	//destructor runs, which happens after SDL_Quit()/TTF_Quit() below.
 	assetStore.reset();
 
+	//If sound was played we destory it at the end
+	if (audioReady) {
+		Mix_CloseAudio();
+	}
+
+	Mix_Quit();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_Quit();

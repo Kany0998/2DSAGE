@@ -75,16 +75,19 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		std::string assetType = asset["type"];
 		std::string assetId = asset["id"];
 
-		if (assetType == "texture")
-		{
-			assetStore->AddTexture(renderer, asset["id"], asset["file"]);
-			Logger::Log("New texture assets loaded to the asset store, id: " + assetId);
+		if (assetType == "texture"){
+			assetStore->AddTexture(renderer, assetId, asset["file"]);
 		}
 
-		if (assetType == "font")
-		{
+		if (assetType == "font"){
 			assetStore->AddFont(assetId, asset["file"], asset["font_size"]);
-			Logger::Log("New font assets loaded to the asset store, id: " + assetId);
+		}
+
+		if (assetType == "sound") {
+			assetStore->AddSound(assetId, asset["file"]);
+		}
+		if (assetType == "music") {
+			assetStore->AddMusic(assetId, asset["file"]);
 		}
 		i++;
 	}
