@@ -25,6 +25,7 @@
 #include "../Systems/AISystem.h"
 #include "../Systems/RenderTileMapSystem.h"
 #include "../Systems/LootSystem.h"
+#include "../Systems/AudioSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -214,6 +215,9 @@ void Game::Setup()
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
+	audioSettings = AudioSettings::Load(lua);
+	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, audioReady);
+	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
 }
 
 void Game::Update()
@@ -248,6 +252,7 @@ void Game::Update()
 
 	// invoke all the systems to update
 	lootSystem->Update();
+	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	movementSystem->Update(*registry, deltaTime, tileMap);
