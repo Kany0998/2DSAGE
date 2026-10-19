@@ -116,6 +116,7 @@ Level = {
 				{
 					hurt = "player-hurt",
 					level_up = "level-up",
+					cast = "wind-3",
 					footsteps = true
 				},
 				projectile_emitter =
@@ -301,7 +302,7 @@ Level = {
 				sounds = 
 				{ 
 					hurt = "enemy-hurt",
-					death = "enemy-hurt" 
+					death = "goblin-idle-3" 
 				},
 				projectile_emitter =
 				{

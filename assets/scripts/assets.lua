@@ -61,6 +61,9 @@ return {
 	{type = "sound", id = "wind-1",    file = "./assets/sounds/wind-1.wav"},
 	{type = "sound", id = "wind-2",    file = "./assets/sounds/wind-2.wav"},
 	{type = "sound", id = "wind-3",    file = "./assets/sounds/wind-3.wav"},
+	{type = "sound", id = "goblin-idle-1",    file = "./assets/sounds/goblin-idle-1.wav"},
+	{type = "sound", id = "goblin-idle-2",    file = "./assets/sounds/goblin-idle-2.wav"},
+	{type = "sound", id = "goblin-idle-3",    file = "./assets/sounds/goblin-idle-3.wav"},
 
 	-- music
 	{type = "music", id = "test-music",    file = "./assets/sounds/wind-3.wav"},

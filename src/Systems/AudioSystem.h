@@ -5,6 +5,7 @@
 #include "../Components/TransformComponent.h"
 #include "../Components/SpriteComponent.h"
 #include "../Components/SoundComponent.h"
+#include "../Components/ProgressionComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
 #include "../Audio/LevelAmbience.h"
@@ -15,6 +16,10 @@
 #include "../EventBus/EventBus.h"
 #include "../Events/EntityKilledEvent.h"
 #include "../Events/LootDroppedEvent.h"
+#include "../Events/ProjectileFiredEvent.h"
+#include "../Events/EntityHurtEvent.h"
+#include "../Events/AbilityCastEvent.h"
+#include "../Events/LevelUpEvent.h"
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include <glm/glm.hpp>
@@ -40,6 +45,10 @@ class AudioSystem {
 		void SubscribeToEvents() {
 			eventBus->SubscribeToEvent<LootDroppedEvent>(this, &AudioSystem::OnLootDropped);
 			eventBus->SubscribeToEvent<EntityKilledEvent>(this, &AudioSystem::OnEntityKilled);
+			eventBus->SubscribeToEvent<ProjectileFiredEvent>(this, &AudioSystem::OnProjectileFired);
+			eventBus->SubscribeToEvent<EntityHurtEvent>(this, &AudioSystem::OnEntityHurt);
+			eventBus->SubscribeToEvent<AbilityCastEvent>(this, &AudioSystem::OnSpacialAbilityCast);
+			eventBus->SubscribeToEvent<LevelUpEvent>(this, &AudioSystem::OnLevelUp);
 		}
 
 		void OnLootDropped(LootDroppedEvent& event) {
@@ -64,6 +73,46 @@ class AudioSystem {
 				const std::string& sound = event.victim.GetComponent<SoundComponent>().death;
 				const glm::vec2 victimCenter = EntityCenter(event.victim.GetComponent<TransformComponent>(), event.victim.GetComponent<SpriteComponent>());
 				PlayAt(sound, victimCenter);
+			}
+		}
+
+		void OnProjectileFired(ProjectileFiredEvent& event) {
+			PlayAt(event.soundId, event.position);
+		}
+
+		void OnEntityHurt(EntityHurtEvent& event) {
+			if (!event.victim.HasComponent<SoundComponent>()) {
+				return;
+			}
+
+			if (event.victim.HasComponent<TransformComponent>() && event.victim.HasComponent<SpriteComponent>()) {
+				const std::string& sound = event.victim.GetComponent<SoundComponent>().hurt;
+				const glm::vec2 victimCenter = EntityCenter(event.victim.GetComponent<TransformComponent>(), event.victim.GetComponent<SpriteComponent>());
+				PlayAt(sound, victimCenter);
+			}
+		}
+
+		void OnSpacialAbilityCast(AbilityCastEvent& event) {
+			if (!event.caster.HasComponent<SoundComponent>()) {
+				return;
+			}
+
+			if (event.caster.HasComponent<TransformComponent>() && event.caster.HasComponent<SpriteComponent>()) {
+				const std::string& sound = event.caster.GetComponent<SoundComponent>().cast;
+				const glm::vec2 casterCenter = EntityCenter(event.caster.GetComponent<TransformComponent>(), event.caster.GetComponent<SpriteComponent>());
+				PlayAt(sound, casterCenter);
+			}
+		}
+
+		void OnLevelUp(LevelUpEvent& event) {
+			if (!event.player.HasComponent<SoundComponent>()) {
+				return;
+			}
+
+			if (event.player.HasComponent<TransformComponent>() && event.player.HasComponent<SpriteComponent>()) {
+				const glm::vec2 playerCenter = EntityCenter(event.player.GetComponent<TransformComponent>(), event.player.GetComponent<SpriteComponent>());
+				const std::string& sound = event.player.GetComponent<SoundComponent>().levelUp;
+				PlayAt(sound, playerCenter);
 			}
 		}
 

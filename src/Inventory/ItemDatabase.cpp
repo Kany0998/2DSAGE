@@ -89,6 +89,7 @@ void ItemDatabase::Load(sol::state& lua, const std::string& path) {
 				w.minDamage = (*weapon)["min_damage"].get_or(w.minDamage);
 				w.maxDamage = (*weapon)["max_damage"].get_or(w.maxDamage);
 				w.projectileTexture = (*weapon)["projectile_texture"].get_or(w.projectileTexture);
+				w.shotSound = (*weapon)["shot_sound"].get_or(w.shotSound);
 				w.projectileSpeed = (*weapon)["projectile_speed"].get_or(w.projectileSpeed);
 				w.shotPerSecond = (*weapon)["shots_per_second"].get_or(w.shotPerSecond);
 				w.rangeTiles = (*weapon)["range_tiles"].get_or(w.rangeTiles);

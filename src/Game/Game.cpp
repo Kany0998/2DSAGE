@@ -190,7 +190,7 @@ void Game::Setup()
 	damageSystem = std::make_unique<DamageSystem>(eventBus);
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
-	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, tileMap, itemDatabase, *assetStore);
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, tileMap, itemDatabase, *assetStore, eventBus);
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
@@ -199,8 +199,8 @@ void Game::Setup()
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
 	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, eventBus, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
-	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
-	progressionSystem = std::make_unique<ProgressionSystem>();
+	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, eventBus);
+	progressionSystem = std::make_unique<ProgressionSystem>(eventBus);
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
@@ -248,7 +248,7 @@ void Game::Update()
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
 	renderGUISystem->SubscribeToEvents();
-	progressionSystem->SubscribeToEvents(eventBus);
+	progressionSystem->SubscribeToEvents();
 	lootSystem->SubscribeToEvents();
 	audioSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted

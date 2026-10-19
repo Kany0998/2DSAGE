@@ -44,6 +44,11 @@ footstep-ice.wav, footstep-snow.wav - cut from "footsteps - ice 09.wav" by Antho
 fire-loop.wav - "Fireplace Sound loop" by PagDev (OpenGameArt)
     https://opengameart.org/content/fireplace-sound-loop
 
+goblin-idle-1.wav, goblin-idle-2.wav, goblin-idle-3.wav - cut from
+    "Various groans & moans for goblin or imp enemies attacking or taking damage in CRPG game"
+    by randbsoundbites (Freesound)
+    https://freesound.org/people/randbsoundbites/sounds/868445/
+
 birds-1.wav, birds-2.wav, birds-3.wav - cut from "birds.wav" by naveenboy87 (Freesound)
     https://freesound.org/people/naveenboy87/sounds/464278/
 

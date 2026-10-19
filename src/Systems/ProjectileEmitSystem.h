@@ -17,6 +17,8 @@
 #include "../TileMap/TileMap.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../AssetStore/AssetStore.h"
+#include "../EventBus/EventBus.h"
+#include "../Events/ProjectileFiredEvent.h"
 #include <SDL.h>
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
@@ -27,6 +29,7 @@
 
 struct ProjectileProfile {
 	std::string texture = "bullet-texture";
+	std::string shotSound = "";
 	int minDamage = 1, maxDamage = 1;
 	float speed = 0.0f;
 	float shotsPerSecond = 1.0f;   //player only; enemies keep repeatRate
@@ -44,8 +47,8 @@ class ProjectileEmitSystem
 {
 	public:
 
-		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const TileMap& tileMap, const ItemDatabase& itemDatabase, AssetStore& assetStore)
-			: registry(registry), camera(camera), tileMap(tileMap), itemDatabase(itemDatabase), assetStore(assetStore) {}
+		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const TileMap& tileMap, const ItemDatabase& itemDatabase, AssetStore& assetStore, std::unique_ptr<EventBus>& eventBus)
+			: registry(registry), camera(camera), tileMap(tileMap), itemDatabase(itemDatabase), assetStore(assetStore), eventBus(eventBus) {}
 
 		void Update()
 		{
@@ -272,6 +275,7 @@ class ProjectileEmitSystem
 				(width - hitboxSize) / 2.0f * transform.scale.x,
 				(height - hitboxSize) / 2.0f * transform.scale.y);
 
+			const glm::vec2 firedFrom = position;
 			position -= glm::vec2(width * transform.scale.x / 2.0f, height * transform.scale.y / 2.0f);
 
 			Entity projectile = registry.CreateEntity();
@@ -284,13 +288,15 @@ class ProjectileEmitSystem
 			//credited back to the shooter
 			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, finalDamage, profile.lifetimeMs, entity);
 			projectile.AddComponent<MovementTypeComponent>(MovementType_Projectile);
+			eventBus->EmitEvent<ProjectileFiredEvent>(firedFrom, profile.shotSound);
 		}
 
 		Registry& registry;
 		const SDL_Rect& camera;
 		const TileMap& tileMap;            
 		const ItemDatabase& itemDatabase;  
-		AssetStore& assetStore;            
+		AssetStore& assetStore;
+		std::unique_ptr<EventBus>& eventBus;
 
 		static constexpr float BaseShotsPerSecond = 1.0f;        //fire rate with no dexterity at all
 		static constexpr float DexterityPerStep = 75.0f;         //dexterity needed for one full step
@@ -304,6 +310,7 @@ class ProjectileEmitSystem
 		ProjectileProfile GetProfile(Entity entity, const ProjectileEmitterComponent& emitter) {
 			ProjectileProfile profile;
 			profile.texture = emitter.projectileTexture;
+			profile.shotSound = emitter.shotSound;
 			profile.minDamage = emitter.projectileDamage;
 			profile.maxDamage = emitter.projectileDamage;
 			profile.speed = glm::length(emitter.projectileVelocity);
@@ -327,6 +334,7 @@ class ProjectileEmitSystem
 
 				const WeaponStats& weapon = definition->weapon;
 				profile.texture = weapon.projectileTexture;
+				profile.shotSound = weapon.shotSound;
 				profile.minDamage = weapon.minDamage;
 				profile.maxDamage = weapon.maxDamage;
 				profile.speed = weapon.projectileSpeed;
