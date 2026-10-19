@@ -22,6 +22,7 @@
 #include "../Components/BackpackComponent.h"
 #include "../Components/EquipmentComponent.h"
 #include "../Components/LootDropComponent.h"
+#include "../Components/SoundComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
@@ -430,6 +431,21 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			if (cameraFollow != sol::nullopt)
 			{
 				newEntity.AddComponent<CameraHollderComponent>();
+			}
+
+			//Sound
+			sol::optional<sol::table> sounds = entity["components"]["sounds"];
+			if (sounds != sol::nullopt)
+			{
+				newEntity.AddComponent<SoundComponent>(
+					(*sounds)["hurt"].get_or(std::string("")),
+					(*sounds)["death"].get_or(std::string("")),
+					(*sounds)["level_up"].get_or(std::string("")),
+					(*sounds)["cast"].get_or(std::string("")),
+					(*sounds)["idle"].get_or(std::string("")),
+					(*sounds)["loop"].get_or(std::string("")),
+					(*sounds)["footsteps"].get_or(false)
+				);
 			}
 
 

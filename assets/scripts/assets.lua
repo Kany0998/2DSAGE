@@ -62,4 +62,6 @@ return {
 	{type = "sound", id = "wind-2",    file = "./assets/sounds/wind-2.wav"},
 	{type = "sound", id = "wind-3",    file = "./assets/sounds/wind-3.wav"},
 
+	-- music
+	{type = "music", id = "test-music",    file = "./assets/sounds/wind-3.wav"},
 }

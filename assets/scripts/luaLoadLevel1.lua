@@ -19,15 +19,15 @@ Level = {
 	music = "",
 	ambience = 
 	{
-		loop = "",
+		loop = "fire-loop",
 		random =
 		{
-			{sound = "wind-1", min_seconds = 25, max_seconds = 40},
-			{sound = "wind-2", min_seconds = 25, max_seconds = 40},
-			{sound = "wind-3", min_seconds = 25, max_seconds = 40},
-			{sound = "birds-1", min_seconds = 25, max_seconds = 40},
-			{sound = "birds-2", min_seconds = 25, max_seconds = 40},
-			{sound = "birds-3", min_seconds = 25, max_seconds = 40},
+			{sound = "wind-1", min_seconds = 20, max_seconds = 70},
+			{sound = "wind-2", min_seconds = 20, max_seconds = 70},
+			{sound = "wind-3", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-1", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-2", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-3", min_seconds = 20, max_seconds = 70},
 		},
 	},
 
@@ -226,7 +226,8 @@ Level = {
 				},
 				sounds = 
 				{ 
-					hurt = "enemy-hurt" 
+					hurt = "enemy-hurt",
+					death = "enemy-hurt"
 				},
 				projectile_emitter =
 				{
@@ -299,7 +300,8 @@ Level = {
 				},
 				sounds = 
 				{ 
-					hurt = "enemy-hurt" 
+					hurt = "enemy-hurt",
+					death = "enemy-hurt" 
 				},
 				projectile_emitter =
 				{
@@ -780,7 +782,7 @@ AudioSettings =
 {
 	master = 0.8,
 	music = 0.5,
-	effects = 1.0,
+	effects = 0.4,
 	ambience = 0.6,
 	hearing_range_tiles = 12,
 	channels = 32,

@@ -218,7 +218,7 @@ void Game::Setup()
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
-	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, audioReady);
+	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
 	audioSystem->StartAmbience(LevelAmbience::Load(lua));
 }
@@ -250,6 +250,7 @@ void Game::Update()
 	renderGUISystem->SubscribeToEvents();
 	progressionSystem->SubscribeToEvents(eventBus);
 	lootSystem->SubscribeToEvents();
+	audioSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 

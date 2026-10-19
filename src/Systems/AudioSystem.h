@@ -4,12 +4,17 @@
 #include "../ECS/ECS.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/SpriteComponent.h"
+#include "../Components/SoundComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
 #include "../Audio/LevelAmbience.h"
 #include "../TileMap/TileMap.h"
 #include "../Utils/EntityGeometry.h"
 #include "../Logger/Logger.h"
+#include "../Loot/LootDatabase.h"
+#include "../EventBus/EventBus.h"
+#include "../Events/EntityKilledEvent.h"
+#include "../Events/LootDroppedEvent.h"
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include <glm/glm.hpp>
@@ -23,12 +28,42 @@ class AudioSystem {
 	
 	public:
 		AudioSystem(Registry& registry, AssetStore& assetStore, AudioSettings& audioSettings,
-			const SDL_Rect& camera, const TileMap& tileMap, bool audioReady) :
+			const SDL_Rect& camera, const TileMap& tileMap, const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, bool audioReady) :
 			registry(registry), assetStore(assetStore), audioSettings(audioSettings),
-			camera(camera), tileMap(tileMap), audioReady(audioReady) {
+			camera(camera), tileMap(tileMap), lootDatabase(lootDatabase), eventBus(eventBus), audioReady(audioReady) {
 
 			if (audioReady) {
 				Mix_AllocateChannels(audioSettings.channels);
+			}
+		}
+
+		void SubscribeToEvents() {
+			eventBus->SubscribeToEvent<LootDroppedEvent>(this, &AudioSystem::OnLootDropped);
+			eventBus->SubscribeToEvent<EntityKilledEvent>(this, &AudioSystem::OnEntityKilled);
+		}
+
+		void OnLootDropped(LootDroppedEvent& event) {
+			
+			const BagTier* tier = lootDatabase.FindBag(event.tierId);
+			if (tier == nullptr) {
+				return;
+			}
+
+			PlayAt(tier->dropSound, event.bagPosition);
+			if (event.fromKill) {
+				PlayAt(tier->announceSound, event.bagPosition);
+			}
+		}
+
+		void OnEntityKilled(EntityKilledEvent& event) {
+			if (!event.victim.HasComponent<SoundComponent>()) {
+				return;
+			}
+
+			if (event.victim.HasComponent<TransformComponent>() && event.victim.HasComponent<SpriteComponent>()) {
+				const std::string& sound = event.victim.GetComponent<SoundComponent>().death;
+				const glm::vec2 victimCenter = EntityCenter(event.victim.GetComponent<TransformComponent>(), event.victim.GetComponent<SpriteComponent>());
+				PlayAt(sound, victimCenter);
 			}
 		}
 
@@ -263,6 +298,8 @@ class AudioSystem {
 		AudioSettings& audioSettings;
 		const SDL_Rect& camera;
 		const TileMap& tileMap;
+		const LootDatabase& lootDatabase;
+		std::unique_ptr<EventBus>& eventBus;
 		bool audioReady = false;
 
 		LevelAmbience ambience;			//the current level's ambience
