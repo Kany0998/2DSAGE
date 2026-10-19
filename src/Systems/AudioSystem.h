@@ -297,6 +297,32 @@ class AudioSystem {
 
 				Mix_SetPanning(channel, left, right);
 			}
+
+			//enemies and other entities grumbling now and then, each on its own timer
+			for (auto rawEntity : registry.Raw().view<SoundComponent, TransformComponent, SpriteComponent>()) {
+				Entity entity(rawEntity, &registry);
+				auto& sound = entity.GetComponent<SoundComponent>();
+
+				if (sound.idle.empty()) {
+					continue;
+				}
+
+				//first time this entity is seen: only DRAW its first time, play nothing
+				if (sound.nextIdleAt == 0) {
+					std::uniform_int_distribution<Uint32> delay(sound.idleMinMs, sound.idleMaxMs);
+					sound.nextIdleAt = now + delay(rng);
+					continue;
+				}
+
+				if (now < sound.nextIdleAt) {
+					continue;
+				}
+
+				std::uniform_int_distribution<Uint32> delay(sound.idleMinMs, sound.idleMaxMs);
+				sound.nextIdleAt = now + delay(rng);
+				const glm::vec2 center = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
+				PlayAt(sound.idle, center);
+			}
 		}
 
 	private:

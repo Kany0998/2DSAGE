@@ -343,6 +343,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 				const double attack_range = entity["components"]["projectile_emitter"]["attack_range"].get_or(4.0) * tileWorldSize;
 
+
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
@@ -438,15 +439,36 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> sounds = entity["components"]["sounds"];
 			if (sounds != sol::nullopt)
 			{
-				newEntity.AddComponent<SoundComponent>(
-					(*sounds)["hurt"].get_or(std::string("")),
-					(*sounds)["death"].get_or(std::string("")),
-					(*sounds)["level_up"].get_or(std::string("")),
-					(*sounds)["cast"].get_or(std::string("")),
-					(*sounds)["idle"].get_or(std::string("")),
-					(*sounds)["loop"].get_or(std::string("")),
-					(*sounds)["footsteps"].get_or(false)
-				);
+				newEntity.AddComponent<SoundComponent>();
+				auto& sound = newEntity.GetComponent<SoundComponent>();
+
+				int min = (*sounds)["idle_min_seconds"].get_or(10);
+				int max = (*sounds)["idle_max_seconds"].get_or(20);
+
+				if (min < 1) {
+					Logger::Warn("Loader: idle_min < 1: " + std::to_string(min) + " which can cause problems, new value assigned: 1 second");
+					min = 1;
+				}
+
+				if (max < 2) {
+					Logger::Warn("Loader: idle_max < 2: " + std::to_string(max) + " which can cause problems, new value assigned: 2 second");
+					max = 2;
+				}
+
+				if (min > max) {
+					Logger::Warn("Loader: idle_min > idle_max: " + std::to_string(min) + " >" + std::to_string(max) + " the values are swapped");
+					std::swap(min, max);
+				}
+
+				sound.hurt = (*sounds)["hurt"].get_or(std::string(""));
+				sound.death = (*sounds)["death"].get_or(std::string(""));
+				sound.levelUp = (*sounds)["level_up"].get_or(std::string(""));
+				sound.cast = (*sounds)["cast"].get_or(std::string(""));
+				sound.idle = (*sounds)["idle"].get_or(std::string(""));
+				sound.idleMinMs = static_cast<Uint32>(min) * 1000;
+				sound.idleMaxMs = static_cast<Uint32>(max) * 1000;
+				sound.loop = (*sounds)["loop"].get_or(std::string(""));
+				sound.footsteps = (*sounds)["footsteps"].get_or(false);					
 			}
 
 

@@ -228,7 +228,10 @@ Level = {
 				sounds = 
 				{ 
 					hurt = "enemy-hurt",
-					death = "enemy-hurt"
+					death = "enemy-hurt",
+					idle = "goblin-idle-1",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{
@@ -302,7 +305,10 @@ Level = {
 				sounds = 
 				{ 
 					hurt = "enemy-hurt",
-					death = "goblin-idle-3" 
+					death = "goblin-idle-3",
+					idle = "goblin-idle-2",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{
@@ -636,7 +642,11 @@ Level = {
 				},
 				sounds = 
 				{ 
-					hurt = "enemy-hurt" 
+					hurt = "enemy-hurt",
+					death = "goblin-idle-1",
+					idle = "goblin-idle-3",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{

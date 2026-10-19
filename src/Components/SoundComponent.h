@@ -2,6 +2,7 @@
 #define SOUNDCOMPONENT_H
 
 #include <string>
+#include <SDL.h>
 
 struct SoundComponent {
 	//sound names for this entity's events; empty = silent
@@ -10,19 +11,11 @@ struct SoundComponent {
 	std::string levelUp;
 	std::string cast;
 	std::string idle;
+	Uint32 idleMinMs = 0;	//shortest gap between idle sounds
+	Uint32 idleMaxMs = 0;	//longest gap
+	Uint32 nextIdleAt = 0;	//state: when the next idle sound plays (SDL ticks), 0 = not drawn yet
 	std::string loop;
 	bool footsteps = false;
-
-	SoundComponent(std::string hurt = "", std::string death = "", std::string levelUp = "",
-		std::string cast = "", std::string idle = "", std::string loop = "", bool footsteps = false) {
-		this->hurt = hurt;
-		this->death = death;
-		this->levelUp = levelUp;
-		this->cast = cast;
-		this->idle = idle;
-		this->loop = loop;
-		this->footsteps = footsteps;
-	}
 };
 
 
