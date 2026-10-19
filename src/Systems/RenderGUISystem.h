@@ -29,6 +29,7 @@
 #include "../Loot/LootDatabase.h"
 #include "../Utils/EntityGeometry.h"
 #include "../AssetStore/AssetStore.h"
+#include "../Audio/AudioSettings.h"
 #include <algorithm>
 #include <cmath>
 #include <SDL.h>
@@ -38,8 +39,8 @@ class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), eventBus(eventBus), assetStore(assetStore) { }
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AudioSettings& audioSettings, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), audioSettings(audioSettings), eventBus(eventBus), assetStore(assetStore) { }
 
 		void SubscribeToEvents()
 		{
@@ -54,6 +55,7 @@ class RenderGUISystem
 			if (event.symbol == controls.equipment) showEquipment = !showEquipment;
 			if (event.symbol == controls.backpack)  showBackpack = !showBackpack;
 			if (event.symbol == controls.character) showCharacter = !showCharacter;
+			if (event.symbol == controls.options)   showOptions = !showOptions;
 		}
 
 		void OnLootDropped(LootDroppedEvent& event) {
@@ -467,6 +469,8 @@ class RenderGUISystem
 						
 					}
 
+					
+
 					if (hasOpenBag) {
 						if (!openBag.IsAlive() || !openBag.HasComponent<LootBagComponent>()) {
 							hasOpenBag = false;
@@ -555,6 +559,15 @@ class RenderGUISystem
 					}
 
 				}
+			}
+			if (showOptions) {
+				if (ImGui::Begin("Options", &showOptions, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::SliderFloat("Master", &audioSettings.master, 0.0f, 1.0f);
+					ImGui::SliderFloat("Ambience", &audioSettings.ambience, 0.0f, 1.0f);
+					ImGui::SliderFloat("Music", &audioSettings.music, 0.0f, 1.0f);
+					ImGui::SliderFloat("Effects", &audioSettings.effects, 0.0f, 1.0f);
+				}
+				ImGui::End();
 			}
 
 			ImGui::Render();
@@ -747,9 +760,11 @@ class RenderGUISystem
 		bool showEquipment = false;
 		bool showBackpack = false;
 		bool showCharacter = false;
+		bool showOptions = false;
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
 		const LootDatabase& lootDatabase;
+		AudioSettings& audioSettings;
 		std::unique_ptr<EventBus>& eventBus;
 		AssetStore& assetStore;
 
