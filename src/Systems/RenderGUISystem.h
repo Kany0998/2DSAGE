@@ -22,6 +22,7 @@
 #include "../Events/KeyPressedEvent.h"
 #include "../Events/LootDroppedEvent.h"
 #include "../Events/ItemDroppedEvent.h"
+#include "../Events/UISoundEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
@@ -128,8 +129,16 @@ class RenderGUISystem
 							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
 
 							if (distance <= range) {
+
+								//a sound only when this bag wasn't already open
+								const bool alreadyOpen = hasOpenBag && openBag == hoveredBag;   //checked BEFORE overwriting openBag
+
 								openBag = hoveredBag;
 								hasOpenBag = true;
+
+								if (!alreadyOpen) {
+									eventBus->EmitEvent<UISoundEvent>("open_bag");
+								}
 							}
 							else {
 								ShowCursorMessage("Too far away");
@@ -349,6 +358,9 @@ class RenderGUISystem
 										if (!InventoryRules::Unequip(i, backpack, equipment, attributes, itemDatabase, message)) {
 											ShowInventoryMessage(message);
 										}
+										else {
+											eventBus->EmitEvent<UISoundEvent>("unequip");
+										}
 									}
 
 									if (ImGui::IsItemHovered()) {
@@ -423,6 +435,9 @@ class RenderGUISystem
 										if (!InventoryRules::Equip(i, backpack, equipment, attributes, itemDatabase, message)) {
 											ShowInventoryMessage(message);
 										}
+										else {
+											eventBus->EmitEvent<UISoundEvent>("equip");
+										}
 									}
 
 									if (item != nullptr && ImGui::IsItemHovered() && dragged == nullptr) {
@@ -490,6 +505,7 @@ class RenderGUISystem
 										if (taken) {
 											bag.items.erase(bag.items.begin() + i);
 											ImGui::PopID();
+											eventBus->EmitEvent<UISoundEvent>("take_item");
 											break;
 										}
 

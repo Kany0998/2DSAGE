@@ -20,6 +20,7 @@
 #include "../Events/EntityHurtEvent.h"
 #include "../Events/AbilityCastEvent.h"
 #include "../Events/LevelUpEvent.h"
+#include "../Events/UISoundEvent.h"
 #include <SDL.h>
 #include <SDL_mixer.h>
 #include <glm/glm.hpp>
@@ -49,6 +50,7 @@ class AudioSystem {
 			eventBus->SubscribeToEvent<EntityHurtEvent>(this, &AudioSystem::OnEntityHurt);
 			eventBus->SubscribeToEvent<AbilityCastEvent>(this, &AudioSystem::OnSpacialAbilityCast);
 			eventBus->SubscribeToEvent<LevelUpEvent>(this, &AudioSystem::OnLevelUp);
+			eventBus->SubscribeToEvent<UISoundEvent>(this, &AudioSystem::OnUISound);
 		}
 
 		void OnLootDropped(LootDroppedEvent& event) {
@@ -114,6 +116,16 @@ class AudioSystem {
 				const std::string& sound = event.player.GetComponent<SoundComponent>().levelUp;
 				PlayAt(sound, playerCenter);
 			}
+		}
+
+		void OnUISound(UISoundEvent& event) {
+
+			auto it = audioSettings.ui.find(event.action);
+			if (it == audioSettings.ui.end()) {
+				return;
+			}
+
+			Play2D(it->second);
 		}
 
 		//effect at a place in the world
