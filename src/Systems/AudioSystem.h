@@ -6,6 +6,7 @@
 #include "../Components/SpriteComponent.h"
 #include "../Components/SoundComponent.h"
 #include "../Components/ProgressionComponent.h"
+#include "../Components/RigidBodyComponent.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
 #include "../Audio/LevelAmbience.h"
@@ -70,11 +71,18 @@ class AudioSystem {
 			if (!event.victim.HasComponent<SoundComponent>()) {
 				return;
 			}
+			auto& soundComp = event.victim.GetComponent<SoundComponent>();
 
 			if (event.victim.HasComponent<TransformComponent>() && event.victim.HasComponent<SpriteComponent>()) {
-				const std::string& sound = event.victim.GetComponent<SoundComponent>().death;
+				const std::string& sound = soundComp.death;
 				const glm::vec2 victimCenter = EntityCenter(event.victim.GetComponent<TransformComponent>(), event.victim.GetComponent<SpriteComponent>());
 				PlayAt(sound, victimCenter);
+			}
+
+			
+			if (soundComp.footstepChannel != -1) {
+				Mix_HaltChannel(soundComp.footstepChannel);
+				soundComp.footstepChannel = -1;
 			}
 		}
 
@@ -261,6 +269,7 @@ class AudioSystem {
 
 			const float wanted = audioSettings.music * audioSettings.master;
 
+
 			//only talk to the mixer when the value actually changed, not 60 times a second
 			if (wanted != appliedMusicVolume) {
 				Mix_VolumeMusic(static_cast<int>(wanted * MIX_MAX_VOLUME));
@@ -334,6 +343,61 @@ class AudioSystem {
 				sound.nextIdleAt = now + delay(rng);
 				const glm::vec2 center = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
 				PlayAt(sound.idle, center);
+			}
+
+			//walking loops: the ground's step sound while the entity moves
+			for (auto rawEntity : registry.Raw().view<SoundComponent, TransformComponent, SpriteComponent, RigidBodyComponent>()) {
+				Entity entity(rawEntity, &registry);
+
+				auto& sound = entity.GetComponent<SoundComponent>();
+				if (!sound.footsteps) {
+					continue;
+				}
+
+				//is moving taking velocity, not actual velocity becuse sliding should be silent becuse no step is taken
+				const auto& rigidBody = entity.GetComponent<RigidBodyComponent>();
+				const bool moving = glm::length(rigidBody.velocity) > 0.0f;
+
+				//which sound from tile should be played
+				std::string wantedStepSound;
+				if (moving) {
+					const auto& transform = entity.GetComponent<TransformComponent>();
+					const auto& sprite = entity.GetComponent<SpriteComponent>();
+					const float feetX = transform.position.x + sprite.width * transform.scale.x / 2.0f;
+					const float feetY = transform.position.y + sprite.height * transform.scale.y -1.0f;
+					wantedStepSound = tileMap.StepSoundAtWorld(feetX, feetY);
+					if (wantedStepSound.empty()) {
+						wantedStepSound = audioSettings.defaultStepSound;
+					}
+				}
+
+				//if wantedStepSound is diffrent than sound.footStep stop old loop start new one
+				if (wantedStepSound != sound.footstepSound) {
+					sound.footstepSound = wantedStepSound;
+					if (sound.footstepChannel != -1) {
+						//fade out sound
+						Mix_FadeOutChannel(sound.footstepChannel, 100);
+						sound.footstepChannel = -1;
+					}
+
+					if (!wantedStepSound.empty()) {
+						Mix_Chunk* stepSound = FindSound(wantedStepSound);
+						if (stepSound != nullptr) {
+							int channel = Mix_PlayChannel(-1, stepSound, -1);
+							if (channel != -1) {
+								//channels keep their old effects, the player's steps are centred, full volume
+								Mix_SetPanning(channel, 255, 255);
+								Mix_SetDistance(channel, 0);
+								sound.footstepChannel = channel;
+							}
+						}
+					}
+				}
+
+				//keep the running loop in line with the effects/master sliders
+				if (sound.footstepChannel != -1) {
+					Mix_Volume(sound.footstepChannel, static_cast<int>(audioSettings.effects* audioSettings.master* MIX_MAX_VOLUME));
+				}
 			}
 		}
 

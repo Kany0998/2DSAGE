@@ -16,6 +16,8 @@ struct SoundComponent {
 	Uint32 nextIdleAt = 0;	//state: when the next idle sound plays (SDL ticks), 0 = not drawn yet
 	std::string loop;
 	bool footsteps = false;
+	int footstepChannel = -1;	//channel playing this entity's walking loop, -1 = none
+	std::string footstepSound;	//which walking loop is playing right now "" = none
 };
 
 

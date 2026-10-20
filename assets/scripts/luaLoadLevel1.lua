@@ -106,9 +106,9 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 10000,
+					defense = 1,
 					wisdom = 100,
-					vitality = 1000,
+					vitality = 1,
 					speed = 100,
 					dexterity = 100
 				},
@@ -798,6 +798,7 @@ AudioSettings =
 	hearing_range_tiles = 12,
 	channels = 32,
 	repeat_gap_ms = 40,
+	default_step_sound = "footstep-grass",
 	ui = 
 	{ 
 		equip = "ui-equip", 

@@ -126,6 +126,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
 		bool blocksProjectile = tileProperty["blocks_projectiles"].get_or(false);
+		std::string stepSound = tileProperty["step_sound"].get_or(std::string(""));
 
 		if (speedMultiplier == 0.0) {
 			Logger::Warn("Your speed multiplier for tile: " + std::to_string(tileId) + ", is equal to :" + std::to_string(speedMultiplier) +
@@ -152,6 +153,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		tileMap.setSpeedMultiplier(tileId, speedMultiplier);
 		tileMap.setAcceleration(tileId, acceleration);
 		tileMap.setFriction(tileId, friction);
+		tileMap.setStepSound(tileId, stepSound);
 		tileIndex++;
 	}
 	

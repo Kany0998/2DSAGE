@@ -22,6 +22,7 @@ class TileMap {
 		double speedMultipliers[tileIdCount] = {};	//1.0 - normal gorund, less - for example water slower, more - for example road faster
 		double frictions[tileIdCount] = {};
 		double accelerations[tileIdCount] = {};
+		std::string stepSounds[tileIdCount] = {};
 
 
 
@@ -38,6 +39,7 @@ class TileMap {
 		void setFriction(int tileId, double friction);
 		void setAcceleration(int tileId, double acceleration);
 		void setTextureAssetId(const std::string& id);
+		void setStepSound(int tileId, const std::string& id);
 
 		int colAt(double worldX) const;
 		int rowAt(double worldY) const;
@@ -45,9 +47,11 @@ class TileMap {
 		bool isInside(int col, int row) const;
 		int tileAt(int col, int row) const;
 		double SpeedMultiplierAt(int col, int row) const;
+		const std::string& StepSoundAt(int col, int row) const;
 		bool isBlocked(int col, int row, int movementType) const;
 		bool isBlockedAtWorld(double worldX, double worldY, int movementType) const;
 		double SpeedMultiplierAtWorld(double worldX, double worldY) const;
+		std::string StepSoundAtWorld(double worldX, double worldY) const;
 		double FrictionAt(int col, int row) const;
 		double AccelerationAt(int col, int row) const;
 

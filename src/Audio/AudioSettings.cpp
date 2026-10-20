@@ -24,6 +24,7 @@ AudioSettings AudioSettings::Load(sol::state& lua) {
 	audioSettings.music = ReadVolume(*table, "music", audioSettings.music);
 	audioSettings.effects = ReadVolume(*table, "effects", audioSettings.effects);
 	audioSettings.ambience = ReadVolume(*table, "ambience", audioSettings.ambience);
+	audioSettings.defaultStepSound = (*table)["default_step_sound"].get_or(std::string(""));
 
 	float hearingRangeTile = (*table)["hearing_range_tiles"].get_or(audioSettings.hearingRangeTiles);
 	if (hearingRangeTile <= 0.0) {
