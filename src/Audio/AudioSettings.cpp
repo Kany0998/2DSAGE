@@ -57,6 +57,18 @@ AudioSettings AudioSettings::Load(sol::state& lua) {
 		audioSettings.repeatGapMs = repGapMs;
 	}
 
+	int loopSources = (*table)["max_loop_sources"].get_or(audioSettings.maxLoopSources);
+	
+	if (loopSources < 0) {
+		Logger::Warn("AudioSettings: max_loop_sources < 0: " + std::to_string(loopSources) + " which is not allowed, chaning it to engine default: " + std::to_string(audioSettings.maxLoopSources));
+	}
+	else {
+		if (loopSources > 128) {
+			Logger::Warn("AudioSettings: max_loop_sources > 128: " + std::to_string(loopSources) + " make sure this is not a typo");
+		}
+		audioSettings.maxLoopSources = loopSources;
+	}
+
 	sol::optional<sol::table> uiTable = (*table)["ui"];
 	if (uiTable) {
 		for (const auto& [key, value] : *uiTable) {

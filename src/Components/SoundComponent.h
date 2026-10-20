@@ -18,6 +18,7 @@ struct SoundComponent {
 	bool footsteps = false;
 	int footstepChannel = -1;	//channel playing this entity's walking loop, -1 = none
 	std::string footstepSound;	//which walking loop is playing right now "" = none
+	int loopChannel = -1;
 };
 
 

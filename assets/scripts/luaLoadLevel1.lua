@@ -19,7 +19,7 @@ Level = {
 	music = "",
 	ambience = 
 	{
-		loop = "fire-loop",
+		loop = "",
 		random =
 		{
 			{sound = "wind-1", min_seconds = 20, max_seconds = 70},
@@ -95,7 +95,7 @@ Level = {
 				},
 				health =
 				{
-					health_points = 10,
+					health_points = 1000,
 					max_health_points = 1000
 				},
 				mana =
@@ -115,6 +115,7 @@ Level = {
 				sounds =
 				{
 					hurt = "player-hurt",
+					death = "goblin-idle-1",
 					level_up = "level-up",
 					cast = "wind-3",
 					footsteps = true
@@ -600,6 +601,35 @@ Level = {
 
 		},
 		{
+			--campfire
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1100, y = 900},
+					scale = {x = 4.0, y = 4.0},
+					rotation = 0.0 --deg
+				},
+				sprite = 
+				{
+					texture_asset_id = "campfire-texture",
+					width = 19,
+					height = 27,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				sounds =
+				{
+					loop = "fire-loop"
+				}
+
+			}
+
+		},
+		{
 			--tank
 			group = "enemies",
 			components =
@@ -799,6 +829,7 @@ AudioSettings =
 	channels = 32,
 	repeat_gap_ms = 40,
 	default_step_sound = "footstep-grass",
+	max_loop_sources = 5,
 	ui = 
 	{ 
 		equip = "ui-equip", 

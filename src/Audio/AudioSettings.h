@@ -16,6 +16,7 @@ struct AudioSettings {
     int repeatGapMs = 40;                                //the same sound again sooner is skipped
     std::unordered_map<std::string, std::string>ui;     //action  sound id, e.g. "equip"  "ui-equip"
     std::string defaultStepSound;
+    int maxLoopSources = 4;
 
     static AudioSettings Load(sol::state& lua);
 };

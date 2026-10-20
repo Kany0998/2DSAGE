@@ -29,6 +29,7 @@
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 #include <algorithm>
 
 class AudioSystem {
@@ -83,6 +84,11 @@ class AudioSystem {
 			if (soundComp.footstepChannel != -1) {
 				Mix_HaltChannel(soundComp.footstepChannel);
 				soundComp.footstepChannel = -1;
+			}
+
+			if (soundComp.loopChannel != -1) {
+				Mix_HaltChannel(soundComp.loopChannel);
+				soundComp.loopChannel = -1;
 			}
 		}
 
@@ -170,16 +176,7 @@ class AudioSystem {
 				return;
 			}
 
-			Mix_Volume(channel, static_cast<int>(audioSettings.effects * audioSettings.master * MIX_MAX_VOLUME));
-			//0 = at the listener, 255 = edge of the hearing range
-			Mix_SetDistance(channel, static_cast<Uint8>(distance / range * 255.0f));
-
-			//-1 = left edge of the screen, +1 = right; the far ear keeps 40% so nothing sounds one-eared
-			const float side = std::clamp((worldPosition.x - listener.x) / (camera.w / 2.0f), -1.0f, 1.0f);
-			Uint8 left = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(side, 0.0f)));
-			Uint8 right = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(-side, 0.0f)));
-			
-			Mix_SetPanning(channel, left, right);
+			ApplyPosition(channel, worldPosition, listener, static_cast<float>(range), audioSettings.master * audioSettings.effects);
 		}
 
 		//effect without a place (UI)
@@ -399,6 +396,70 @@ class AudioSystem {
 					Mix_Volume(sound.footstepChannel, static_cast<int>(audioSettings.effects* audioSettings.master* MIX_MAX_VOLUME));
 				}
 			}
+
+			//looping sources (campfires...), only the nearest maxLoopSources within hearing range play
+			const glm::vec2 listener = ListenerPosition();
+			const float range = audioSettings.hearingRangeTiles * static_cast<float>(tileMap.TileWorldSize());
+			const float ambienceVolume = audioSettings.master * audioSettings.ambience;
+
+			//candidates: every loop source within range, with its distance
+			std::vector<std::pair<float, entt::entity>> inRange;
+			for (auto rawEntity : registry.Raw().view<SoundComponent, TransformComponent, SpriteComponent>()) {
+				
+				Entity entity(rawEntity, &registry);
+				const auto& sound = entity.GetComponent<SoundComponent>();
+				if (sound.loop.empty()) {
+					continue;
+				}
+
+				const glm::vec2 center = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
+				const float distanceToSoruce = glm::length(center - listener);
+				if (distanceToSoruce < range) {
+					inRange.push_back({ distanceToSoruce, rawEntity });
+				}
+			}
+			//nearest first only the first maxLoopSources are kept
+			std::sort(inRange.begin(), inRange.end(), [](const auto& a, const auto& b) {return a.first < b.first;});
+			std::unordered_set<entt::entity> keep;
+
+			for (size_t i = 0; i < inRange.size() && i < static_cast<size_t>(audioSettings.maxLoopSources); i++) {
+				keep.insert(inRange[i].second);
+			}
+
+			//every loop source: start, update or stop
+			for (auto rawEntity : registry.Raw().view<SoundComponent, TransformComponent, SpriteComponent>()) {
+				
+				Entity entity(rawEntity, &registry);
+				auto& sound = entity.GetComponent<SoundComponent>();
+				if (sound.loop.empty()) {
+					continue;
+				}
+
+				const bool kept = keep.count(rawEntity) > 0;
+
+				if (kept) {
+					//not playing yet: start it
+					if (sound.loopChannel == -1) {
+						Mix_Chunk* loopSound = FindSound(sound.loop);
+						if (loopSound != nullptr) {
+							sound.loopChannel = Mix_PlayChannel(-1, loopSound, -1);		//if -1 all channels are taken
+						}
+					}
+					//playing: follow the listener every frame 
+					if (sound.loopChannel != -1) {
+						const glm::vec2 center = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
+						ApplyPosition(sound.loopChannel, center, listener, range, ambienceVolume);
+					}
+				}
+
+				else {
+					if (sound.loopChannel != -1) {
+						//out of range, or a nearer source took its place: fade out and let the channel go
+						Mix_FadeOutChannel(sound.loopChannel, 200);
+						sound.loopChannel = -1;
+					}
+				}
+			}
 		}
 
 	private:
@@ -438,6 +499,24 @@ class AudioSystem {
 			
 			return glm::vec2(camera.x + camera.w / 2.0f, camera.y + camera.h / 2.0f);
 			
+		}
+
+		//volume, distance and pan of a channel for a sound at worldPosition, heard from listener
+		void ApplyPosition(int channel, glm::vec2 worldPosition, glm::vec2 listener, float range, float volume) {
+			const float distance = glm::length(worldPosition - listener);
+			const float t = std::min(distance / range, 1.0f);     //0 = at the listener, 1 = edge of hearing range
+
+			Mix_Volume(channel, static_cast<int>(volume * MIX_MAX_VOLUME));
+
+			//0 = at the listener, 255 = edge of the hearing range
+			Mix_SetDistance(channel, static_cast<Uint8>(t * 255.0f));
+
+			//-1 = left edge of the screen, +1 = right; the far ear keeps 40% so nothing sounds one-eared
+			const float side = std::clamp((worldPosition.x - listener.x) / (camera.w / 2.0f), -1.0f, 1.0f);
+			Uint8 left = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(side, 0.0f)));
+			Uint8 right = static_cast<Uint8>(255 * (1.0 - 0.6f * std::max(-side, 0.0f)));
+
+			Mix_SetPanning(channel, left, right);
 		}
 
 		std::unordered_set<std::string> warnedIds;				//ids already reported as missing

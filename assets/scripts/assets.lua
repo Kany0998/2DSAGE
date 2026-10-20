@@ -38,6 +38,8 @@ return {
 	{type = "texture", id = "legendary-loot-bag",   file = "./assets/images/loot_bags/legendary-loot-bag.png"},
 	{type = "texture", id = "legendary-loot-banner",   file = "./assets/images/loot_bags/legendary-loot-banner.png"},
 
+	--sound making sprites (campfire, etc.)
+	{type = "texture", id = "campfire-texture",   file = "./assets/images/sound_sprites/campfire.png"},
 	-- fonts
 	{type = "font", id = "charriot-font", file = "./assets/fonts/charriot.ttf", font_size = 10},
 
