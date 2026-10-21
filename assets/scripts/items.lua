@@ -12,9 +12,10 @@ Items = {
 				projectile_texture = "iron-sword-bullet",
                 projectile_speed = 500,
 				shots_per_second = 2.0,
-				range_tiles = 2 
+				range_tiles = 2 ,
+				shot_sound = "sword-swing"
 			},
-			bag = "common"
+		bag = "common",
 	},
 
 	golden_ring = 

@@ -15,10 +15,11 @@ struct ProjectileEmitterComponent
 	bool isFriendly;			//true if fired by player false if fired by enemy
 	bool aimAtPlayer;
 	double attackRange;			//Stored In pixels convent from tiles
-	std::string projectileTexture;
+	std::string projectileTexture;		//texture of the projectile
+	std::string shotSound;				//Shot sound
 
 	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int projectileDamage = 10,
-		bool aimAtPlayer = false, double attackRange = 0.0, bool isFriendly = false, std::string projectileTexture = "bullet-texture")
+		bool aimAtPlayer = false, double attackRange = 0.0, bool isFriendly = false, std::string projectileTexture = "bullet-texture", std::string shotSound = "")
 	{
 		this->projectileVelocity = projectileVelocity;
 		this->repeatRate = repeatRate;
@@ -28,6 +29,7 @@ struct ProjectileEmitterComponent
 		this->attackRange = attackRange;
 		this->isFriendly = isFriendly;
 		this->projectileTexture = projectileTexture;
+		this->shotSound = shotSound;
 		this->lastEmittedTime = SDL_GetTicks();
 	}
 };

@@ -25,16 +25,19 @@
 #include "../Systems/AISystem.h"
 #include "../Systems/RenderTileMapSystem.h"
 #include "../Systems/LootSystem.h"
+#include "../Systems/AudioSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
 #include "../Events/MouseButtonPressedEvent.h"
 #include "../TileMap/MovementType.h"
 #include "../Pathfinding/Pathfinder.h"
+#include "../Audio/LevelAmbience.h"
 #include <iostream>
 #include <SDL.h>
 #include <glm/glm.hpp>
 #include <SDL_image.h>
+#include <SDL_mixer.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_sdl.h>
 #include <imgui/imgui_impl_sdl.h>
@@ -73,6 +76,15 @@ void Game::Initialize()
 	{
 		Logger::Err("Error initializing SDL TTF.");
 		return;
+	}
+
+	//44.1 kHz, default format, stereo, 2048-sample buffer
+	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) != 0) {
+		Logger::Warn(std::string("Audio device could not be opened, playing without sound: ") + Mix_GetError());
+	}
+	
+	else {
+		audioReady = true;
 	}
 	//Create window
 	SDL_DisplayMode displayMode;
@@ -132,34 +144,35 @@ void Game::ProccessInput()
 		//Handle core SDl events
 		switch (sdlEvent.type)
 		{
-		case SDL_QUIT:
-			isRunning = false;
-			break;
-		case SDL_KEYDOWN:
-			if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
-			{
+			case SDL_QUIT:
 				isRunning = false;
-			}
+				break;
 
-			if (sdlEvent.key.keysym.sym == SDLK_x)
-			{
-				isDebug = !isDebug;
-			}
+			case SDL_KEYDOWN:
+				if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
+				{
+					isRunning = false;
+				}
 
-			eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
-			break;
+				if (sdlEvent.key.keysym.sym == SDLK_x)
+				{
+					isDebug = !isDebug;
+				}
 
-		case SDL_MOUSEBUTTONDOWN:
-			//Don't let a click meant for the ImGui debug panel also fire a projectile
-			if (!io.WantCaptureMouse)
-			{
-				glm::vec2 worldPosition(
-					sdlEvent.button.x + camera.x,
-					sdlEvent.button.y + camera.y
-				);
-				eventBus->EmitEvent<MouseButtonPressedEvent>(sdlEvent.button.button, worldPosition);
-			}
-			break;
+				eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
+				break;
+
+			case SDL_MOUSEBUTTONDOWN:
+				//Don't let a click meant for the ImGui debug panel also fire a projectile
+				if (!io.WantCaptureMouse)
+				{
+					glm::vec2 worldPosition(
+						sdlEvent.button.x + camera.x,
+						sdlEvent.button.y + camera.y
+					);
+					eventBus->EmitEvent<MouseButtonPressedEvent>(sdlEvent.button.button, worldPosition);
+				}
+				break;
 
 		}
 	}
@@ -177,17 +190,17 @@ void Game::Setup()
 	damageSystem = std::make_unique<DamageSystem>(eventBus);
 	keyboardControlSystem = std::make_unique<KeyboardControlSystem>();
 	cameraMovementSystem = std::make_unique<CameraMovementSystem>();
-	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, tileMap, itemDatabase, *assetStore);
+	projectileEmitSystem = std::make_unique<ProjectileEmitSystem>(*registry, camera, tileMap, itemDatabase, *assetStore, eventBus);
 	projectileLifeCycleSystem = std::make_unique<ProjectileLifeCycleSystem>();
 	renderTextSystem = std::make_unique<RenderTextSystem>();
 	renderHealthBarSystem = std::make_unique<RenderHealthBarSystem>();
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, eventBus, *assetStore);
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, audioSettings, eventBus, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
-	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera);
-	progressionSystem = std::make_unique<ProgressionSystem>();
+	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, eventBus);
+	progressionSystem = std::make_unique<ProgressionSystem>(eventBus);
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
@@ -204,6 +217,10 @@ void Game::Setup()
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
+	audioSettings = AudioSettings::Load(lua);
+	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioReady);
+	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
+	audioSystem->StartAmbience(LevelAmbience::Load(lua));
 }
 
 void Game::Update()
@@ -231,13 +248,15 @@ void Game::Update()
 	//event can't express.
 	specialAbilitySystem->SubscribeToEvents(eventBus);
 	renderGUISystem->SubscribeToEvents();
-	progressionSystem->SubscribeToEvents(eventBus);
+	progressionSystem->SubscribeToEvents();
 	lootSystem->SubscribeToEvents();
+	audioSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
 
 	// invoke all the systems to update
 	lootSystem->Update();
+	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	movementSystem->Update(*registry, deltaTime, tileMap);
@@ -389,6 +408,12 @@ void Game::Destroy()
 	//destructor runs, which happens after SDL_Quit()/TTF_Quit() below.
 	assetStore.reset();
 
+	//If sound was played we destory it at the end
+	if (audioReady) {
+		Mix_CloseAudio();
+	}
+
+	Mix_Quit();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_Quit();

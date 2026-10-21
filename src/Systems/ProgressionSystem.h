@@ -5,6 +5,7 @@
 #include "../Logger/Logger.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/EntityKilledEvent.h"
+#include "../Events/LevelUpEvent.h"
 #include "../Components/ProgressionComponent.h"
 #include "../Components/HealthComponent.h"
 #include "../Components/ManaComponent.h"
@@ -18,9 +19,9 @@
 class ProgressionSystem
 {
 	public:
-		ProgressionSystem() = default;
+		ProgressionSystem(std::unique_ptr<EventBus>& eventBus) : eventBus(eventBus) {}
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
+		void SubscribeToEvents()
 		{
 			eventBus->SubscribeToEvent<EntityKilledEvent>(this, &ProgressionSystem::OnEntityKilled);
 		}
@@ -157,6 +158,8 @@ class ProgressionSystem
 				mana.manaPoints = mana.maxManaPoints;
 			}
 
+			eventBus->EmitEvent<LevelUpEvent>(entity, progression.currentLevel);
+
 			Logger::Log("Entity " + std::to_string(entity.GetId()) + " reached level " + std::to_string(progression.currentLevel) +
 				" (" + std::to_string(progression.unspentSkillPoints) + " unspent skill points, next level at " +
 				std::to_string(progression.experienceToNextLevel) + " exp)");
@@ -168,6 +171,7 @@ class ProgressionSystem
 
 		static constexpr double MinExperienceRequirement = 1.0;
 		static constexpr double MaxExperienceRequirement = 1000000000.0;	//1e9, comfortably inside int range
+		std::unique_ptr<EventBus>& eventBus;
 };
 
 #endif

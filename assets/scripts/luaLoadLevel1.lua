@@ -15,6 +15,22 @@ Level = {
 
 	assets = dofile("./assets/scripts/assets.lua"),
 
+	--map sounds
+	music = "",
+	ambience = 
+	{
+		loop = "",
+		random =
+		{
+			{sound = "wind-1", min_seconds = 20, max_seconds = 70},
+			{sound = "wind-2", min_seconds = 20, max_seconds = 70},
+			{sound = "wind-3", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-1", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-2", min_seconds = 20, max_seconds = 70},
+			{sound = "birds-3", min_seconds = 20, max_seconds = 70},
+		},
+	},
+
 	--map config values
 
 	tilemap =
@@ -28,7 +44,7 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400},
+			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400, step_sound = "footstep-ice"},
 			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
 			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
 
@@ -79,7 +95,7 @@ Level = {
 				},
 				health =
 				{
-					health_points = 10,
+					health_points = 1000,
 					max_health_points = 1000
 				},
 				mana =
@@ -90,11 +106,19 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 10000,
+					defense = 1,
 					wisdom = 100,
-					vitality = 1000,
+					vitality = 1,
 					speed = 100,
 					dexterity = 100
+				},
+				sounds =
+				{
+					hurt = "player-hurt",
+					death = "goblin-idle-1",
+					level_up = "level-up",
+					cast = "wind-3",
+					footsteps = true
 				},
 				projectile_emitter =
 				{
@@ -102,7 +126,8 @@ Level = {
 					projectile_duration = 10, --sec
 					repeat_frequency = 0,
 					projectile_damage = 15,
-					friendly = true
+					friendly = true,
+					shot_sound = "sword-swing"
 				},
 				keyboard_controlled =
 				{
@@ -157,7 +182,7 @@ Level = {
 					{ 
 						Weapon = "iron_sword"
 					}
-				}
+				},
 			}
 		},
 		{
@@ -200,6 +225,14 @@ Level = {
 				experience_reward =
 				{
 					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt",
+					death = "enemy-hurt",
+					idle = "goblin-idle-1",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{
@@ -269,6 +302,14 @@ Level = {
 				experience_reward =
 				{
 					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt",
+					death = "goblin-idle-3",
+					idle = "goblin-idle-2",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{
@@ -560,6 +601,35 @@ Level = {
 
 		},
 		{
+			--campfire
+			group = "obstacles",
+			components =
+			{
+				transform =
+				{
+					position = {x = 1100, y = 900},
+					scale = {x = 4.0, y = 4.0},
+					rotation = 0.0 --deg
+				},
+				sprite = 
+				{
+					texture_asset_id = "campfire-texture",
+					width = 19,
+					height = 27,
+					layer  = 2,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				sounds =
+				{
+					loop = "fire-loop"
+				}
+
+			}
+
+		},
+		{
 			--tank
 			group = "enemies",
 			components =
@@ -599,6 +669,14 @@ Level = {
 				experience_reward =
 				{
 					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt",
+					death = "goblin-idle-1",
+					idle = "goblin-idle-3",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
 				},
 				projectile_emitter =
 				{
@@ -694,6 +772,10 @@ Level = {
 					speed = 10,
 					dexterity = 10
 				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt" 
+				},
 				projectile_emitter =
 				{
 					projectile_velocity = {x = 100, y = 0},
@@ -726,7 +808,8 @@ Controls =
 { 
 	equipment = "I",
 	backpack = "B", 
-	character = "C"
+	character = "C",
+	options = "O"
 }
 
 InventoryUI =
@@ -736,6 +819,25 @@ InventoryUI =
 	backpack_columns = 8
 }
 
+AudioSettings =
+{
+	master = 0.8,
+	music = 0.5,
+	effects = 0.4,
+	ambience = 0.6,
+	hearing_range_tiles = 12,
+	channels = 32,
+	repeat_gap_ms = 40,
+	default_step_sound = "footstep-grass",
+	max_loop_sources = 5,
+	ui = 
+	{ 
+		equip = "ui-equip", 
+		unequip = "ui-unequip", 
+		open_bag = "bag-open", 
+		take_item = "ui-equip" 
+	},
+}
 
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale

@@ -22,12 +22,14 @@
 #include "../Events/KeyPressedEvent.h"
 #include "../Events/LootDroppedEvent.h"
 #include "../Events/ItemDroppedEvent.h"
+#include "../Events/UISoundEvent.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
 #include "../Loot/LootDatabase.h"
 #include "../Utils/EntityGeometry.h"
 #include "../AssetStore/AssetStore.h"
+#include "../Audio/AudioSettings.h"
 #include <algorithm>
 #include <cmath>
 #include <SDL.h>
@@ -37,8 +39,8 @@ class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), eventBus(eventBus), assetStore(assetStore) { }
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AudioSettings& audioSettings, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), audioSettings(audioSettings), eventBus(eventBus), assetStore(assetStore) { }
 
 		void SubscribeToEvents()
 		{
@@ -53,6 +55,7 @@ class RenderGUISystem
 			if (event.symbol == controls.equipment) showEquipment = !showEquipment;
 			if (event.symbol == controls.backpack)  showBackpack = !showBackpack;
 			if (event.symbol == controls.character) showCharacter = !showCharacter;
+			if (event.symbol == controls.options)   showOptions = !showOptions;
 		}
 
 		void OnLootDropped(LootDroppedEvent& event) {
@@ -128,8 +131,16 @@ class RenderGUISystem
 							const float range = lootDatabase.PickupRangeTiles() * static_cast<float>(tilemap.TileWorldSize());
 
 							if (distance <= range) {
+
+								//a sound only when this bag wasn't already open
+								const bool alreadyOpen = hasOpenBag && openBag == hoveredBag;   //checked BEFORE overwriting openBag
+
 								openBag = hoveredBag;
 								hasOpenBag = true;
+
+								if (!alreadyOpen) {
+									eventBus->EmitEvent<UISoundEvent>("open_bag");
+								}
 							}
 							else {
 								ShowCursorMessage("Too far away");
@@ -349,6 +360,9 @@ class RenderGUISystem
 										if (!InventoryRules::Unequip(i, backpack, equipment, attributes, itemDatabase, message)) {
 											ShowInventoryMessage(message);
 										}
+										else {
+											eventBus->EmitEvent<UISoundEvent>("unequip");
+										}
 									}
 
 									if (ImGui::IsItemHovered()) {
@@ -423,6 +437,9 @@ class RenderGUISystem
 										if (!InventoryRules::Equip(i, backpack, equipment, attributes, itemDatabase, message)) {
 											ShowInventoryMessage(message);
 										}
+										else {
+											eventBus->EmitEvent<UISoundEvent>("equip");
+										}
 									}
 
 									if (item != nullptr && ImGui::IsItemHovered() && dragged == nullptr) {
@@ -451,6 +468,8 @@ class RenderGUISystem
 						}
 						
 					}
+
+					
 
 					if (hasOpenBag) {
 						if (!openBag.IsAlive() || !openBag.HasComponent<LootBagComponent>()) {
@@ -490,6 +509,7 @@ class RenderGUISystem
 										if (taken) {
 											bag.items.erase(bag.items.begin() + i);
 											ImGui::PopID();
+											eventBus->EmitEvent<UISoundEvent>("take_item");
 											break;
 										}
 
@@ -539,6 +559,15 @@ class RenderGUISystem
 					}
 
 				}
+			}
+			if (showOptions) {
+				if (ImGui::Begin("Options", &showOptions, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::SliderFloat("Master", &audioSettings.master, 0.0f, 1.0f);
+					ImGui::SliderFloat("Ambience", &audioSettings.ambience, 0.0f, 1.0f);
+					ImGui::SliderFloat("Music", &audioSettings.music, 0.0f, 1.0f);
+					ImGui::SliderFloat("Effects", &audioSettings.effects, 0.0f, 1.0f);
+				}
+				ImGui::End();
 			}
 
 			ImGui::Render();
@@ -731,9 +760,11 @@ class RenderGUISystem
 		bool showEquipment = false;
 		bool showBackpack = false;
 		bool showCharacter = false;
+		bool showOptions = false;
 		const InventoryUISettings& inventoryUI;
 		const ItemDatabase& itemDatabase;
 		const LootDatabase& lootDatabase;
+		AudioSettings& audioSettings;
 		std::unique_ptr<EventBus>& eventBus;
 		AssetStore& assetStore;
 

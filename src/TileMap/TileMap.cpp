@@ -66,6 +66,16 @@ double TileMap::AccelerationAt(int col, int row) const{
 	return accelerations[tileId];
 }
 
+const std::string& TileMap::StepSoundAt(int col, int row) const {
+	static const std::string empty;
+	if (!isInside(col, row))
+	{
+		return empty;
+	}
+	int tileId = tileIds[Index(col, row)];
+	return stepSounds[tileId];
+}
+
 
 void TileMap::setBlockMask(int tileId, int mask) {
 
@@ -118,6 +128,16 @@ void TileMap::setTextureAssetId(const std::string& id) {
 	textureAssetId = id;
 }
 
+void TileMap::setStepSound(int tileId, const std::string& id) {
+	if (tileId >= 0 && tileId < tileIdCount) {
+		stepSounds[tileId] = id;
+	}
+	else {
+		Logger::Warn("Tile ID is out of range 0-" + std::to_string(tileIdCount - 1) + ": " + std::to_string(tileId) + " for step sounds");
+	}
+
+}
+
 
 
 int TileMap::colAt(double worldX) const
@@ -162,6 +182,12 @@ double TileMap::SpeedMultiplierAtWorld(double worldX, double worldY) const {
 	int col = colAt(worldX);
 	int row = rowAt(worldY);
 	return SpeedMultiplierAt(col, row);
+}
+
+std::string TileMap::StepSoundAtWorld(double worldX, double worldY) const {
+	int col = colAt(worldX);
+	int row = rowAt(worldY);
+	return StepSoundAt(col, row);
 }
 
 void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale)

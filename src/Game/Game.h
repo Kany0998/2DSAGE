@@ -8,6 +8,7 @@
 #include "../Inventory/ItemDatabase.h"
 #include "../Pathfinding/Pathfinder.h"
 #include "../Inventory/InventoryUISettings.h"
+#include "../Audio/AudioSettings.h"
 #include "../Loot/LootDatabase.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
@@ -41,12 +42,14 @@ class RenderExperienceBarSystem;
 class AISystem;
 class RenderTileMapSystem;
 class LootSystem;
+class AudioSystem;
 
 class Game
 {
 	private:
 		bool isRunning;
 		bool isDebug;
+		bool audioReady = false;     //false = no audio device, the game runs silently
 		SDL_Window* window;
 		SDL_Renderer* renderer;
 		int millisecondsPreviousFrame = 0;
@@ -71,6 +74,7 @@ class Game
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
+		AudioSettings audioSettings;
 		std::vector<int> debugPath;
 
 		//Systems are owned directly by Game now instead of going through a
@@ -99,6 +103,7 @@ class Game
 		std::unique_ptr<AISystem> aiSystem;
 		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
 		std::unique_ptr<LootSystem> lootSystem;
+		std::unique_ptr<AudioSystem> audioSystem;
 
 
 

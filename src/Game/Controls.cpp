@@ -42,5 +42,6 @@ Controls Controls::Load(sol::state& lua){
 	controls.equipment = ReadKey(lua, "equipment", controls.equipment);
 	controls.backpack = ReadKey(lua, "backpack", controls.backpack);
 	controls.character = ReadKey(lua, "character", controls.character);
+	controls.options = ReadKey(lua, "options", controls.options);
 	return controls;
 }

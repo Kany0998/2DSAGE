@@ -38,6 +38,35 @@ return {
 	{type = "texture", id = "legendary-loot-bag",   file = "./assets/images/loot_bags/legendary-loot-bag.png"},
 	{type = "texture", id = "legendary-loot-banner",   file = "./assets/images/loot_bags/legendary-loot-banner.png"},
 
+	--sound making sprites (campfire, etc.)
+	{type = "texture", id = "campfire-texture",   file = "./assets/images/sound_sprites/campfire.png"},
 	-- fonts
 	{type = "font", id = "charriot-font", file = "./assets/fonts/charriot.ttf", font_size = 10},
+
+	-- sounds
+	{type = "sound", id = "bag-drop",    file = "./assets/sounds/bag-drop.wav"},
+	{type = "sound", id = "bag-open",    file = "./assets/sounds/bag-open.wav"},
+	{type = "sound", id = "birds-1",    file = "./assets/sounds/birds-1.wav"},
+	{type = "sound", id = "birds-2",    file = "./assets/sounds/birds-2.wav"},
+	{type = "sound", id = "birds-3",    file = "./assets/sounds/birds-3.wav"},
+	{type = "sound", id = "enemy-hurt",    file = "./assets/sounds/enemy-hurt.wav"},
+	{type = "sound", id = "fire-loop",    file = "./assets/sounds/fire-loop.wav"},
+	{type = "sound", id = "footstep-grass",    file = "./assets/sounds/footstep-grass.wav"},
+	{type = "sound", id = "footstep-ice",    file = "./assets/sounds/footstep-ice.wav"},
+	{type = "sound", id = "footstep-snow",    file = "./assets/sounds/footstep-snow.wav"},
+	{type = "sound", id = "legendary-aura",    file = "./assets/sounds/legendary-aura.wav"},
+	{type = "sound", id = "level-up",    file = "./assets/sounds/level-up.wav"},
+	{type = "sound", id = "player-hurt",    file = "./assets/sounds/player-hurt.wav"},
+	{type = "sound", id = "sword-swing",    file = "./assets/sounds/sword-swing.wav"},
+	{type = "sound", id = "ui-equip",    file = "./assets/sounds/ui-equip.wav"},
+	{type = "sound", id = "ui-unequip",    file = "./assets/sounds/ui-unequip.wav"},
+	{type = "sound", id = "wind-1",    file = "./assets/sounds/wind-1.wav"},
+	{type = "sound", id = "wind-2",    file = "./assets/sounds/wind-2.wav"},
+	{type = "sound", id = "wind-3",    file = "./assets/sounds/wind-3.wav"},
+	{type = "sound", id = "goblin-idle-1",    file = "./assets/sounds/goblin-idle-1.wav"},
+	{type = "sound", id = "goblin-idle-2",    file = "./assets/sounds/goblin-idle-2.wav"},
+	{type = "sound", id = "goblin-idle-3",    file = "./assets/sounds/goblin-idle-3.wav"},
+
+	-- music
+	{type = "music", id = "test-music",    file = "./assets/sounds/wind-3.wav"},
 }

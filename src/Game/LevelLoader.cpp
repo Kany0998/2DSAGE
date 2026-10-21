@@ -22,6 +22,7 @@
 #include "../Components/BackpackComponent.h"
 #include "../Components/EquipmentComponent.h"
 #include "../Components/LootDropComponent.h"
+#include "../Components/SoundComponent.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
@@ -75,16 +76,19 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		std::string assetType = asset["type"];
 		std::string assetId = asset["id"];
 
-		if (assetType == "texture")
-		{
-			assetStore->AddTexture(renderer, asset["id"], asset["file"]);
-			Logger::Log("New texture assets loaded to the asset store, id: " + assetId);
+		if (assetType == "texture"){
+			assetStore->AddTexture(renderer, assetId, asset["file"]);
 		}
 
-		if (assetType == "font")
-		{
+		if (assetType == "font"){
 			assetStore->AddFont(assetId, asset["file"], asset["font_size"]);
-			Logger::Log("New font assets loaded to the asset store, id: " + assetId);
+		}
+
+		if (assetType == "sound") {
+			assetStore->AddSound(assetId, asset["file"]);
+		}
+		if (assetType == "music") {
+			assetStore->AddMusic(assetId, asset["file"]);
 		}
 		i++;
 	}
@@ -122,6 +126,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		bool blocksGround = tileProperty["blocks_ground"].get_or(false);
 		bool blocksFlying = tileProperty["blocks_flying"].get_or(false);
 		bool blocksProjectile = tileProperty["blocks_projectiles"].get_or(false);
+		std::string stepSound = tileProperty["step_sound"].get_or(std::string(""));
 
 		if (speedMultiplier == 0.0) {
 			Logger::Warn("Your speed multiplier for tile: " + std::to_string(tileId) + ", is equal to :" + std::to_string(speedMultiplier) +
@@ -148,6 +153,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		tileMap.setSpeedMultiplier(tileId, speedMultiplier);
 		tileMap.setAcceleration(tileId, acceleration);
 		tileMap.setFriction(tileId, friction);
+		tileMap.setStepSound(tileId, stepSound);
 		tileIndex++;
 	}
 	
@@ -339,6 +345,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 				const double attack_range = entity["components"]["projectile_emitter"]["attack_range"].get_or(4.0) * tileWorldSize;
 
+
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
 						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
@@ -350,7 +357,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					entity["components"]["projectile_emitter"]["aim_at_player"].get_or(false),
 					attack_range,
 					entity["components"]["projectile_emitter"]["friendly"].get_or(false),
-					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture"))
+					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture")),
+					entity["components"]["projectile_emitter"]["shot_sound"].get_or(std::string(""))
 				);
 			}
 
@@ -427,6 +435,42 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			if (cameraFollow != sol::nullopt)
 			{
 				newEntity.AddComponent<CameraHollderComponent>();
+			}
+
+			//Sound
+			sol::optional<sol::table> sounds = entity["components"]["sounds"];
+			if (sounds != sol::nullopt)
+			{
+				newEntity.AddComponent<SoundComponent>();
+				auto& sound = newEntity.GetComponent<SoundComponent>();
+
+				int min = (*sounds)["idle_min_seconds"].get_or(10);
+				int max = (*sounds)["idle_max_seconds"].get_or(20);
+
+				if (min < 1) {
+					Logger::Warn("Loader: idle_min < 1: " + std::to_string(min) + " which can cause problems, new value assigned: 1 second");
+					min = 1;
+				}
+
+				if (max < 2) {
+					Logger::Warn("Loader: idle_max < 2: " + std::to_string(max) + " which can cause problems, new value assigned: 2 second");
+					max = 2;
+				}
+
+				if (min > max) {
+					Logger::Warn("Loader: idle_min > idle_max: " + std::to_string(min) + " >" + std::to_string(max) + " the values are swapped");
+					std::swap(min, max);
+				}
+
+				sound.hurt = (*sounds)["hurt"].get_or(std::string(""));
+				sound.death = (*sounds)["death"].get_or(std::string(""));
+				sound.levelUp = (*sounds)["level_up"].get_or(std::string(""));
+				sound.cast = (*sounds)["cast"].get_or(std::string(""));
+				sound.idle = (*sounds)["idle"].get_or(std::string(""));
+				sound.idleMinMs = static_cast<Uint32>(min) * 1000;
+				sound.idleMaxMs = static_cast<Uint32>(max) * 1000;
+				sound.loop = (*sounds)["loop"].get_or(std::string(""));
+				sound.footsteps = (*sounds)["footsteps"].get_or(false);					
 			}
 
 

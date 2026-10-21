@@ -4,6 +4,7 @@
 #include "../ECS/ECS.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/KeyPressedEvent.h"
+#include "../Events/AbilityCastEvent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/SpriteComponent.h"
@@ -28,7 +29,7 @@ class SpecialAbilitySystem
 		// Needs registry + camera kept alive for OnKeyPressed, since that's an
 		// event-callback with a fixed (KeyPressedEvent&) signature and can't
 		// receive them as call parameters like Update() does elsewhere.
-		SpecialAbilitySystem(Registry& registry, const SDL_Rect& camera) : registry(registry), camera(camera) {}
+		SpecialAbilitySystem(Registry& registry, const SDL_Rect& camera, std::unique_ptr<EventBus>& eventBus) : registry(registry), camera(camera), eventBus(eventBus) {}
 
 		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
 		{
@@ -74,6 +75,7 @@ class SpecialAbilitySystem
 					continue; //not enough mana to cast
 				}
 				mana.manaPoints -= manaCastCost;
+				eventBus->EmitEvent<AbilityCastEvent>(entity);
 
 				//mouse position is screen-space - convert to world-space the same way
 				//Game::ProccessInput() does for MouseButtonPressedEvent
@@ -120,7 +122,7 @@ class SpecialAbilitySystem
 	private:
 		Registry& registry;
 		const SDL_Rect& camera;
-
+		std::unique_ptr<EventBus>& eventBus;
 		Uint32 lastCastTime = 0; //timestamp in milliseconds of the last successful cast
 
 		static constexpr Uint32 CooldownMs = 1000; //minimum delay between casts

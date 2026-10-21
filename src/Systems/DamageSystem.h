@@ -12,6 +12,7 @@
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 #include "../Events/EntityKilledEvent.h"
+#include "../Events/EntityHurtEvent.h"
 
 class DamageSystem
 {
@@ -88,10 +89,13 @@ class DamageSystem
 				}
 				health.healthPoints -= damgeTaken;
 
-				if (health.healthPoints <= 0)
-				{
+
+				if (health.healthPoints <= 0){
 					AnnounceDeath(player, projectileComponent.owner);
 					player.Kill();
+				}
+				else {
+					eventBus->EmitEvent<EntityHurtEvent>(player);
 				}
 
 				projectile.Kill();
@@ -148,6 +152,7 @@ class DamageSystem
 					
 				}
 				health.healthPoints -= damgeTaken;
+				
 
 
 				//Everything this function still needs from the projectile is taken care of
@@ -161,10 +166,13 @@ class DamageSystem
 				projectileComponent.haveCollided = true;
 				
 
-				if (health.healthPoints <= 0)
-				{
+				if (health.healthPoints <= 0){
 					AnnounceDeath(enemy, killer);
 					enemy.Kill();
+				}
+
+				else {
+					eventBus->EmitEvent<EntityHurtEvent>(enemy);
 				}
 
 				projectile.Kill();

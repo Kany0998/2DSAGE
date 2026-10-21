@@ -11,6 +11,7 @@ struct  WeaponStats {
 	float projectileSpeed = 400.0f;
 	float shotPerSecond = 2.0f;
 	float rangeTiles = 6.0f;
+	std::string shotSound;
 };
 
 
