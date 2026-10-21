@@ -10,6 +10,7 @@
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
 #include "../Audio/LevelAmbience.h"
+#include "../Audio/AudioStats.h"
 #include "../TileMap/TileMap.h"
 #include "../Utils/EntityGeometry.h"
 #include "../Logger/Logger.h"
@@ -36,9 +37,9 @@ class AudioSystem {
 	
 	public:
 		AudioSystem(Registry& registry, AssetStore& assetStore, AudioSettings& audioSettings,
-			const SDL_Rect& camera, const TileMap& tileMap, const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, bool audioReady) :
+			const SDL_Rect& camera, const TileMap& tileMap, const LootDatabase& lootDatabase, std::unique_ptr<EventBus>& eventBus, AudioStats& audioStats, bool audioReady) :
 			registry(registry), assetStore(assetStore), audioSettings(audioSettings),
-			camera(camera), tileMap(tileMap), lootDatabase(lootDatabase), eventBus(eventBus), audioReady(audioReady) {
+			camera(camera), tileMap(tileMap), lootDatabase(lootDatabase), eventBus(eventBus), audioStats(audioStats), audioReady(audioReady) {
 
 			if (audioReady) {
 				Mix_AllocateChannels(audioSettings.channels);
@@ -148,6 +149,7 @@ class AudioSystem {
 			if (!audioReady || soundId.empty()) {
 				return;
 			}
+			counting.requested++;
 
 			Mix_Chunk* sound = FindSound(soundId);
 			if (sound == nullptr) {
@@ -161,22 +163,26 @@ class AudioSystem {
 
 			//beyond hearing range: not played at all
 			if (distance >= range) {
+				counting.outOfRange++;
 				return;
 			}
 
 			//checked only after the range test, so a far-away copy can't block a near one
 			bool repGapPas = RepeatGapPassed(soundId);
 			if (!repGapPas) {
+				counting.skippedGap++;
 				return;
 			}
 
 			//every channel busy: skipped, that's the channel budget working
 			int channel = Mix_PlayChannel(-1, sound, 0);
 			if (channel == -1) {
+				counting.noChannel++;
 				return;
 			}
 
 			ApplyPosition(channel, worldPosition, listener, static_cast<float>(range), audioSettings.master * audioSettings.effects);
+			counting.played++;
 		}
 
 		//effect without a place (UI)
@@ -185,6 +191,7 @@ class AudioSystem {
 			if (!audioReady || soundId.empty()) {
 				return;
 			}
+			counting.requested++;
 
 			Mix_Chunk* sound = FindSound(soundId);
 			if (sound == nullptr) {
@@ -193,17 +200,20 @@ class AudioSystem {
 
 			bool repGapPas = RepeatGapPassed(soundId);
 			if (!repGapPas) {
+				counting.skippedGap++;
 				return;
 			}
 			//channels keep their effects after a sound ends: reset to centre, full volume
 			int channel = Mix_PlayChannel(-1, sound, 0);
 			if (channel == -1) {
+				counting.noChannel++;
 				return;
 			}
 
 			Mix_Volume(channel, static_cast<int>(audioSettings.effects * audioSettings.master * MIX_MAX_VOLUME));
 			Mix_SetPanning(channel, 255, 255);
 			Mix_SetDistance(channel, 0);
+			counting.played++;
 		}
 
 		//level music
@@ -418,6 +428,8 @@ class AudioSystem {
 					inRange.push_back({ distanceToSoruce, rawEntity });
 				}
 			}
+			counting.loopsInRange = static_cast<int>(inRange.size());
+
 			//nearest first only the first maxLoopSources are kept
 			std::sort(inRange.begin(), inRange.end(), [](const auto& a, const auto& b) {return a.first < b.first;});
 			std::unordered_set<entt::entity> keep;
@@ -459,6 +471,15 @@ class AudioSystem {
 						sound.loopChannel = -1;
 					}
 				}
+			}
+
+			counting.loopsPlaying = static_cast<int>(keep.size());
+
+			if (now - statsSecondStart >= 1000) {
+				counting.channelsBusy = Mix_Playing(-1);
+				audioStats = counting;
+				counting = {};
+				statsSecondStart = now;
 			}
 		}
 
@@ -530,12 +551,16 @@ class AudioSystem {
 		const TileMap& tileMap;
 		const LootDatabase& lootDatabase;
 		std::unique_ptr<EventBus>& eventBus;
+		AudioStats& audioStats;
 		bool audioReady = false;
 
 		LevelAmbience ambience;			//the current level's ambience
 		std::mt19937 rng{ std::random_device{}() };
 		float appliedAmbienceVolume = -1.0f;
 		bool ambienceLoopPlaying = false;	//whether channel 0 holds the loop
+
+		AudioStats counting;		//the current second, still running
+		Uint32 statsSecondStart = 0;	//when the current second began
 
 };
 

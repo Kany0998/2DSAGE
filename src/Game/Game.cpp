@@ -197,7 +197,7 @@ void Game::Setup()
 	healthRegenerationSystem = std::make_unique<HealthRegenerationSystem>();
 	renderManaBarSystem = std::make_unique<RenderManaBarSystem>();
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
-	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, audioSettings, eventBus, *assetStore);
+	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, audioSettings, eventBus, audioStats, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
 	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, eventBus);
 	progressionSystem = std::make_unique<ProgressionSystem>(eventBus);
@@ -218,7 +218,7 @@ void Game::Setup()
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
-	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioReady);
+	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioStats, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
 	audioSystem->StartAmbience(LevelAmbience::Load(lua));
 }
