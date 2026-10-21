@@ -835,7 +835,8 @@ AudioSettings =
 		equip = "ui-equip", 
 		unequip = "ui-unequip", 
 		open_bag = "bag-open", 
-		take_item = "ui-equip" 
+		take_item = "ui-equip",
+		move_item = "ui-equip"
 	},
 }
 

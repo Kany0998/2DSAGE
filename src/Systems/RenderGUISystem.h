@@ -431,6 +431,17 @@ class RenderGUISystem
 									DrawItemIcon(item, isDragged ? 100 : 255);
 									const ImVec2 slotMin = ImGui::GetItemRectMin();      //topleft of the slot button just drawn
 
+									//dropped a dragged backpack item onto this square: move or swap
+									if (ImGui::BeginDragDropTarget()) {
+										if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("BACKPACK_ITEM", ImGuiDragDropFlags_AcceptNoDrawDefaultRect)) {
+											const int from = *static_cast<const int*>(payload->Data);		//square the item was dragged from
+											if (backpack.MoveItem(from, i)) {
+												eventBus->EmitEvent<UISoundEvent>("move_item");
+											}
+										}
+										ImGui::EndDragDropTarget();
+									}
+
 
 									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 										std::string message;
@@ -459,6 +470,8 @@ class RenderGUISystem
 										DrawItemPicture(ImGui::GetForegroundDrawList(), corner, item);
 										ImGui::EndDragDropSource();
 									}
+
+									
 
 									ImGui::PopID();
 								}

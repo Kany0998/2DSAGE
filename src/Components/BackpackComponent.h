@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <algorithm>
 
 struct BackpackComponent {
 	std::vector<std::string> items;		//one entry per square, in grid order; "" = free square
@@ -38,6 +39,42 @@ struct BackpackComponent {
 			return false;
 		}
 		items.push_back(id);
+		return true;
+	}
+
+	//Moves the item in square "from" to square "to"; an item already in "to" goes to "from" (swap).
+	//Returns false when nothing could be moved.
+	bool MoveItem(int from, int to) {
+		if (from == to) {
+			return false;
+		}
+
+		//from must be an existing square
+		if (from < 0 || from >= static_cast<int>(items.size())) {
+			return false;
+		}
+
+		//From is empty
+		if (items[from].empty()) {
+			return false;
+		}
+
+		//to cannot be negative
+		if (to < 0) {
+			return false;
+		}
+
+		//a limited backpack has no squares beyond its capacity
+		if (capacity > 0 && to >= capacity) {
+			return false;
+		}
+
+		//the empty squares at the end may not exist in the vector yet: create them ("" = free)
+		if (to >= static_cast<int>(items.size())) {
+			items.resize(to + 1);
+		}
+
+		std::swap(items[from], items[to]);
 		return true;
 	}
 };
