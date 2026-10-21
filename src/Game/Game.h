@@ -10,6 +10,7 @@
 #include "../Inventory/InventoryUISettings.h"
 #include "../Audio/AudioSettings.h"
 #include "../Loot/LootDatabase.h"
+#include "../Audio/AudioStats.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -76,6 +77,7 @@ class Game
 		Pathfinder pathfinder;
 		AudioSettings audioSettings;
 		std::vector<int> debugPath;
+		AudioStats audioStats;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're

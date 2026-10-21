@@ -30,6 +30,7 @@
 #include "../Utils/EntityGeometry.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Audio/AudioSettings.h"
+#include "../Audio/AudioStats.h"
 #include <algorithm>
 #include <cmath>
 #include <SDL.h>
@@ -39,8 +40,8 @@ class RenderGUISystem
 {
 	public:
 		RenderGUISystem(const Controls& controls, const InventoryUISettings& inventoryUI,
-			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AudioSettings& audioSettings, std::unique_ptr<EventBus>& eventBus, AssetStore& assetStore) : controls(controls),
-			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), audioSettings(audioSettings), eventBus(eventBus), assetStore(assetStore) { }
+			const ItemDatabase& itemDatabase,const LootDatabase& lootDatabase, AudioSettings& audioSettings, std::unique_ptr<EventBus>& eventBus,const AudioStats& audioStats, AssetStore& assetStore) : controls(controls),
+			inventoryUI(inventoryUI), itemDatabase(itemDatabase), lootDatabase(lootDatabase), audioSettings(audioSettings), eventBus(eventBus), audioStats(audioStats), assetStore(assetStore) { }
 
 		void SubscribeToEvents()
 		{
@@ -239,8 +240,6 @@ class RenderGUISystem
 						projectileSpeed = 100;
 						health = 100;
 					}
-
-					
 				}
 				ImGui::End();
 
@@ -272,6 +271,18 @@ class RenderGUISystem
 					ImGui::Text("Map tile speed multiplier: multi=%.3f", speedMultiplier);
 					ImGui::Text("Map tile friciton: multi=%.2f", friction);
 					ImGui::Text("Map tile acceleration: multi=%.2f", acceleration);
+				}
+				ImGui::End();
+
+				if (ImGui::Begin("Audio", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::Text("requested:   %d / s", audioStats.requested);
+					ImGui::Text("played:   %d / s", audioStats.played);
+					ImGui::Text("skipped (gap):   %d / s", audioStats.skippedGap);
+					ImGui::Text("out of range:   %d / s", audioStats.outOfRange);
+					ImGui::Text("no channel:   %d / s", audioStats.noChannel);
+					ImGui::Text("channels busy:   %d", audioStats.channelsBusy);
+					ImGui::Text("loops in range:   %d", audioStats.loopsInRange);
+					ImGui::Text("loops playing:   %d", audioStats.loopsPlaying);
 				}
 				ImGui::End();
 			}
@@ -431,6 +442,17 @@ class RenderGUISystem
 									DrawItemIcon(item, isDragged ? 100 : 255);
 									const ImVec2 slotMin = ImGui::GetItemRectMin();      //topleft of the slot button just drawn
 
+									//dropped a dragged backpack item onto this square: move or swap
+									if (ImGui::BeginDragDropTarget()) {
+										if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("BACKPACK_ITEM", ImGuiDragDropFlags_AcceptNoDrawDefaultRect)) {
+											const int from = *static_cast<const int*>(payload->Data);		//square the item was dragged from
+											if (backpack.MoveItem(from, i)) {
+												eventBus->EmitEvent<UISoundEvent>("move_item");
+											}
+										}
+										ImGui::EndDragDropTarget();
+									}
+
 
 									if (item != nullptr && ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
 										std::string message;
@@ -459,6 +481,8 @@ class RenderGUISystem
 										DrawItemPicture(ImGui::GetForegroundDrawList(), corner, item);
 										ImGui::EndDragDropSource();
 									}
+
+									
 
 									ImGui::PopID();
 								}
@@ -766,6 +790,7 @@ class RenderGUISystem
 		const LootDatabase& lootDatabase;
 		AudioSettings& audioSettings;
 		std::unique_ptr<EventBus>& eventBus;
+		const AudioStats& audioStats;
 		AssetStore& assetStore;
 
 
@@ -781,6 +806,8 @@ class RenderGUISystem
 		Uint32 bannerTime = 0;			//when it starts
 		int bannerMs = 0;				//how long it lasts
 		int bannerScale = 1;
+
+		
 };
 
 #endif // !RENDERGUISYSTEM_H
