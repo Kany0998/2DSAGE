@@ -207,7 +207,7 @@ void Game::Setup()
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 
 	//create bindings between c++ and lua
-	scriptSystem->CreateLuaBindings(lua);
+	scriptSystem->CreateLuaBindings(lua, *registry, *assetStore, tileMap);
 
 	//Load first level
 	LevelLoader loader;
