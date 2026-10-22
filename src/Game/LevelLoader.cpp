@@ -77,7 +77,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 		std::string assetId = asset["id"];
 
 		if (assetType == "texture"){
-			assetStore->AddTexture(renderer, assetId, asset["file"]);
+			assetStore->AddTexture(renderer, assetId, asset["file"], asset["facing_degrees"].get_or(0.0));
 		}
 
 		if (assetType == "font"){

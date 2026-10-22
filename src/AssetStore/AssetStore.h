@@ -11,6 +11,7 @@ class AssetStore
 {
 	private:
 		std::map <std::string, SDL_Texture*> textures;
+		std::map <std::string, double> textureFacing;
 		std::map <std::string, TTF_Font*> fonts;
 		std::map <std::string, Mix_Chunk*> sounds;		//effects: decoded once, fully in memory
 		std::map <std::string, Mix_Music*> music;		//music: streamed from the file while it plays
@@ -20,8 +21,9 @@ class AssetStore
 
 		void ClearAssets();
 
-		void AddTexture(SDL_Renderer* renderer ,const std::string& assetId, const std::string& filePath);
+		void AddTexture(SDL_Renderer* renderer ,const std::string& assetId , const std::string& filePath, double facingDegrees = 0.0);
 		SDL_Texture* GetTexture(const std::string& assetId);
+		double GetTextureFacing(const std::string& assetId) const;
 
 		void AddFont(const std::string& assetId, const std::string& filePath, int fontSize);
 		TTF_Font* GetFont(const std::string& assetId);

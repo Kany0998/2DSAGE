@@ -19,7 +19,7 @@ return {
 	-- projectiles
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
 	{type = "texture", id = "iron-sword-bullet", file = "./assets/images/weapons/iron-sword-bullet.png"},
-	{type = "texture", id = "black-shield-shot", file = "./assets/images/ability/shield/black-shield-shot.png"},
+	{type = "texture", id = "black-shield-shot", file = "./assets/images/ability/shield/black-shield-shot.png", facing_degrees = 45.0},
 
 	-- item icons
 	{type = "texture", id = "iron-sword",    file = "./assets/images/weapons/iron-sword.png"},
