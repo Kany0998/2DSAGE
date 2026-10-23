@@ -695,8 +695,8 @@ Level = {
 				{
 					[0] = 
 					function(entity, delta_time, ellapsed_time)
-						--print("Siema tutaj maniek od Mc")
-					-- make move truck move and turn around
+						-- make move truck move and turn around
+						
 						local current_position_x, current_position_y = get_position(entity)
 						local current_velocity_x, current_velocity_y = get_velocity(entity)
 
@@ -788,7 +788,6 @@ Level = {
 				{
 					[0] = 
 					function(entity, delta_time, ellapsed_time)
-						--print("Siema tutaj drzewo od druskiego")
 						
 						--change position of the airplane to follow sine movement
 						local new_x = ellapsed_time * 0.09

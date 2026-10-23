@@ -205,8 +205,16 @@ class ScriptSystem
 			for (auto rawEntity : registry.Raw().view<ScriptComponent>())
 			{
 				Entity entity(rawEntity, &registry);
-				const auto script = entity.GetComponent<ScriptComponent>();
-				script.func(entity, deltaTime, ellapsedTime);
+				auto& script = entity.GetComponent<ScriptComponent>();
+				if (script.failed) {
+					continue;
+				}
+				auto result = script.func(entity, deltaTime, ellapsedTime);
+				if (!result.valid()) {
+					sol::error err = result;
+					Logger::Err("Script of entity " + std::to_string(entity.GetId()) + " stopped: " + err.what());
+					script.failed = true;
+				}
 			}
 		}
 
