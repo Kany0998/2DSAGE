@@ -5,6 +5,7 @@
 #include <cmath>
 #include <queue>
 #include <functional>
+#include <chrono>
 
 double Pathfinder::OctileHeuristic(int col, int row, int goalCol, int goalRow) const {
 	int dx = std::abs(goalCol - col);
@@ -78,15 +79,20 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 
 
 bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath) {
-	
+	lastStats = SearchStats{};
+
 	int cols = tilemap.Cols();
 	int rows = tilemap.Rows();
 
 	int cellCount = cols * rows;
 
+	auto resetStart = std::chrono::steady_clock::now();
 	costSoFar.assign(cellCount, -1.0); //never reached
 	cameFrom.assign(cellCount, -1);
 	tilesState.assign(cellCount, unreachedTile);//unreached
+	auto resetEnd = std::chrono::steady_clock::now();
+
+	lastStats.resetMs = std::chrono::duration<double, std::milli>(resetEnd - resetStart).count();
 
 	outPath.clear();
 
@@ -103,6 +109,8 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 	if (startIndex == goalIndex) {
 		outPath.push_back(goalIndex);
+		lastStats.found = true;
+		lastStats.pathCost = 0.0;
 		return true;
 	}
 
@@ -114,6 +122,8 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 	costSoFar[startIndex] = 0.0;
 	tilesState[startIndex] = frontierTile;
+	auto searchStart = std::chrono::steady_clock::now();
+	lastStats.nodesPushed++;
 	frontierQueue.push({0.0, startIndex});
 
 	std::vector<std::pair<int, double>> neighbours;
@@ -128,6 +138,7 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 		}
 
 		tilesState[current] = exploredTile;
+		lastStats.nodesExpanded++;
 
 		if (current == goalIndex) {
 			break;
@@ -154,11 +165,16 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 				double estimatedCostToGoal = OctileHeuristic(tilemap.IndexToCol(next), tilemap.IndexToRow(next), goalCol, goalRow);
 
-				frontierQueue.push({ newCost + estimatedCostToGoal, next });
+				lastStats.nodesPushed++;
+				frontierQueue.push({gWeight *  newCost + hWeight * estimatedCostToGoal, next });
 			}
 		}
 
 	}
+	auto searchEnd = std::chrono::steady_clock::now();
+	lastStats.searchMs = std::chrono::duration<double, std::milli>(searchEnd - searchStart).count();
+	lastStats.pathCost = costSoFar[goalIndex];
+	lastStats.found = lastStats.pathCost >= 0.0;
 
 	if (costSoFar[goalIndex] < 0.0) {
 		return false;
@@ -172,9 +188,17 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	}
 	std::reverse(outPath.begin(), outPath.end());
 
+	
+
 	if (smoothingEnable) {
+		auto smoothStart = std::chrono::steady_clock::now();
 		SmoothPath(tilemap, startIndex, movementType, outPath);
+		auto smoothEnd = std::chrono::steady_clock::now();
+
+		lastStats.smoothMs = std::chrono::duration<double, std::milli>(smoothEnd - smoothStart).count();
 	}
+
+	
 
 	return true;
 }

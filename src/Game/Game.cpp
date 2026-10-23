@@ -319,7 +319,7 @@ void Game::Render()
 		
 	}
 
-	//TEMP step-6 test: search from the first enemy to the player and log the path
+	//pathfinding debug view: search from the first enemy to the player and draw the result
 	if (isDebug && registry->HasEntityWithTag("player")) {
 		std::vector<Entity> enemies = registry->GetEntitiesByGroup("enemies");
 
@@ -341,8 +341,8 @@ void Game::Render()
 			int startCol = tileMap.colAt(eX), startRow = tileMap.rowAt(eY);
 			int goalCol = tileMap.colAt(pX), goalRow = tileMap.rowAt(pY);
 
-			pathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
-			
+			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+
 			
 			SDL_SetRenderDrawColor(renderer, 155, 21, 21, 255);
 

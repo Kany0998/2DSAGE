@@ -6,12 +6,26 @@
 
 class TileMap;
 
+
+struct SearchStats {
+	//Data for measurements
+	int nodesExpanded = 0;
+	int nodesPushed = 0;
+	double pathCost = -1; // -1 means no path 0 is real cost start == goal
+	bool found = false;
+	double resetMs = 0.0;
+	double searchMs = 0.0;
+	double smoothMs = 0.0;
+};
+
+
 class Pathfinder {
 
 	private:
 		std::vector<double> costSoFar;
 		std::vector<int> cameFrom;
 		std::vector<int> tilesState;
+		SearchStats lastStats;		//measurements only
 		static constexpr double diagonalCost = 1.41421356237;
 
 		
@@ -53,6 +67,14 @@ class Pathfinder {
 		//bands of slow ground, at a linear cost in lookups
 		double lineSamplesPerTile = 4.0;
 		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow,int movementType, std::vector<int>& outPath);
+
+		const SearchStats& LastStats() const {
+			return lastStats;
+		}
+
+		//queue priority = gWeight * g + hWeight * h: 1/0 Dijkstra, 1/1 A*, 0/1 greedy (path cost always stays real)
+		double gWeight = 1.0;
+		double hWeight = 1.0;
 };
 
 

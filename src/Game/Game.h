@@ -77,6 +77,7 @@ class Game
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
+		Pathfinder debugPathfinder;		//debug view only - its weights never affect the enemies
 		AudioSettings audioSettings;
 		std::vector<int> debugPath;
 		AudioStats audioStats;
