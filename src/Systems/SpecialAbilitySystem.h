@@ -91,6 +91,8 @@ class SpecialAbilitySystem{
 					continue;
 				}
 
+				const std::string castSound = (*stats)["cast_sound"].get_or(std::string(""));
+
 				int mouseX, mouseY;
 				SDL_GetMouseState(&mouseX, &mouseY);
 				glm::vec2 target(mouseX + camera.x, mouseY + camera.y);
@@ -111,7 +113,7 @@ class SpecialAbilitySystem{
 				//for lack of mana, or one whose on_cast failed in Lua, shouldn't cost anything
 				state.lastCastTime = SDL_GetTicks();
 
-				eventBus->EmitEvent<AbilityCastEvent>(entity);
+				eventBus->EmitEvent<AbilityCastEvent>(entity, castSound);
 			}
 		}
 
