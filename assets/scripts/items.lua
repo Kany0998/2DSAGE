@@ -34,11 +34,11 @@ Items = {
         icon = "black-shield",
 		bonuses = { defense = 15, attack = 60 },
 		bag = "legendary",
-		ability = "radial_burst",
+		ability = "cone_shot",
 		ability_stats = 
 		{
 			mana_cost = 100,
-			shot_count = 12,
+			shot_count = 1,
 			shot_speed = 400,
 			cooldown_seconds = 1,
 			min_damage = 60,
