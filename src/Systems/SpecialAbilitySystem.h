@@ -6,131 +6,124 @@
 #include "../Events/KeyPressedEvent.h"
 #include "../Events/AbilityCastEvent.h"
 #include "../Components/TransformComponent.h"
-#include "../Components/RigidBodyComponent.h"
-#include "../Components/SpriteComponent.h"
-#include "../Components/BoxColliderComponent.h"
-#include "../Components/ProjectileComponent.h"
-#include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/ManaComponent.h"
-#include "../Components/AttributesComponent.h"
+#include "../Components/EquipmentComponent.h"
+#include "../Components/AbilityStateComponent.h"
+#include "../Inventory/ItemDatabase.h"
+#include "../Abilities/AbilityDatabase.h"
+#include "../Logger/Logger.h"
 #include "../Components/CameraHollderComponent.h"
-#include "../Components/MovementTypeComponent.h"
+#include <cmath>
 #include <SDL.h>
 #include <glm/glm.hpp>
-#include <cmath>
 
-// Mana-gated special ability: SPACE casts a burst of shots outward from the
-// mouse cursor's world position, in a full circle, that expire after a
-// short lifetime - same expiry mechanism ProjectileLifeCycleSystem already
-// uses for regular bullets (ProjectileComponent::duration).
-class SpecialAbilitySystem
-{
+// SPACE casts the Lua ability of the item in the caster's Ability slot at the mouse's world position.
+// C++ owns the shared rules (cooldown, mana, protected call); the ability's on_cast decides what happens.
+// Mana and cooldown are paid only when on_cast succeeds.
+class SpecialAbilitySystem{
 	public:
 		// Needs registry + camera kept alive for OnKeyPressed, since that's an
 		// event-callback with a fixed (KeyPressedEvent&) signature and can't
 		// receive them as call parameters like Update() does elsewhere.
-		SpecialAbilitySystem(Registry& registry, const SDL_Rect& camera, std::unique_ptr<EventBus>& eventBus) : registry(registry), camera(camera), eventBus(eventBus) {}
+		SpecialAbilitySystem(Registry& registry, const SDL_Rect& camera, const ItemDatabase& itemDatabase, const AbilityDatabase& abilityDatabase, std::unique_ptr<EventBus>& eventBus) 
+			: registry(registry), camera(camera), itemDatabase(itemDatabase), abilityDatabase(abilityDatabase), eventBus(eventBus) {}
 
-		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus)
-		{
+		void SubscribeToEvents(std::unique_ptr<EventBus>& eventBus){
 			eventBus->SubscribeToEvent<KeyPressedEvent>(this, &SpecialAbilitySystem::OnKeyPressed);
 		}
 
-		void OnKeyPressed(KeyPressedEvent& event)
-		{
-			if (event.symbol != SDLK_SPACE)
-			{
+		void OnKeyPressed(KeyPressedEvent& event){
+			if (event.symbol != SDLK_SPACE){
+
 				return;
 			}
 
-			// Cooldown gate. SDL keeps re-firing SDL_KEYDOWN while a key is held, so
-			// without this a held SPACE casts every frame until the mana pool is empty.
-			// The timestamp lives on the system rather than on a component because the
-			// caster query below requires CameraHollderComponent, and only one entity
-			// (the player the camera follows) ever has it - if a second caster is added
-			// later this has to move onto a per-entity component, the way
-			// ProjectileEmitterComponent::lastEmittedTime does it for shooting.
-			if (SDL_GetTicks() - lastCastTime < CooldownMs)
-			{
-				return;
-			}
-
-			// Snapshot first: the burst below creates new entities with a TransformComponent,
+			// Snapshot first: the lua on_cast creates new entities with a TransformComponent,
 			// which can grow/reallocate that component's pool. Doing that while still
 			// iterating a live view over TransformComponent is unsafe - especially here,
-			// where up to ShotCount entities get created per caster in one pass.
+			// however many entities on_cast creates
 			std::vector<Entity> casters;
-			for (auto rawEntity : registry.Raw().view<ManaComponent, TransformComponent, CameraHollderComponent, AttributesComponent>())
-			{
+			for (auto rawEntity : registry.Raw().view<ManaComponent, TransformComponent, EquipmentComponent, CameraHollderComponent>()){
 				casters.emplace_back(rawEntity, &registry);
 			}
 
-			for (auto entity : casters)
-			{
-				auto& mana = entity.GetComponent<ManaComponent>();
+			for (auto entity : casters){
+				const auto& equipment = entity.GetComponent<EquipmentComponent>().slots;
+				std::string itemId;
 
-				int manaCastCost = ManaCost;
-				if (mana.manaPoints < manaCastCost)
-				{
-					continue; //not enough mana to cast
+				for (const auto& slot : equipment) {
+					if (slot.accepts == "special_ability" && !slot.itemId.empty()) {
+						itemId = slot.itemId;
+						break;
+					}
 				}
-				mana.manaPoints -= manaCastCost;
-				eventBus->EmitEvent<AbilityCastEvent>(entity);
 
-				//mouse position is screen-space - convert to world-space the same way
-				//Game::ProccessInput() does for MouseButtonPressedEvent
+				//No ability equiped continue
+				if (itemId.empty()) {
+					continue;
+				}
+
+				//If item is null we skip
+				const ItemDefinition* item = itemDatabase.Find(itemId);
+				if (item == nullptr) {
+					continue;
+				}
+
+				const AbilityDefinition* ability = abilityDatabase.Find(item->ability);
+				const sol::table* stats = abilityDatabase.StatsForItem(itemId);
+				if (ability == nullptr || stats == nullptr) {
+					continue;		//Item do not contain valid ability
+				}
+
+				if (!entity.HasComponent<AbilityStateComponent>()) {
+					entity.AddComponent<AbilityStateComponent>();
+				}
+
+				const Uint32 cooldown = static_cast<Uint32>(std::lround((*stats)["cooldown_seconds"].get_or(0.0) * 1000));
+				const Uint32 lastCastTime = entity.GetComponent<AbilityStateComponent>().lastCastTime;
+
+				if (SDL_GetTicks() - lastCastTime < cooldown) {
+					continue;
+				}
+
+				const int manaCost = static_cast<int>(std::lround((*stats)["mana_cost"].get_or(0.0)));
+				if (entity.GetComponent<ManaComponent>().manaPoints < manaCost) {
+					continue;
+				}
+
+				const std::string castSound = (*stats)["cast_sound"].get_or(std::string(""));
+
 				int mouseX, mouseY;
 				SDL_GetMouseState(&mouseX, &mouseY);
-				glm::vec2 explosionCenter(mouseX + camera.x, mouseY + camera.y);
+				glm::vec2 target(mouseX + camera.x, mouseY + camera.y);
 
-				//reuse the player's own shot damage/friendliness rather than adding
-				//a separate ability-damage field for now
-				int damage = 1;
-				bool isFriendly = true;
-				if (entity.HasComponent<ProjectileEmitterComponent>())
-				{
-					const auto& emitter = entity.GetComponent<ProjectileEmitterComponent>();
-					damage = emitter.projectileDamage;
-					isFriendly = emitter.isFriendly;
+				//Call lua on_cast
+				sol::protected_function_result result = ability->onCast(entity, target.x, target.y, *stats);
+				if (!result.valid()) {
+					sol::error err = result;
+					Logger::Err("Ability: " + ability->id + ": " + err.what());
+					continue;
 				}
+				auto& manaComp = entity.GetComponent<ManaComponent>();
+				auto& state = entity.GetComponent<AbilityStateComponent>();
 
-				for (int i = 0; i < ShotCount; i++)
-				{
-					double angle = (2.0 * Pi * i) / ShotCount;
-					glm::vec2 direction(std::cos(angle), std::sin(angle));
-					glm::vec2 velocity = direction * ShotSpeed;
-					double rotation = glm::degrees(angle); //point the sprite in its travel direction
+				manaComp.manaPoints -= manaCost;
 
-					Entity shot = registry.CreateEntity();
-					shot.Group("projectiles");
-					shot.AddComponent<TransformComponent>(explosionCenter, glm::vec2(5.0, 5.0), rotation);
-					shot.AddComponent<RigidBodyComponent>(velocity);
-					shot.AddComponent<SpriteComponent>("bullet-texture", 4, 4, 8);
-					shot.AddComponent<BoxColliderComponent>(4, 4);
-					//the caster owns every shot in the burst, so ability kills are
-					//credited the same way regular shots are
-					shot.AddComponent<ProjectileComponent>(isFriendly, damage, ShotDuration, entity);
-					shot.AddComponent<MovementTypeComponent>(MovementType_Projectile);
-				}
+				//only pay and start the cooldown once a cast actually went through - a cast refused
+				//for lack of mana, or one whose on_cast failed in Lua, shouldn't cost anything
+				state.lastCastTime = SDL_GetTicks();
 
-				//only start the cooldown once a cast actually went through - a cast
-				//refused for lack of mana shouldn't lock the ability out for a second
-				lastCastTime = SDL_GetTicks();
+				eventBus->EmitEvent<AbilityCastEvent>(entity, castSound);
 			}
 		}
 
 	private:
 		Registry& registry;
 		const SDL_Rect& camera;
+		const ItemDatabase& itemDatabase;
+		const AbilityDatabase& abilityDatabase;
 		std::unique_ptr<EventBus>& eventBus;
-		Uint32 lastCastTime = 0; //timestamp in milliseconds of the last successful cast
-
-		static constexpr Uint32 CooldownMs = 1000; //minimum delay between casts
-		static constexpr int ShotCount = 20;
-		static constexpr float ShotSpeed = 30.0f;   //pixels per second
-		static constexpr int ShotDuration = 10000;    //milliseconds (matches the "for 1 second" ask)
-		static constexpr int ManaCost = 200;         //out of maxManaPoints
-		static constexpr double Pi = 3.14159265358979323846;
+		
 };
 
 #endif

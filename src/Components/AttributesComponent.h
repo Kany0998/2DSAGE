@@ -8,7 +8,7 @@
 // and Skill_Count doubles as their size - so adding a stat here is the only edit needed.
 enum SkillStat
 {
-	Skill_Attack,		//Projectile damage: rolled min..max * (1 + attack / 25.0), rounded, at least 1 (ProjectileEmitSystem)
+	Skill_Attack,		//Projectile damage: rolled min..max * (1 + attack / 25.0), rounded, at least 1 (utils/projectile)
 	Skill_Defense,		//Subtracted from every hit taken; a hit never does less than 1 damage (DamageSystem)
 	Skill_Wisdom,		//Mana regeneration per second: 1 + wisdom / 10.0 (ManaRegenerationSystem)
 	Skill_Vitality,		//Health regeneration per second: 1 + vitality / 10.0 (HealthRegenerationSystem)

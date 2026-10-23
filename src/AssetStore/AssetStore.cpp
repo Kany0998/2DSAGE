@@ -34,9 +34,11 @@ void AssetStore::ClearAssets(){
 		Mix_FreeMusic(mus.second);
 	}
 	music.clear();
+
+	textureFacing.clear();
 }
 
-void AssetStore::AddTexture(SDL_Renderer* renderer , const std::string& assetId, const std::string& filePath){
+void AssetStore::AddTexture(SDL_Renderer* renderer , const std::string& assetId, const std::string& filePath, double facingDegrees){
 	SDL_Surface* surface = IMG_Load(filePath.c_str());
 	if (surface == nullptr) {
 		Logger::Warn("Texture: " + assetId + " encountered problem during loading from '" + filePath + "' return " + IMG_GetError());
@@ -44,6 +46,9 @@ void AssetStore::AddTexture(SDL_Renderer* renderer , const std::string& assetId,
 	}
 	SDL_Texture* texture = SDL_CreateTextureFromSurface( renderer,surface);
 	SDL_FreeSurface(surface);
+
+	//Add facing of texture
+	textureFacing.emplace(assetId, facingDegrees);
 
 	//Add texture to the map
 	textures.emplace(assetId, texture);
@@ -54,6 +59,14 @@ SDL_Texture* AssetStore::GetTexture(const std::string& assetId){
 	auto it = textures.find(assetId);
 	if (it == textures.end()) {
 		return nullptr;
+	}
+	return it->second;
+}
+
+double AssetStore::GetTextureFacing(const std::string& assetId) const {
+	auto it = textureFacing.find(assetId);
+	if (it == textureFacing.end()) {
+		return 0.0;
 	}
 	return it->second;
 }

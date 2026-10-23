@@ -199,7 +199,7 @@ void Game::Setup()
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
 	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, audioSettings, eventBus, audioStats, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
-	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, eventBus);
+	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, itemDatabase, abilityDatabase, eventBus);
 	progressionSystem = std::make_unique<ProgressionSystem>(eventBus);
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
@@ -207,13 +207,14 @@ void Game::Setup()
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 
 	//create bindings between c++ and lua
-	scriptSystem->CreateLuaBindings(lua);
+	scriptSystem->CreateLuaBindings(lua, *registry, *assetStore, tileMap);
 
 	//Load first level
 	LevelLoader loader;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
+	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);

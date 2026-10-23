@@ -5,9 +5,10 @@
 
 struct ScriptComponent
 {
-	sol::function func;
+	sol::protected_function func;
+	bool failed = false;
 
-	ScriptComponent(sol::function func = sol::lua_nil)
+	ScriptComponent(sol::protected_function func = sol::lua_nil)
 	{
 		this->func = func;
 	}

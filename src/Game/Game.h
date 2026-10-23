@@ -11,6 +11,7 @@
 #include "../Audio/AudioSettings.h"
 #include "../Loot/LootDatabase.h"
 #include "../Audio/AudioStats.h"
+#include "../Abilities/AbilityDatabase.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -72,6 +73,7 @@ class Game
 		TileMap tileMap;
 		ItemDatabase itemDatabase;
 		LootDatabase lootDatabase;
+		AbilityDatabase abilityDatabase;
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
@@ -106,7 +108,6 @@ class Game
 		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
 		std::unique_ptr<LootSystem> lootSystem;
 		std::unique_ptr<AudioSystem> audioSystem;
-
 
 
 	public:

@@ -32,11 +32,43 @@ Items = {
 		name = "Shield Of War",
 		tag = "special_ability",
         icon = "black-shield",
-		ability = "stun_and_dmg",
 		bonuses = { defense = 15, attack = 60 },
-		bag = "legendary"
-		
+		bag = "legendary",
+		ability = "cone_shot",
+		ability_stats = 
+		{
+			mana_cost = 100,
+			shot_count = 1,
+			shot_speed = 400,
+			cooldown_seconds = 1,
+			min_damage = 60,
+			max_damage = 100,
+			range_tiles = 2,
+			texture = "black-shield-shot",
+			cast_sound = "goblin-idle-3"
+		}	
 	},
+
+	legendary_shield = 
+	{
+		name = "Legendary Shield",
+		tag = "special_ability",
+        icon = "black-shield",
+		bonuses = { defense = 55, attack = 60 },
+		bag = "legendary",
+		ability = "radial_burst",
+		ability_stats = 
+		{
+			mana_cost = 100,
+			shot_count = 30,
+			shot_speed = 200,
+			min_damage = 160,
+			max_damage = 160,
+			texture = "iron-sword-bullet",
+			cast_sound = "goblin-idle-1"
+		}
+	},
+
 
 	black_helm = 
 	{ 
@@ -92,16 +124,4 @@ Items = {
 		bag = "common"
 	},
 
-}
-
-Abilities = 
-{
-    stun_and_dmg = 
-	{
-        min_damage = 20, 
-		max_damage = 40,
-        projectile_texture = "black-shield-shot",
-        projectile_speed = 400, 
-		range_tiles = 4,
-    },
 }

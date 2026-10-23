@@ -110,12 +110,9 @@ class AudioSystem {
 		}
 
 		void OnSpacialAbilityCast(AbilityCastEvent& event) {
-			if (!event.caster.HasComponent<SoundComponent>()) {
-				return;
-			}
-
 			if (event.caster.HasComponent<TransformComponent>() && event.caster.HasComponent<SpriteComponent>()) {
-				const std::string& sound = event.caster.GetComponent<SoundComponent>().cast;
+				const std::string& sound = (event.soundId.empty() && event.caster.HasComponent<SoundComponent>())
+					? event.caster.GetComponent<SoundComponent>().cast : event.soundId;
 				const glm::vec2 casterCenter = EntityCenter(event.caster.GetComponent<TransformComponent>(), event.caster.GetComponent<SpriteComponent>());
 				PlayAt(sound, casterCenter);
 			}

@@ -159,7 +159,7 @@ Level = {
 					capacity = 30,			--0 means unlimited
 					items = 
 					{
-						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war"
+						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war", "legendary_shield"
 					}
 				},
 				equipment =
@@ -630,151 +630,6 @@ Level = {
 
 		},
 		{
-			--campfire
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1200, y = 900},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				sprite = 
-				{
-					texture_asset_id = "campfire-texture",
-					width = 19,
-					height = 27,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				sounds =
-				{
-					loop = "fire-loop"
-				}
-
-			}
-
-		},
-		{
-			--campfire
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1300, y = 900},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				sprite = 
-				{
-					texture_asset_id = "campfire-texture",
-					width = 19,
-					height = 27,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				sounds =
-				{
-					loop = "fire-loop"
-				}
-
-			}
-
-		},
-		{
-			--campfire
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1400, y = 900},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				sprite = 
-				{
-					texture_asset_id = "campfire-texture",
-					width = 19,
-					height = 27,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				sounds =
-				{
-					loop = "fire-loop"
-				}
-
-			}
-
-		},
-		{
-			--campfire
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1500, y = 900},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				sprite = 
-				{
-					texture_asset_id = "campfire-texture",
-					width = 19,
-					height = 27,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				sounds =
-				{
-					loop = "fire-loop"
-				}
-
-			}
-
-		},
-		{
-			--campfire
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1600, y = 900},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				sprite = 
-				{
-					texture_asset_id = "campfire-texture",
-					width = 19,
-					height = 27,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				sounds =
-				{
-					loop = "fire-loop"
-				}
-
-			}
-
-		},
-		{
 			--tank
 			group = "enemies",
 			components =
@@ -840,8 +695,8 @@ Level = {
 				{
 					[0] = 
 					function(entity, delta_time, ellapsed_time)
-						--print("Siema tutaj maniek od Mc")
-					-- make move truck move and turn around
+						-- make move truck move and turn around
+						
 						local current_position_x, current_position_y = get_position(entity)
 						local current_velocity_x, current_velocity_y = get_velocity(entity)
 
@@ -933,7 +788,6 @@ Level = {
 				{
 					[0] = 
 					function(entity, delta_time, ellapsed_time)
-						--print("Siema tutaj drzewo od druskiego")
 						
 						--change position of the airplane to follow sine movement
 						local new_x = ellapsed_time * 0.09

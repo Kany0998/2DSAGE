@@ -14,6 +14,7 @@
 #include "../Components/EquipmentComponent.h"
 #include "../Components/AIComponent.h"
 #include "../Utils/EntityGeometry.h"
+#include "../Utils/Projectile.h"
 #include "../TileMap/TileMap.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../AssetStore/AssetStore.h"
@@ -124,7 +125,7 @@ class ProjectileEmitSystem
 
 			const float speed = profile.speed;
 
-			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, aimDirection * speed, profile);
+			EmitProjectile(entity, projectilePosition, aimDirection * speed, profile);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 		}
 
@@ -185,7 +186,7 @@ class ProjectileEmitSystem
 			}
 
 			
-			EmitProjectile(entity, projectileEmitter, transform, projectilePosition, shotVelocity, profile);
+			EmitProjectile(entity, projectilePosition, shotVelocity, profile);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 			
 		}
@@ -236,59 +237,12 @@ class ProjectileEmitSystem
 			return projectilePosition;
 		}
 
-		void EmitProjectile(Entity entity, const ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform,
-			glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile)
-		{
-			//Damage: rolled between the profile's min and max, scaled by attack in float, rounded, at least 1
-			std::uniform_int_distribution<int> roll(profile.minDamage, profile.maxDamage);
-			int damage = roll(rng);
-			float scaled = static_cast<float>(damage);
+		void EmitProjectile(Entity entity, glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile){
 
-			if (entity.HasComponent<AttributesComponent>()) {
-				const auto& attributes = entity.GetComponent<AttributesComponent>();
-				scaled = damage * (1.0f + attributes.Effective(Skill_Attack) / 25.0f);
-			}
-
-			//round to the nearest whole number, and never less than 1
-			const int finalDamage = std::max(1, static_cast<int>(std::lround(scaled)));
-			const double rotation = glm::degrees(std::atan2(velocity.y, velocity.x));
-
-			int width = 4; 
-			int height = 4;
-
-			//Bullet look and size from its texture; a missing texture falls back to bullet-texture
-
-			std::string textureId = profile.texture;
-			SDL_Texture* texture = assetStore.GetTexture(textureId);
-			if (texture == nullptr) {
-				textureId = "bullet-texture";
-				texture = assetStore.GetTexture(textureId);
-			}
-
-			if (texture != nullptr) {
-				SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
-			}
-
-			//square hitbox centred on the sprite - colliders don't rotate, the sprite does
-			const int hitboxSize = std::max(width, height);
-			const glm::vec2 offset(
-				(width - hitboxSize) / 2.0f * transform.scale.x,
-				(height - hitboxSize) / 2.0f * transform.scale.y);
-
-			const glm::vec2 firedFrom = position;
-			position -= glm::vec2(width * transform.scale.x / 2.0f, height * transform.scale.y / 2.0f);
-
-			Entity projectile = registry.CreateEntity();
-			projectile.Group("projectiles");
-			projectile.AddComponent<TransformComponent>(position, glm::vec2(transform.scale.x, transform.scale.y), rotation);
-			projectile.AddComponent<RigidBodyComponent>(velocity);
-			projectile.AddComponent<SpriteComponent>(textureId, width, height, 8);
-			projectile.AddComponent<BoxColliderComponent>(hitboxSize, hitboxSize, offset);
-			//`entity` is recorded as the owner so whatever this shot kills can be
-			//credited back to the shooter
-			projectile.AddComponent<ProjectileComponent>(projectileEmitter.isFriendly, finalDamage, profile.lifetimeMs, entity);
-			projectile.AddComponent<MovementTypeComponent>(MovementType_Projectile);
-			eventBus->EmitEvent<ProjectileFiredEvent>(firedFrom, profile.shotSound);
+			const int finalDamage = RollScaledDamage(entity, profile.minDamage, profile.maxDamage, rng);
+			SpawnProjectile(registry, assetStore, entity, position, velocity, finalDamage, profile.lifetimeMs, profile.texture);
+			
+			eventBus->EmitEvent<ProjectileFiredEvent>(position, profile.shotSound);
 		}
 
 		Registry& registry;
