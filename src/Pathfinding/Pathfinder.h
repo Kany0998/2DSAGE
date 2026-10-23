@@ -29,11 +29,6 @@ class Pathfinder {
 		static constexpr double diagonalCost = 1.41421356237;
 
 		
-
-		//Tile information
-		static constexpr int unreachedTile = 0; //Search hasnt find this file yet
-		static constexpr int frontierTile = 1;	//The search knows it exists and has a cost for it, but hasn't checked its neighbours yet
-		static constexpr int exploredTile = 2;	//the search has taken it out of the queue and checked its neighbours
 		static constexpr double costEpsilon = 1e-6;
 
 		//8-way movement
@@ -72,9 +67,18 @@ class Pathfinder {
 			return lastStats;
 		}
 
+		const std::vector<int>& GetTilesState() const {
+			return tilesState;
+		}
+
 		//queue priority = gWeight * g + hWeight * h: 1/0 Dijkstra, 1/1 A*, 0/1 greedy (path cost always stays real)
 		double gWeight = 1.0;
 		double hWeight = 1.0;
+
+		//Tile information
+		static constexpr int unreachedTile = 0; //Search hasnt find this tile yet
+		static constexpr int frontierTile = 1;	//The search knows it exists and has a cost for it, but hasn't checked its neighbours yet
+		static constexpr int exploredTile = 2;	//the search has taken it out of the queue and checked its neighbours
 };
 
 

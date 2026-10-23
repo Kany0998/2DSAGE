@@ -78,6 +78,8 @@ class Game
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
 		Pathfinder debugPathfinder;		//debug view only - its weights never affect the enemies
+		bool logPathStats = false;		//log the next debug search once (set by keys 1/2/3)
+		std::string debugPathMode = "A*";
 		AudioSettings audioSettings;
 		std::vector<int> debugPath;
 		AudioStats audioStats;
