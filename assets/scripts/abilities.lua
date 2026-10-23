@@ -12,7 +12,21 @@ Abilities =
 		max_damage = 40,
 		texture = "black-shield-shot",
 		on_cast = function(caster, target_x, target_y, ability) 
-			--TODO
+			for i = 0, ability.shot_count - 1 do
+				local angle = 2 * math.pi * i / ability.shot_count
+				local velocity_x = math.cos(angle) * ability.shot_speed
+				local velocity_y = math.sin(angle) * ability.shot_speed
+				spawn_projectile{
+					owner = caster,
+					x = target_x,
+					y = target_y,
+					velocity_x = velocity_x,
+					velocity_y = velocity_y,
+					damage = roll_damage(caster, ability.min_damage, ability.max_damage),
+					range_tiles = ability.range_tiles,
+					texture = ability.texture,
+				}
+			end
 		end,
 	},
 }

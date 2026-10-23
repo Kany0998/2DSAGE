@@ -39,10 +39,11 @@ Items = {
 		{
 			mana_cost = 100,
 			shot_count = 12,
-			shot_speed = 40,
+			shot_speed = 400,
 			cooldown_seconds = 1,
 			min_damage = 60,
 			max_damage = 100,
+			range_tiles = 2,
 			texture = "black-shield-shot",
 			cast_sound = "goblin-idle-3"
 		}	
@@ -52,18 +53,18 @@ Items = {
 	{
 		name = "Legendary Shield",
 		tag = "special_ability",
-        icon = "iron-sword-bullet",
-		bonuses = { defense = 55, attack = -60 },
+        icon = "black-shield",
+		bonuses = { defense = 55, attack = 60 },
 		bag = "legendary",
 		ability = "radial_burst",
 		ability_stats = 
 		{
 			mana_cost = 100,
-			shot_count = 12,
-			shot_speed = 40,
+			shot_count = 30,
+			shot_speed = 200,
 			min_damage = 160,
 			max_damage = 160,
-			texture = "black-shield-shot",
+			texture = "iron-sword-bullet",
 			cast_sound = "goblin-idle-1"
 		}
 	},
