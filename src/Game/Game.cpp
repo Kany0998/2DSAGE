@@ -199,7 +199,7 @@ void Game::Setup()
 	manaRegenerationSystem = std::make_unique<ManaRegenerationSystem>();
 	renderGUISystem = std::make_unique<RenderGUISystem>(controls, inventoryUI, itemDatabase, lootDatabase, audioSettings, eventBus, audioStats, *assetStore);
 	scriptSystem = std::make_unique<ScriptSystem>();
-	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, eventBus);
+	specialAbilitySystem = std::make_unique<SpecialAbilitySystem>(*registry, camera, itemDatabase, abilityDatabase, eventBus);
 	progressionSystem = std::make_unique<ProgressionSystem>(eventBus);
 	renderExperienceBarSystem = std::make_unique<RenderExperienceBarSystem>();
 	aiSystem = std::make_unique<AISystem>();
