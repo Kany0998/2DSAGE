@@ -7,7 +7,9 @@
 #include "../Components/AnimationComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/AIComponent.h"
+#include "../Components/SpriteComponent.h"
 #include "../Utils/Projectile.h"
+#include "../Utils/EntityGeometry.h"
 #include "../TileMap/TileMap.h"
 #include "../AssetStore/AssetStore.h"
 #include "../Logger/Logger.h"	
@@ -41,6 +43,20 @@ std::tuple<double, double> GetEntityVelocity(Entity entity)
 	else
 	{
 		Logger::Err("You trying to get velocity of entity that has no rigidbody component");
+		return std::make_tuple(0.0, 0.0);
+	}
+}
+
+std::tuple<double, double> GetEntityCenter(Entity entity) {
+	if (entity.HasComponent<TransformComponent>() && entity.HasComponent<SpriteComponent>()) {
+		glm::vec2 center = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
+		return std::make_tuple(center.x, center.y);
+	}
+	else if (entity.HasComponent<TransformComponent>()) {
+		return std::make_tuple(entity.GetComponent<TransformComponent>().position.x, entity.GetComponent<TransformComponent>().position.y);
+	}
+	else {
+		Logger::Err("get_center: your entity do not have transform nor sprite return (0.0 , 0.0)");
 		return std::make_tuple(0.0, 0.0);
 	}
 }
@@ -123,6 +139,8 @@ void SetProjectileVelocity(Entity entity, double x, double y)
 	}
 }
 
+
+
 class ScriptSystem
 {
 	public:
@@ -142,6 +160,7 @@ class ScriptSystem
 			//Create all the bindings between c++ and lua
 			lua.set_function("get_position", GetEntityPosisiton);
 			lua.set_function("get_velocity", GetEntityVelocity);
+			lua.set_function("get_center", GetEntityCenter);
 			lua.set_function("set_position", SetEntityPosition);
 			lua.set_function("set_velocity", SetEntityVelocity);
 			lua.set_function("set_rotation", SetEntityRotation);
