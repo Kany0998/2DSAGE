@@ -44,10 +44,26 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = false, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400, step_sound = "footstep-ice"},
-			[1] = {tile_id = 14, speed_multiplier = 0.5},   -- shallow water
-			[2] = {tile_id = 15, speed_multiplier = 0.7}    -- swamp
+			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400, step_sound = "footstep-ice"},
+			[1] = {tile_id = 9, speed_multiplier = 2.5},   -- shore
+			[2] = {tile_id = 15, speed_multiplier = 0.7},    -- swamp
+			[3] = {tile_id = 14, speed_multiplier = 0.5},    -- shallow water
+		},
+	},
 
+
+	--pathfinder benchmark tests
+
+	pathfinding_benchmark = 
+	{
+		runs = 20,
+		routes = 
+		{
+			{ name =  "short", from = {col = 11, row = 6}, to = {col =8 ,row = 10}},
+			{ name =  "long", from = {col =9, row = 12}, to = {col =23,row = 12}},
+			{ name =  "obstacle", from = {col =11, row = 6}, to = {col =21, row = 6}},
+			{ name =  "water", from = {col =1,row = 7}, to = {col =7,row = 7}},
+			{ name =  "unreachable", from = {col =11,row = 6}, to = {col =3,row = 1}},
 		},
 	},
 

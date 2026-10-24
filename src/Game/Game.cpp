@@ -243,6 +243,9 @@ void Game::Setup()
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
 	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
+	pathBenchmark = PathBenchmarkSettings::Load(lua, tileMap);
+	Logger::Log("Routes size: " + std::to_string(pathBenchmark.routes.size()));
+	Logger::Log("Number of runs: " + std::to_string(pathBenchmark.runs));
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
