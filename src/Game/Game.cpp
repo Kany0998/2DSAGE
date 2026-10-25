@@ -26,6 +26,7 @@
 #include "../Systems/RenderTileMapSystem.h"
 #include "../Systems/LootSystem.h"
 #include "../Systems/AudioSystem.h"
+#include "../Systems/ActivationSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -250,6 +251,7 @@ void Game::Setup()
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
+	activationSystem = std::make_unique<ActivationSystem>();
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua, *registry, *assetStore, tileMap);
@@ -266,6 +268,7 @@ void Game::Setup()
 	Logger::Log("Number of runs: " + std::to_string(pathBenchmark.runs));
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
+	simulationSettings = SimulationSettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
 	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioStats, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
@@ -307,6 +310,8 @@ void Game::Update()
 	lootSystem->Update();
 	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
+
+	activationSystem->Update(*registry, deltaTime, simulationSettings, tileMap);
 
 	const Uint64 aiStart = SDL_GetPerformanceCounter();
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);

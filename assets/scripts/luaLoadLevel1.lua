@@ -857,6 +857,14 @@ AudioSettings =
 	},
 }
 
+SimulationSettings =
+{
+    enable = true,
+    activate_radius_tiles = 20,
+    deactivate_radius_tiles = 26,
+    check_interval_seconds = 0.25,
+}
+
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale
 map_height = Level.tilemap.mapNumRows * Level.tilemap.tileSize * Level.tilemap.tileScale
