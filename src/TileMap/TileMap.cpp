@@ -47,6 +47,16 @@ double TileMap::SpeedMultiplierAt(int col, int row) const {
 	return speedMultipliers[tileId];
 }
 
+double TileMap::MaxSpeedMultiplier() const {
+	double highest = 1.0;
+	for (auto multiplier : speedMultipliers) {
+		if (multiplier > highest) {
+			highest = multiplier;
+		}
+	}
+	return highest;
+}
+
 double TileMap::FrictionAt(int col, int row) const{
 	if (!isInside(col, row))
 	{

@@ -183,6 +183,24 @@ void Game::ProccessInput()
 						debugPathMode = "Greedy";
 						logPathStats = true;
 					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_4)
+					{
+						debugPathfinder.gWeight = 1.0;
+						debugPathfinder.hWeight = 1.0 / std::max(1.0, tileMap.MaxSpeedMultiplier());
+						debugPathMode = "A* admissible";
+						logPathStats = true;
+					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_F9)
+					{
+						if (pathBenchmark.routes.empty()) {
+							Logger::Log("There are no routes");
+						}
+						else {
+							RunPathBenchmark(pathBenchmark, tileMap);
+						}
+					}
 				}
 
 

@@ -1,6 +1,12 @@
 #include "PathBenchmark.h"
+#include "Pathfinder.h"
 #include "../TileMap/MovementType.h"
 #include "../Logger/Logger.h"
+#include <vector>
+#include <algorithm>
+#include <fstream>
+#include <filesystem>
+#include <iomanip>
 
 
 PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap& tileMap) {
@@ -58,4 +64,67 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 		}
 	}
 	return routeSettings;
+}
+
+void RunPathBenchmark(const PathBenchmarkSettings& pathBench, const TileMap& tileMap) {
+	Pathfinder pathfinder;                 // its own, never the enemies' or the debug one
+	pathfinder.smoothingEnable = false;    // measure the search only
+
+	const double admissibleH = 1.0 / std::max(1.0, tileMap.MaxSpeedMultiplier());
+	std::vector<int> path;
+
+	const std::vector<SearchMode> modes = {
+		{"Dijkstra", 1.0, 0.0},
+		{"A*", 1.0, 1.0},
+		{"A* admissible", 1.0, admissibleH},
+		{"Greedy", 0.0, 1.0},
+	};
+
+	std::filesystem::create_directories("./benchmarks");
+	const std::string fileName = "./benchmarks/pathfinding_" + std::to_string(tileMap.Cols()) + "x" + std::to_string(tileMap.Rows()) + ".csv";
+
+	std::ofstream csv(fileName);
+	if (!csv) {
+		Logger::Err("PathBenchmark: could not open " + fileName + ", results go to the log only");
+	}
+	csv << std::fixed << std::setprecision(6);
+	csv << "route,mode,found,cost,expanded,pushed,avg_ms,max_ms,reset_ms\n";
+
+	for (auto& route : pathBench.routes) {
+		for (auto& mode : modes) {
+			pathfinder.gWeight = mode.gWeight;
+			pathfinder.hWeight = mode.hWeight;
+
+			pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path);
+
+			double sumSearch = 0;
+			double maxSearch = 0;
+			double sumReset = 0;
+			
+			for (int run = 0; run < pathBench.runs; ++run) {
+				pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path);
+				const auto& stats = pathfinder.LastStats();
+				sumSearch += stats.searchMs;
+				maxSearch = std::max(maxSearch, stats.searchMs);
+				sumReset += stats.resetMs;
+			}
+
+			const auto& last = pathfinder.LastStats();
+			double averageSearch = sumSearch / pathBench.runs;
+			double averageReset = sumReset / pathBench.runs;
+			Logger::Log(route.name + " | " + mode.name
+				+ " | found " + std::to_string(last.found)
+				+ " | cost " + std::to_string(last.pathCost)
+				+ " | expanded " + std::to_string(last.nodesExpanded)
+				+ " | pushed " + std::to_string(last.nodesPushed)
+				+ " | avg " + std::to_string(averageSearch) + " ms"
+				+ " | max " + std::to_string(maxSearch) + " ms"
+				+ " | reset " + std::to_string(averageReset) + " ms" );
+
+			csv << route.name << "," << mode.name << ","
+				<< last.found << "," << last.pathCost << "," << last.nodesExpanded << "," << last.nodesPushed << ","
+				<< averageSearch << "," << maxSearch << "," << averageReset << "\n";
+		}
+		Logger::Log("-----------------------------------------------------");
+	}
 }

@@ -47,6 +47,7 @@ class TileMap {
 		bool isInside(int col, int row) const;
 		int tileAt(int col, int row) const;
 		double SpeedMultiplierAt(int col, int row) const;
+		double MaxSpeedMultiplier() const;
 		const std::string& StepSoundAt(int col, int row) const;
 		bool isBlocked(int col, int row, int movementType) const;
 		bool isBlockedAtWorld(double worldX, double worldY, int movementType) const;

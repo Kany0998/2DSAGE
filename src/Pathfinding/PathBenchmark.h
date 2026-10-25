@@ -8,10 +8,10 @@
 
 struct Route {
 	std::string name;
-	int fromCol;
-	int fromRow;
-	int toCol;
-	int toRow;
+	int fromCol = -1;
+	int fromRow = -1;
+	int toCol = -1;
+	int toRow = -1;
 };
 
 struct PathBenchmarkSettings {
@@ -19,5 +19,13 @@ struct PathBenchmarkSettings {
 	std::vector<Route> routes;
 	static PathBenchmarkSettings Load(sol::state& lua, const TileMap& tileMap);
 };
+
+struct SearchMode {
+	std::string name;
+	double gWeight;
+	double hWeight;
+};
+
+void RunPathBenchmark(const PathBenchmarkSettings& pathBench, const TileMap& tileMap);
 
 #endif // !PATHBENCHMARK_H
