@@ -64,6 +64,7 @@ Level = {
 			{ name =  "obstacle", from = {col =11, row = 6}, to = {col =21, row = 6}},
 			{ name =  "water", from = {col =1,row = 7}, to = {col =7,row = 7}},
 			{ name =  "unreachable", from = {col =11,row = 6}, to = {col =3,row = 1}},
+			{ name = "unreachable near bounded", from = {col = 11, row = 6}, to = {col = 3, row = 1}, bound_tiles = 20 },
 			{ name = "shore", from = {col = 11, row = 6}, to = {col = 21, row = 7} },
 		},
 	},

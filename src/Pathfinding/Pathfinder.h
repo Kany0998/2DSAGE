@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <vector>
+#include <limits>
 
 class TileMap;
 
@@ -16,6 +17,16 @@ struct SearchStats {
 	double resetMs = 0.0;
 	double searchMs = 0.0;
 	double smoothMs = 0.0;
+};
+
+struct SearchBounds {
+	int minCol = 0;
+	int minRow = 0;
+	int maxCol = std::numeric_limits<int>::max();
+	int maxRow = std::numeric_limits<int>::max();
+	bool Contains(int col, int row)  const{
+		return col >= minCol && col <= maxCol && row >= minRow && row <= maxRow;
+	}
 };
 
 
@@ -49,7 +60,7 @@ class Pathfinder {
 		static constexpr double diagonalMinMultiplier = 0.2;
 
 		double OctileHeuristic(int col, int row, int goalCol, int goalRow) const;
-		void FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours) const;
+		void FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds) const;
 		double CostToEnter(const TileMap& tilemap, int col, int row, bool isDiagonal) const;
 
 		double LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier) const;
@@ -61,7 +72,7 @@ class Pathfinder {
 		//Line samples per tile: higher is more accurate about thin obstacles and narrow
 		//bands of slow ground, at a linear cost in lookups
 		double lineSamplesPerTile = 4.0;
-		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow,int movementType, std::vector<int>& outPath);
+		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath, const SearchBounds& bounds = SearchBounds{});
 
 		const SearchStats& LastStats() const {
 			return lastStats;

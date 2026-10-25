@@ -45,6 +45,7 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 			const int fromRow = entry["from"]["row"].get_or(-1);
 			const int toCol = entry["to"]["col"].get_or(-1);
 			const int toRow = entry["to"]["row"].get_or(-1);
+			const int boundedTiles = entry["bound_tiles"].get_or (0);
 
 			if (!tileMap.isInside(fromCol, fromRow) || !tileMap.isInside(toCol, toRow)) {
 				Logger::Warn("PathBenchmark: route: " + route.name + " is outside the map, skipped");
@@ -54,6 +55,13 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 			if (tileMap.isBlocked(fromCol, fromRow, MovementType_Ground) || tileMap.isBlocked(toCol, toRow, MovementType_Ground)) {
 				Logger::Warn("PathBenchmark: route: " + route.name + " start or end is blocked ,skipped");
 				continue;
+			}
+
+			if (boundedTiles < 0) {
+				Logger::Warn("PathBenchmark: route: " + route.name + " has bound_tiles < 0 : "+std::to_string(boundedTiles) +" which is not allowed , chaning it to default" + std::to_string(route.boundTiles));
+			}
+			else {
+				route.boundTiles = boundedTiles;
 			}
 
 			route.fromCol = fromCol;
@@ -91,18 +99,27 @@ void RunPathBenchmark(const PathBenchmarkSettings& pathBench, const TileMap& til
 	csv << "route,mode,found,cost,expanded,pushed,avg_ms,max_ms,reset_ms\n";
 
 	for (auto& route : pathBench.routes) {
+
+		auto bounds = SearchBounds{};
+		if (route.boundTiles > 0) {
+			bounds.minCol = std::max(0, route.fromCol - route.boundTiles);
+			bounds.maxCol = std::min(tileMap.Cols()- 1, route.fromCol + route.boundTiles);
+			bounds.minRow = std::max(0, route.fromRow - route.boundTiles);
+			bounds.maxRow = std::min(tileMap.Rows() - 1, route.fromRow + route.boundTiles);
+		}
+
 		for (auto& mode : modes) {
 			pathfinder.gWeight = mode.gWeight;
 			pathfinder.hWeight = mode.hWeight;
 
-			pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path);
+			pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path, bounds);
 
 			double sumSearch = 0;
 			double maxSearch = 0;
 			double sumReset = 0;
 			
 			for (int run = 0; run < pathBench.runs; ++run) {
-				pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path);
+				pathfinder.FindPath(tileMap, route.fromCol, route.fromRow, route.toCol, route.toRow, MovementType_Ground, path, bounds);
 				const auto& stats = pathfinder.LastStats();
 				sumSearch += stats.searchMs;
 				maxSearch = std::max(maxSearch, stats.searchMs);

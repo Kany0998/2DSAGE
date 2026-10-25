@@ -1,8 +1,12 @@
 #ifndef AICOMPONENT_H
 #define AICOMPONENT_H
 
+#include "../Pathfinding/Pathfinder.h"
+#include "../TileMap/TileMap.h"
 #include <glm/glm.hpp>
 #include <vector>
+#include <algorithm>
+#include <cmath>
 
 enum class AIState {
 	Patrol,
@@ -73,6 +77,20 @@ inline void EnterAIState(AIComponent& ai, AIState next) {
 	if (next == AIState::Patrol) {
 		ai.patrolTargetCell = -1;
 	}
+}
+
+inline SearchBounds BoundsForEnemy(const AIComponent& enemyAI, const TileMap& tileMap) {
+	const int spawnCol = tileMap.colAt(enemyAI.spawnPoint.x);
+	const int spawnRow = tileMap.rowAt(enemyAI.spawnPoint.y);
+
+	const int intrestRadius = static_cast<int>(std::ceil((enemyAI.leashRange + enemyAI.detectionRange) / tileMap.TileWorldSize()) + 2);
+
+	SearchBounds searchBounds;
+	searchBounds.minCol = std::max(0, spawnCol - intrestRadius);
+	searchBounds.maxCol = std::min(tileMap.Cols() - 1, spawnCol + intrestRadius);
+	searchBounds.minRow = std::max(0, spawnRow - intrestRadius);
+	searchBounds.maxRow = std::min(tileMap.Rows() - 1, spawnRow + intrestRadius);
+	return searchBounds;
 }
 
 #endif // AICOMPONENT_H

@@ -391,8 +391,13 @@ void Game::Render()
 
 			double tileWorldSize = tileMap.TileWorldSize();
 
+			SearchBounds bounds;
+			if (enemy.HasComponent<AIComponent>()) {
+				bounds = BoundsForEnemy(enemy.GetComponent<AIComponent>(), tileMap);
+			}
+
 			
-			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath, bounds);
 			const auto& lastStats = debugPathfinder.LastStats();
 
 			if (logPathStats) {

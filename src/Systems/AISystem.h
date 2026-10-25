@@ -78,6 +78,11 @@ class AISystem
 				const int enemyCol = tileMap.colAt(enemyCenter.x);
 				const int enemyRow = tileMap.rowAt(enemyCenter.y);
 
+				const int spawnCol = tileMap.colAt(enemyAI.spawnPoint.x);
+				const int spawnRow = tileMap.rowAt(enemyAI.spawnPoint.y);
+
+				const SearchBounds searchBounds = BoundsForEnemy(enemyAI, tileMap);
+
 				//Squared distance against a squared range: no sqrt per enemy per frame
 				const double dx = playerCenter.x - enemyCenter.x;
 				const double dy = playerCenter.y - enemyCenter.y;
@@ -152,8 +157,6 @@ class AISystem
 
 					if (enemyAI.patrolTargetCell == -1) {
 						const int radiusInCells = static_cast<int>(std::ceil(enemyAI.patrolRadius / tileWorldSize));
-						const int spawnCol = tileMap.colAt(enemyAI.spawnPoint.x);
-						const int spawnRow = tileMap.rowAt(enemyAI.spawnPoint.y);
 
 						std::uniform_int_distribution<int> colDistribution(spawnCol - radiusInCells, spawnCol + radiusInCells);
 						std::uniform_int_distribution<int> rowDistribution(spawnRow - radiusInCells, spawnRow + radiusInCells);
@@ -212,7 +215,7 @@ class AISystem
 							continue;
 						}
 
-						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path);
+						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						searchesThisFrame++;
 						enemyAI.repathTimer = 0;
 						enemyAI.lastTargetCell = enemyAI.patrolTargetCell;
@@ -238,9 +241,8 @@ class AISystem
 				}
 
 				if (enemyAI.state == AIState::Return) {
-					const int spawnCol = tileMap.colAt(enemyAI.spawnPoint.x);
-					const int spawnRow = tileMap.rowAt(enemyAI.spawnPoint.y);
 					const int spawnCellIndex = tileMap.Index(spawnCol, spawnRow);
+
 
 					enemyAI.repathTimer += deltaTime;
 					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= repathInterval;
@@ -252,7 +254,7 @@ class AISystem
 						}
 
 
-						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path);
+						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						searchesThisFrame++;
 						enemyAI.repathTimer = 0.0;
 						enemyAI.lastTargetCell = spawnCellIndex;
@@ -311,7 +313,7 @@ class AISystem
 							continue;
 						}
 
-						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, playerCol, playerRow, enemyMovementType.movementType, enemyAI.path);
+						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, playerCol, playerRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 
 						searchesThisFrame++;
 						enemyAI.repathTimer = 0.0;
