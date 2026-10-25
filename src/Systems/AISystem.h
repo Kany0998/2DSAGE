@@ -27,6 +27,9 @@ class AISystem
 
 		//Flip to see every search in the console; used for the repath measurements
 		bool logSearches = false;
+		int searchesDone = 0;
+		int searchesDeferred = 0;
+		double pathfinderMS = 0;
 
 		void Update(Registry& registry, double deltaTime, const TileMap& tileMap, Pathfinder& pathfinder) {
 
@@ -212,11 +215,14 @@ class AISystem
 					if (shouldSearch) {
 
 						if (searchesThisFrame >= maxSearchesPerFrame) {
+							searchesDeferred++;
 							continue;
 						}
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
+						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						searchesDone++;
 						enemyAI.repathTimer = 0;
 						enemyAI.lastTargetCell = enemyAI.patrolTargetCell;
 						enemyAI.waypointIndex = 0;
@@ -250,12 +256,15 @@ class AISystem
 					if (shouldSearch) {
 
 						if (searchesThisFrame >= maxSearchesPerFrame) {
+							searchesDeferred++;
 							continue;
 						}
 
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
+						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						searchesDone++;
 						enemyAI.repathTimer = 0.0;
 						enemyAI.lastTargetCell = spawnCellIndex;
 						enemyAI.waypointIndex = 0;
@@ -310,12 +319,15 @@ class AISystem
 					if (shouldSearch) {
 						//Over budget: keep the old path and try again next frame
 						if (searchesThisFrame >= maxSearchesPerFrame) {
+							searchesDeferred++;
 							continue;
 						}
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, playerCol, playerRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
+						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 
 						searchesThisFrame++;
+						searchesDone++;
 						enemyAI.repathTimer = 0.0;
 						enemyAI.lastTargetCell = playerCellIndex;
 						enemyAI.waypointIndex = 0;

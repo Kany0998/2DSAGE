@@ -45,7 +45,7 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 			const int fromRow = entry["from"]["row"].get_or(-1);
 			const int toCol = entry["to"]["col"].get_or(-1);
 			const int toRow = entry["to"]["row"].get_or(-1);
-			const int boundedTiles = entry["bound_tiles"].get_or (0);
+			const int boundedTiles = entry["bound_radius_tiles"].get_or (0);
 
 			if (!tileMap.isInside(fromCol, fromRow) || !tileMap.isInside(toCol, toRow)) {
 				Logger::Warn("PathBenchmark: route: " + route.name + " is outside the map, skipped");
@@ -58,10 +58,10 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 			}
 
 			if (boundedTiles < 0) {
-				Logger::Warn("PathBenchmark: route: " + route.name + " has bound_tiles < 0 : "+std::to_string(boundedTiles) +" which is not allowed , chaning it to default" + std::to_string(route.boundTiles));
+				Logger::Warn("PathBenchmark: route: " + route.name + " has bound_radius_tiles < 0 : "+std::to_string(boundedTiles) +" which is not allowed , chaning it to default" + std::to_string(route.boundRadiusTiles));
 			}
 			else {
-				route.boundTiles = boundedTiles;
+				route.boundRadiusTiles = boundedTiles;
 			}
 
 			route.fromCol = fromCol;
@@ -101,11 +101,11 @@ void RunPathBenchmark(const PathBenchmarkSettings& pathBench, const TileMap& til
 	for (auto& route : pathBench.routes) {
 
 		auto bounds = SearchBounds{};
-		if (route.boundTiles > 0) {
-			bounds.minCol = std::max(0, route.fromCol - route.boundTiles);
-			bounds.maxCol = std::min(tileMap.Cols()- 1, route.fromCol + route.boundTiles);
-			bounds.minRow = std::max(0, route.fromRow - route.boundTiles);
-			bounds.maxRow = std::min(tileMap.Rows() - 1, route.fromRow + route.boundTiles);
+		if (route.boundRadiusTiles > 0) {
+			bounds.minCol = std::max(0, route.fromCol - route.boundRadiusTiles);
+			bounds.maxCol = std::min(tileMap.Cols()- 1, route.fromCol + route.boundRadiusTiles);
+			bounds.minRow = std::max(0, route.fromRow - route.boundRadiusTiles);
+			bounds.maxRow = std::min(tileMap.Rows() - 1, route.fromRow + route.boundRadiusTiles);
 		}
 
 		for (auto& mode : modes) {

@@ -64,7 +64,7 @@ Level = {
 			{ name =  "obstacle", from = {col =11, row = 6}, to = {col =21, row = 6}},
 			{ name =  "water", from = {col =1,row = 7}, to = {col =7,row = 7}},
 			{ name =  "unreachable", from = {col =11,row = 6}, to = {col =3,row = 1}},
-			{ name = "unreachable near bounded", from = {col = 11, row = 6}, to = {col = 3, row = 1}, bound_tiles = 20 },
+			{ name = "unreachable near bounded", from = {col = 11, row = 6}, to = {col = 3, row = 1}, bound_radius_tiles = 20 },
 			{ name = "shore", from = {col = 11, row = 6}, to = {col = 21, row = 7} },
 		},
 	},
@@ -860,3 +860,93 @@ AudioSettings =
 --map in pixels
 map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.tileScale
 map_height = Level.tilemap.mapNumRows * Level.tilemap.tileSize * Level.tilemap.tileScale
+
+
+stress_enemies = 0                       -- 0 = off; e.g. 500 or 2000 for the measurement
+
+local tile_world_size = Level.tilemap.tileSize * Level.tilemap.tileScale
+
+local function MakeStressTank(xpos, ypos)
+    return {                             -- a NEW table on every call
+        group = "enemies",
+        components =
+			{
+				transform =
+				{
+					position = {x = xpos, y = ypos},
+					scale = {x = 6.0, y = 6.0},
+					rotation = 0.0 --deg
+				},
+				rigidbody =
+				{
+					velocity = {x = -100, y = 0},
+					mass = 2.5
+				},
+				sprite = 
+				{
+					texture_asset_id = "tank-texture",
+					width = 32,
+					height = 32,
+					layer  = 3,
+					fixed = false,
+					src_rect_x = 0,
+					src_rect_y = 0
+				},
+				boxcollider =
+				{
+					width = 32,
+					height = 32,
+					offset = {x = 0, y = 0}
+				},
+				health =
+				{
+					health_points = 100,
+					max_health_points = 100
+				},
+				experience_reward =
+				{
+					experience = 50
+				},
+				sounds = 
+				{ 
+					hurt = "enemy-hurt",
+					death = "goblin-idle-3",
+					idle = "goblin-idle-2",
+					idle_min_seconds = 5,
+					idle_max_seconds = 12
+				},
+				projectile_emitter =
+				{
+					projectile_velocity = {x = 100, y = 0},
+					projectile_duration = 10, --sec
+					repeat_frequency = 3,
+					projectile_damage = 49,
+					aim_at_player = true,
+					friendly = false,
+					projectile_texture = "black-shield-shot"
+				},
+				movement_type =
+				{
+					type = "ground"
+				},
+				ai =
+				{
+					detection_range = 5,
+					stop_distance = 1.0,
+					leash_range = 8,
+					move_speed = 100,
+					patrol_radius = 3,   -- tiles, measured from the spawn point
+					patrol_pause = 2.0
+				},
+				loot = { table = "forest_tank" }
+			}
+    }
+end
+
+for i = 0, stress_enemies - 1 do
+    local copy_x = i % 40
+    local copy_y = math.floor(i / 40)
+    local col = copy_x * 25 + 18          -- local (18, 12): walkable in every copy
+    local row = copy_y * 20 + 12
+    table.insert(Level.entities, MakeStressTank(col * tile_world_size, row * tile_world_size))
+end

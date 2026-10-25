@@ -59,6 +59,10 @@ class Game
 		SDL_Rect camera;
 		Uint32 currentTick;
 
+		double aiTimeSumMs = 0.0;
+		double aiTimeMaxMs = 0.0;
+		int aiTimeFrames = 0;
+
 		sol::state lua;
 
 		//Render-time measurement (debug mode only): summed over a batch of frames, then averaged

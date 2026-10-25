@@ -256,7 +256,7 @@ void Game::Setup()
 
 	//Load first level
 	LevelLoader loader;
-	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
+	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os, sol::lib::table);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
 	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
@@ -307,7 +307,36 @@ void Game::Update()
 	lootSystem->Update();
 	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
+
+	const Uint64 aiStart = SDL_GetPerformanceCounter();
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
+	const double aiMs = (SDL_GetPerformanceCounter() - aiStart) * 1000.0 / SDL_GetPerformanceFrequency();
+	if (isDebug) {
+		aiTimeSumMs += aiMs;
+		aiTimeMaxMs = std::max(aiTimeMaxMs, aiMs);
+		aiTimeFrames++;
+
+		if (aiTimeFrames == renderTimeBatch) {
+			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
+				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
+				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size()));
+			aiTimeSumMs = 0;
+			aiTimeMaxMs = 0;
+			aiTimeFrames = 0;
+			aiSystem->searchesDone = 0;
+			aiSystem->searchesDeferred = 0;
+			aiSystem->pathfinderMS = 0;
+		}
+	}
+	else {
+		aiTimeSumMs = 0;
+		aiTimeMaxMs = 0;
+		aiTimeFrames = 0;
+		aiSystem->searchesDone = 0;
+		aiSystem->searchesDeferred = 0;
+		aiSystem->pathfinderMS = 0;
+	}
+
 	movementSystem->Update(*registry, deltaTime, tileMap);
 	animationSystem->Update(*registry);
 	collisionSystem->Update(*registry, eventBus);

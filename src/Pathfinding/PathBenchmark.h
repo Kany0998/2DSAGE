@@ -12,7 +12,7 @@ struct Route {
 	int fromRow = -1;
 	int toCol = -1;
 	int toRow = -1;
-	int boundTiles = 0;		//0 = no limits
+	int boundRadiusTiles = 0;		//0 = no limits
 };
 
 struct PathBenchmarkSettings {
