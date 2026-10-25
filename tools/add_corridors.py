@@ -17,7 +17,10 @@ CORRIDOR_TILE = "08"
 
 def main(src: str, dst: str) -> None:
     with open(src, "r", newline="") as f:
-        lines = f.read().split("\n")
+        text = f.read()
+    # git may check the maps out with CRLF on Windows; keep whichever ending the file has
+    newline = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(newline)
 
     changed = 0
     out_lines = []
@@ -35,7 +38,7 @@ def main(src: str, dst: str) -> None:
         out_lines.append(",".join(tokens))
 
     with open(dst, "w", newline="") as f:
-        f.write("\n".join(out_lines))
+        f.write(newline.join(out_lines))
     print(f"{dst}: {changed} tiles changed")
 
 
