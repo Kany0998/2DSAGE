@@ -159,6 +159,51 @@ void Game::ProccessInput()
 					isDebug = !isDebug;
 				}
 
+				if (isDebug) {
+					if (sdlEvent.key.keysym.sym == SDLK_1)
+					{
+						debugPathfinder.gWeight = 1.0;
+						debugPathfinder.hWeight = 0.0;
+						debugPathMode = "Dijkstra";
+						logPathStats = true;
+					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_2)
+					{
+						debugPathfinder.gWeight = 1.0;
+						debugPathfinder.hWeight = 1.0;
+						debugPathMode = "A*";
+						logPathStats = true;
+					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_3)
+					{
+						debugPathfinder.gWeight = 0.0;
+						debugPathfinder.hWeight = 1.0;
+						debugPathMode = "Greedy";
+						logPathStats = true;
+					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_4)
+					{
+						debugPathfinder.gWeight = 1.0;
+						debugPathfinder.hWeight = 1.0 / std::max(1.0, tileMap.MaxSpeedMultiplier());
+						debugPathMode = "A* admissible";
+						logPathStats = true;
+					}
+
+					if (sdlEvent.key.keysym.sym == SDLK_F9)
+					{
+						if (pathBenchmark.routes.empty()) {
+							Logger::Log("There are no routes");
+						}
+						else {
+							RunPathBenchmark(pathBenchmark, tileMap);
+						}
+					}
+				}
+
+
 				eventBus->EmitEvent<KeyPressedEvent>(sdlEvent.key.keysym.sym, sdlEvent.key.repeat != 0);
 				break;
 
@@ -216,6 +261,9 @@ void Game::Setup()
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
 	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
+	pathBenchmark = PathBenchmarkSettings::Load(lua, tileMap);
+	Logger::Log("Routes size: " + std::to_string(pathBenchmark.routes.size()));
+	Logger::Log("Number of runs: " + std::to_string(pathBenchmark.runs));
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
@@ -319,7 +367,7 @@ void Game::Render()
 		
 	}
 
-	//TEMP step-6 test: search from the first enemy to the player and log the path
+	//pathfinding debug view: search from the first enemy to the player and draw the result
 	if (isDebug && registry->HasEntityWithTag("player")) {
 		std::vector<Entity> enemies = registry->GetEntitiesByGroup("enemies");
 
@@ -341,12 +389,58 @@ void Game::Render()
 			int startCol = tileMap.colAt(eX), startRow = tileMap.rowAt(eY);
 			int goalCol = tileMap.colAt(pX), goalRow = tileMap.rowAt(pY);
 
-			pathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+			double tileWorldSize = tileMap.TileWorldSize();
+
 			
+			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+			const auto& lastStats = debugPathfinder.LastStats();
+
+			if (logPathStats) {
+				Logger::Log("DebugPathMode: " + debugPathMode);
+				Logger::Log("PathCost: " + std::to_string(lastStats.pathCost));
+				Logger::Log("NodesExpanded: " + std::to_string(lastStats.nodesExpanded));
+				Logger::Log("NodesPushed: " + std::to_string(lastStats.nodesPushed));
+				Logger::Log("SearchMs: " + std::to_string(lastStats.searchMs));
+				logPathStats = false;
+			}
+
+			int firstCol = std::max(0, static_cast<int>(std::floor(camera.x / tileWorldSize)));
+			int lastCol = std::min(tileMap.Cols() - 1, static_cast<int>(std::floor((camera.x + camera.w) / tileWorldSize)));
+
+			int firstRow = std::max(0, static_cast<int>(std::floor(camera.y / tileWorldSize)));
+			int lastRow = std::min(tileMap.Rows() - 1, static_cast<int>(std::floor((camera.y + camera.h) / tileWorldSize)));
+
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+			const auto& states = debugPathfinder.GetTilesState();
+
+			for (int row = firstRow; row <= lastRow; ++row) {
+				for (int col = firstCol; col <= lastCol; ++col) {
+					const int state = states[tileMap.Index(col, row)];
+
+					if (state == Pathfinder::exploredTile) {
+						SDL_SetRenderDrawColor(renderer, 59, 185, 246, 90);
+					}
+					else if (state == Pathfinder::frontierTile) {
+						SDL_SetRenderDrawColor(renderer, 224, 168, 0, 110);
+					}
+					else {
+						continue;
+					}
+					SDL_Rect cellRect = {
+						static_cast<int>(col * tileWorldSize - camera.x + 1),
+						static_cast<int>(row * tileWorldSize - camera.y + 1),
+						static_cast<int>(tileWorldSize - 2),
+						static_cast<int>(tileWorldSize - 2)
+					};
+					SDL_RenderFillRect(renderer, &cellRect);
+				}
+			}
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 			
 			SDL_SetRenderDrawColor(renderer, 155, 21, 21, 255);
 
-			double tileWorldSize = tileMap.TileWorldSize();
+			
 			int pathSizeGrid = 20;
 
 			//The line starts where the enemy actually is, the same anchor the smoothing used

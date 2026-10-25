@@ -12,6 +12,7 @@
 #include "../Loot/LootDatabase.h"
 #include "../Audio/AudioStats.h"
 #include "../Abilities/AbilityDatabase.h"
+#include "../Pathfinding/PathBenchmark.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -77,9 +78,13 @@ class Game
 		Controls controls;
 		InventoryUISettings inventoryUI;
 		Pathfinder pathfinder;
+		Pathfinder debugPathfinder;		//debug view only - its weights never affect the enemies
+		bool logPathStats = false;		//log the next debug search once (set by keys 1/2/3)
+		std::string debugPathMode = "A*";
 		AudioSettings audioSettings;
 		std::vector<int> debugPath;
 		AudioStats audioStats;
+		PathBenchmarkSettings pathBenchmark;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're
