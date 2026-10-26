@@ -324,7 +324,8 @@ void Game::Update()
 		if (aiTimeFrames == renderTimeBatch) {
 			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
 				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
-				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size()));
+				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size()) 
+					+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
 			aiTimeSumMs = 0;
 			aiTimeMaxMs = 0;
 			aiTimeFrames = 0;

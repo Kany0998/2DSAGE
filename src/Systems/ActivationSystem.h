@@ -7,6 +7,8 @@
 #include "../Components/ActiveComponent.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/SpriteComponent.h"
+#include "../Components/RigidBodyComponent.h"
+#include "../Components/HealthComponent.h"
 #include "../Utils/EntityGeometry.h"
 #include "../Logger/Logger.h"
 #include <vector>
@@ -50,11 +52,11 @@ class ActivationSystem {
 			const glm::vec2 playerCenter = EntityCenter(playerTransform, playerSprite);
 			const double tileWorldSize = tileMap.TileWorldSize();
 
-			const double& activactionRange = simulationSettings.activateTilesRadius * tileWorldSize;
-			const double& deactivactionRange = simulationSettings.deactivateTilesRadius * tileWorldSize;
+			const double activationRange = simulationSettings.activateTilesRadius * tileWorldSize;
+			const double deactivationRange = simulationSettings.deactivateTilesRadius * tileWorldSize;
 
-			const double activactionRangeSq = activactionRange * activactionRange;
-			const double deactivactionRangeSq = deactivactionRange * deactivactionRange;
+			const double activationRangeSq = activationRange * activationRange;
+			const double deactivationRangeSq = deactivationRange * deactivationRange;
 
 			for (auto& enemy : enemies) {
 
@@ -66,12 +68,27 @@ class ActivationSystem {
 				const double distanceSq = distance.x * distance.x + distance.y * distance.y;
 				const bool active = enemy.HasComponent<ActiveComponent>();
 
-				if (!active && distanceSq <= activactionRangeSq ) {
+				if (!active && distanceSq <= activationRangeSq ) {
 					enemy.AddComponent<ActiveComponent>();
+					if (enemy.HasComponent<AIComponent>()) {
+						auto& enemyAI = enemy.GetComponent<AIComponent>();
+						const double spawndx = enemyAI.spawnPoint.x - enemyCenter.x;
+						const double spawndy = enemyAI.spawnPoint.y - enemyCenter.y;
+						const double spawnDistanceSquared = spawndx * spawndx + spawndy * spawndy;
+
+						const bool nearHome = spawnDistanceSquared <= enemyAI.patrolRadius * enemyAI.patrolRadius;
+						
+						const bool fullHealth = !enemy.HasComponent<HealthComponent>() || enemy.GetComponent<HealthComponent>().healthPoints == enemy.GetComponent<HealthComponent>().maxHealthPoints;
+
+						EnterAIState(enemyAI, (nearHome && fullHealth) ? AIState::Patrol : AIState::Return);
+					}
 				}
 
-				if (active && distanceSq >= deactivactionRangeSq) {
+				if (active && distanceSq >= deactivationRangeSq) {
 					enemy.RemoveComponent<ActiveComponent>();
+					if (enemy.HasComponent<RigidBodyComponent>()) {
+						enemy.GetComponent<RigidBodyComponent>().velocity = glm::vec2(0.0, 0.0);
+					}
 				}
 			}
 		}

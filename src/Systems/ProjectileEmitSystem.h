@@ -13,6 +13,7 @@
 #include "../Components/MovementTypeComponent.h"
 #include "../Components/EquipmentComponent.h"
 #include "../Components/AIComponent.h"
+#include "../Components/ActiveComponent.h"
 #include "../Utils/EntityGeometry.h"
 #include "../Utils/Projectile.h"
 #include "../TileMap/TileMap.h"
@@ -44,39 +45,33 @@ struct ProjectileProfile {
 //    own emitter (unarmed); the fire rate is the weapon's, scaled by dexterity.
 //  - everything else (enemies): fires on the fixed repeatRate timer loaded from Lua,
 //    with the bullet from its emitter. Enemies have no dexterity, so their rate is left alone.
-class ProjectileEmitSystem
-{
+class ProjectileEmitSystem{
 	public:
 
 		ProjectileEmitSystem(Registry& registry, const SDL_Rect& camera, const TileMap& tileMap, const ItemDatabase& itemDatabase, AssetStore& assetStore, std::unique_ptr<EventBus>& eventBus)
 			: registry(registry), camera(camera), tileMap(tileMap), itemDatabase(itemDatabase), assetStore(assetStore), eventBus(eventBus) {}
 
-		void Update()
-		{
+		void Update(){
 			// Snapshot first: emitting a projectile adds a TransformComponent to a
 			// brand-new entity, which can grow/reallocate that component's pool.
 			// Doing that while still iterating a live view over TransformComponent is
 			// unsafe (can invalidate the iteration mid-loop) - materializing the
 			// candidates first, like CollisionSystem does, avoids that entirely.
 			std::vector<Entity> emitters;
-			for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>())
-			{
+			for (auto rawEntity : registry.Raw().view<ProjectileEmitterComponent, TransformComponent>()){
 				emitters.emplace_back(rawEntity, &registry);
 			}
 
-			for (auto entity : emitters)
-			{
+			for (auto entity : emitters){
 				auto& projectileEmitter = entity.GetComponent<ProjectileEmitterComponent>();
 				//deliberately a copy, not a reference: the pool it lives in can
 				//reallocate while the projectile below is being created
 				const auto transform = entity.GetComponent<TransformComponent>();
 
-				if (entity.HasComponent<CameraHollderComponent>())
-				{
+				if (entity.HasComponent<CameraHollderComponent>()){
 					UpdateMouseAimedEmitter(entity, projectileEmitter, transform);
 				}
-				else
-				{
+				else{
 					UpdateAutomaticEmitter(entity, projectileEmitter, transform);
 				}
 			}
@@ -86,26 +81,22 @@ class ProjectileEmitSystem
 		//Player shooting: fires for as long as the left button is held down, aimed at
 		//wherever the cursor currently is. repeatRate is ignored here on purpose - the
 		//rate comes from the profile and dexterity (see GetShotIntervalMs).
-		void UpdateMouseAimedEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
-		{
+		void UpdateMouseAimedEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform){
 			//don't shoot through an ImGui window - the same guard Game::ProccessInput() applies
 			//to the click event. ImGui runs a frame unconditionally now, so WantCaptureMouse is
 			//always current and needs no debug-mode qualifier.
-			if (ImGui::GetIO().WantCaptureMouse)
-			{
+			if (ImGui::GetIO().WantCaptureMouse){
 				return;
 			}
 
 			int mouseX, mouseY;
 			const Uint32 mouseButtons = SDL_GetMouseState(&mouseX, &mouseY);
-			if (!(mouseButtons & SDL_BUTTON(SDL_BUTTON_LEFT)))
-			{
+			if (!(mouseButtons & SDL_BUTTON(SDL_BUTTON_LEFT))){
 				return;
 			}
 			ProjectileProfile profile = GetProfile(entity, projectileEmitter);
 
-			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity, profile))
-			{
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity, profile)){
 				return;
 			}
 
@@ -116,8 +107,7 @@ class ProjectileEmitSystem
 			const glm::vec2 aimTarget(mouseX + camera.x, mouseY + camera.y);
 			glm::vec2 aimDirection = aimTarget - projectilePosition;
 			const float distance = glm::length(aimDirection);
-			if (distance < 0.0001f)
-			{
+			if (distance < 0.0001f){
 				return; //cursor sits right on top of the shooter - no direction to aim in
 			}
 			aimDirection /= distance;
@@ -129,8 +119,13 @@ class ProjectileEmitSystem
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 		}
 
-		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform)
-		{
+		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform){
+
+			//Only entities ActivationSystem tagged as active may fire; it tags group "enemies" only,
+			//so an automatic shooter outside that group never shoots
+			if (!entity.HasComponent<ActiveComponent>()) {
+				return;
+			}
 
 			const glm::vec2 projectilePosition = GetMuzzlePosition(entity, transform);
 			ProjectileProfile profile = GetProfile(entity, projectileEmitter);
@@ -175,13 +170,11 @@ class ProjectileEmitSystem
 
 			}
 
-			if (projectileEmitter.repeatRate == 0)
-			{
+			if (projectileEmitter.repeatRate == 0){
 				return;
 			}
 
-			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime <= projectileEmitter.repeatRate)
-			{
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime <= projectileEmitter.repeatRate){
 				return;
 			}
 
@@ -195,18 +188,15 @@ class ProjectileEmitSystem
 		//(weapon, or the unarmed base), multiplied by 1 + dexterity / DexterityPerStep.
 		//All of it stays in float - integer division here would collapse whole ranges of
 		//dexterity into an identical rate.
-		int GetShotIntervalMs(Entity entity, const ProjectileProfile& profile)
-		{
+		int GetShotIntervalMs(Entity entity, const ProjectileProfile& profile){
 			float shotsPerSecond = profile.shotsPerSecond;
-			if (entity.HasComponent<AttributesComponent>())
-			{
+			if (entity.HasComponent<AttributesComponent>()){
 				const auto& attributes = entity.GetComponent<AttributesComponent>();
 				shotsPerSecond *= (1.0f + attributes.Effective(Skill_Dexterity) / DexterityPerStep);
 			}
 
 			//guards against a zero/negative rate if dexterity ever goes negative
-			if (shotsPerSecond < MinShotsPerSecond)
-			{
+			if (shotsPerSecond < MinShotsPerSecond){
 				shotsPerSecond = MinShotsPerSecond;
 			}
 
@@ -215,8 +205,7 @@ class ProjectileEmitSystem
 			//that is never true against 0 - so a high enough dexterity would fire a
 			//projectile every single frame with no cap at all.
 			int shotInterval = static_cast<int>(1000.0f / shotsPerSecond);
-			if (shotInterval < MinShotIntervalMs)
-			{
+			if (shotInterval < MinShotIntervalMs){
 				shotInterval = MinShotIntervalMs;
 			}
 
@@ -225,11 +214,9 @@ class ProjectileEmitSystem
 
 		//If the shooter has a sprite, the shot starts in the middle of it rather than
 		//at the transform's top-left corner
-		glm::vec2 GetMuzzlePosition(Entity entity, const TransformComponent& transform)
-		{
+		glm::vec2 GetMuzzlePosition(Entity entity, const TransformComponent& transform){
 			glm::vec2 projectilePosition = transform.position;
-			if (entity.HasComponent<SpriteComponent>())
-			{
+			if (entity.HasComponent<SpriteComponent>()){
 				const auto sprite = entity.GetComponent<SpriteComponent>();
 				projectilePosition.x += (transform.scale.x * sprite.width / 2);
 				projectilePosition.y += (transform.scale.y * sprite.height / 2);

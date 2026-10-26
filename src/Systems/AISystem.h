@@ -9,6 +9,7 @@
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/MovementTypeComponent.h"
 #include "../Components/HealthComponent.h"
+#include "../Components/ActiveComponent.h"
 #include "../Pathfinding/Pathfinder.h"
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
@@ -64,7 +65,7 @@ class AISystem
 
 			int searchesThisFrame = 0;
 
-			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent>()) {
+			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
 				Entity entity(rawEntity, &registry);
 				auto& enemyAI = entity.GetComponent<AIComponent>();
 				const auto& enemyTransform = entity.GetComponent<TransformComponent>();
