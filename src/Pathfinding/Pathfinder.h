@@ -36,6 +36,8 @@ class Pathfinder {
 		std::vector<double> costSoFar;
 		std::vector<int> cameFrom;
 		std::vector<int> tilesState;
+		std::vector<unsigned int> stamp;
+		unsigned int searchId = 0;
 		SearchStats lastStats;		//measurements only
 		static constexpr double diagonalCost = 1.41421356237;
 
@@ -67,6 +69,17 @@ class Pathfinder {
 		void SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path) const;
 		double PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep) const;
 
+		void Touch(int index) {
+			if (stamp[index] == searchId) {
+				return;
+			}
+
+			stamp[index] = searchId;
+			costSoFar[index] = -1.0;
+			cameFrom[index] = -1;
+			tilesState[index] = unreachedTile;
+		}
+
 	public:
 		bool smoothingEnable = true;
 		//Line samples per tile: higher is more accurate about thin obstacles and narrow
@@ -78,9 +91,16 @@ class Pathfinder {
 			return lastStats;
 		}
 
-		const std::vector<int>& GetTilesState() const {
-			return tilesState;
+		int TileStateAt(int index) const {
+			if (stamp[index] != searchId) {
+				return unreachedTile;
+			}
+			else {
+				return tilesState[index];
+			}
 		}
+
+
 
 		//queue priority = gWeight * g + hWeight * h: 1/0 Dijkstra, 1/1 A*, 0/1 greedy (path cost always stays real)
 		double gWeight = 1.0;

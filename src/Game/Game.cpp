@@ -472,11 +472,9 @@ void Game::Render()
 
 			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-			const auto& states = debugPathfinder.GetTilesState();
-
 			for (int row = firstRow; row <= lastRow; ++row) {
 				for (int col = firstCol; col <= lastCol; ++col) {
-					const int state = states[tileMap.Index(col, row)];
+					const int state = debugPathfinder.TileStateAt(tileMap.Index(col, row));
 
 					if (state == Pathfinder::exploredTile) {
 						SDL_SetRenderDrawColor(renderer, 59, 185, 246, 90);
