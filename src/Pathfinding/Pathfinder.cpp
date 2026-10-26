@@ -114,6 +114,7 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	lastStats.resetMs = std::chrono::duration<double, std::milli>(resetEnd - resetStart).count();
 
 	outPath.clear();
+	lastRawPath.clear();
 
 	if (!tilemap.isInside(startCol, startRow) || !tilemap.isInside(goalCol, goalRow)) {
 		return false;
@@ -217,7 +218,7 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	}
 	std::reverse(outPath.begin(), outPath.end());
 
-	
+	lastRawPath = outPath;
 
 	if (smoothingEnable) {
 		auto smoothStart = std::chrono::steady_clock::now();
@@ -226,9 +227,6 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 		lastStats.smoothMs = std::chrono::duration<double, std::milli>(smoothEnd - smoothStart).count();
 	}
-
-	
-
 	return true;
 }
 

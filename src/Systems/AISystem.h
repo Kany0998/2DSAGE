@@ -14,6 +14,7 @@
 #include "../TileMap/TileMap.h"
 #include "../TileMap/MovementType.h"
 #include "../Utils/EntityGeometry.h"
+#include "../Pathfinding/PathPenalty.h"
 #include <string>
 #include <algorithm>
 #include <cmath>
@@ -62,6 +63,75 @@ class AISystem
 			const int playerRow = tileMap.rowAt(playerCenter.y);
 			const int playerCellIndex = tileMap.Index(playerCol, playerRow);
 
+			chasers.clear();
+			//Fill all the chasers with the data
+			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
+				Entity entity(rawEntity, &registry);
+				
+				const auto& enemyAI = entity.GetComponent<AIComponent>();
+				if (enemyAI.state != AIState::Chase) {
+					continue;
+				}
+
+				if (enemyAI.scriptControlsVelocity) {
+					continue;
+				}
+
+				const glm::vec2 enemyCenter = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
+				const double dx = playerCenter.x - enemyCenter.x;
+				const double dy = playerCenter.y - enemyCenter.y;
+				const double distanceSquared = dx * dx + dy * dy;
+				chasers.push_back({ std::sqrt(distanceSquared), rawEntity });
+			}
+
+			std::vector<std::pair<double, entt::entity>> ordered;
+
+			for (auto entity : lastFrameOrder) {
+				for (const auto& entry : chasers) {
+					if (entry.second == entity) {
+						ordered.push_back(entry);
+						break;
+					}
+				}
+			}
+
+			std::vector<std::pair<double, entt::entity>> newcomers;
+
+			for (const auto& entry : chasers) {
+				bool known = false;
+
+				for (const auto handle : lastFrameOrder) {
+					if (handle == entry.second) {           // it was ranked last frame
+						known = true;
+						break;
+					}
+				}
+				if (!known) {
+					newcomers.push_back(entry);             // not ranked last frame → newcomer
+				}
+			}
+
+			std::sort(newcomers.begin(), newcomers.end(), [](const std::pair<double, entt::entity>& a, const std::pair<double, entt::entity>& b) {return a.first < b.first;});
+			ordered.insert(ordered.end(), newcomers.begin(), newcomers.end());
+
+			const double margin = rankMarginTiles * tileMap.TileWorldSize();
+			bool swapped;
+
+			do{
+				swapped = false;
+				for (size_t i = 0; i + 1 < ordered.size(); ++i) {
+					if (ordered[i + 1].first + margin < ordered[i].first) {
+						std::swap(ordered[i], ordered[i + 1]);
+						swapped = true;
+					}
+				}
+			} while (swapped);
+
+			chasers = ordered;
+			lastFrameOrder.clear();
+			for (const auto& entry : ordered) {
+				lastFrameOrder.push_back(entry.second);
+			}
 
 			int searchesThisFrame = 0;
 
@@ -324,7 +394,38 @@ class AISystem
 							continue;
 						}
 
-						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, playerCol, playerRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
+
+						const PathPenalty* penalty = nullptr;
+
+						if (!chasers.empty() && chasers[0].second != rawEntity) {
+							lanePenalty.Clear(tileMap.Cols() * tileMap.Rows());
+							for (auto& entry : chasers) {
+								if (entry.second == rawEntity) {
+									break; //Everyone after me is further
+								}
+								Entity other(entry.second, &registry);
+								
+								const auto& otherEnemyAI = other.GetComponent<AIComponent>();
+								for (const int cellIndex : otherEnemyAI.laneCells) {
+									const int cellCol = tileMap.IndexToCol(cellIndex);
+									const int cellRow = tileMap.IndexToRow(cellIndex);
+
+									if (std::abs(cellCol - playerCol) <= flankIgnoreRadiusTiles && std::abs(cellRow - playerRow) <= flankIgnoreRadiusTiles) {
+										continue;
+									}
+									// commitment: a chaser never pays for its own lane, so it doesn't abandon it when others join
+									if (std::binary_search(enemyAI.laneCells.begin(), enemyAI.laneCells.end(), cellIndex)) {
+										continue;
+									}
+
+									lanePenalty.Add(cellIndex, flankPenalty);
+								}
+							}
+							penalty = &lanePenalty;
+						}
+						
+
+						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, playerCol, playerRow, enemyMovementType.movementType, enemyAI.path, searchBounds, penalty);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 
 						searchesThisFrame++;
@@ -352,6 +453,26 @@ class AISystem
 
 						if (found) {
 							enemyAI.failedSearchCount = 0;
+
+							const auto& rawPath = pathfinder.GetLastRawPath();
+							size_t shared = 0;
+
+							for (const auto cell : rawPath) {
+								if (std::binary_search(enemyAI.laneCells.begin(), enemyAI.laneCells.end(), cell)) {
+									shared++;
+								}
+							}
+
+							if (enemyAI.laneCells.empty() || shared * 2 >= rawPath.size()) {
+								enemyAI.laneCells.insert(enemyAI.laneCells.end(), rawPath.begin(), rawPath.end());   // same lane: keep the trail
+							}
+							else {
+								enemyAI.laneCells = rawPath;                                                          // switched lanes: release the old one
+							}
+
+							std::sort(enemyAI.laneCells.begin(), enemyAI.laneCells.end());
+							const auto uniqueEnd = std::unique(enemyAI.laneCells.begin(), enemyAI.laneCells.end());
+							enemyAI.laneCells.erase(uniqueEnd, enemyAI.laneCells.end());                             // from uniqueEnd to end - this was swapped
 						}
 						else {
 							enemyAI.failedSearchCount++;
@@ -415,6 +536,22 @@ class AISystem
 		static constexpr int maxFailedSearches = 3;
 
 		static constexpr double aggroCooldownSeconds = 5.0;
+
+		//chasers sorted closest-first each frame
+		std::vector<std::pair<double, entt::entity>> chasers;
+
+		std::vector<entt::entity> lastFrameOrder;
+
+		PathPenalty lanePenalty;
+
+		//Additional cost per tile if tile is already taken
+		static constexpr double flankPenalty = 4.0;
+
+		//Radius to ingonred flanking
+		static constexpr int flankIgnoreRadiusTiles = 5;
+
+		//a chaser overtakes the one ahead only if closer by this much
+		static constexpr double rankMarginTiles = 2.0;
 
 
 		//Steers along ai.path; the last leg aims at finalTarget itself rather than its tile centre.
@@ -486,8 +623,7 @@ class AISystem
 			return false;
 		}
 
-
-
+		
 };
 
 #endif // !AISYSTEM_H

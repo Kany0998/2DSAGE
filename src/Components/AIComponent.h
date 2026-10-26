@@ -40,6 +40,8 @@ struct AIComponent {
 	double aggroCooldown;
 	double aggroTimer;
 
+	std::vector<int> laneCells;
+
 
 	AIComponent(glm::vec2 spawnPoint = glm::vec2(0.0, 0.0), double detectionRange = 0, double stopRange = 0,double leashRange = 0,
 		double movementSpeed = 150.0, double patrolRadius = 0, double patrolPause = 0) {
@@ -74,6 +76,7 @@ inline void EnterAIState(AIComponent& ai, AIState next) {
 	ai.lastTargetCell = -1;
 	ai.repathTimer = 0.0;
 	ai.failedSearchCount = 0;
+	ai.laneCells.clear();
 	if (next == AIState::Patrol) {
 		ai.patrolTargetCell = -1;
 	}

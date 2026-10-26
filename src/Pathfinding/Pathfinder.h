@@ -38,6 +38,7 @@ class Pathfinder {
 		std::vector<int> cameFrom;
 		std::vector<int> tilesState;
 		std::vector<unsigned int> stamp;
+		std::vector<int> lastRawPath;		//Need for applying penalty for path 
 		unsigned int searchId = 0;
 		SearchStats lastStats;		//measurements only
 		static constexpr double diagonalCost = 1.41421356237;
@@ -91,6 +92,10 @@ class Pathfinder {
 
 		const SearchStats& LastStats() const {
 			return lastStats;
+		}
+
+		const std::vector<int>& GetLastRawPath() const {
+			return lastRawPath;
 		}
 
 		int TileStateAt(int index) const {
