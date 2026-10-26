@@ -26,6 +26,7 @@
 #include "../Systems/RenderTileMapSystem.h"
 #include "../Systems/LootSystem.h"
 #include "../Systems/AudioSystem.h"
+#include "../Systems/ActivationSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -250,13 +251,14 @@ void Game::Setup()
 	aiSystem = std::make_unique<AISystem>();
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
+	activationSystem = std::make_unique<ActivationSystem>();
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua, *registry, *assetStore, tileMap);
 
 	//Load first level
 	LevelLoader loader;
-	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os);
+	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::os, sol::lib::table);
 	itemDatabase.Load(lua, "./assets/scripts/items.lua");
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
 	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
@@ -266,6 +268,7 @@ void Game::Setup()
 	Logger::Log("Number of runs: " + std::to_string(pathBenchmark.runs));
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
+	simulationSettings = SimulationSettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
 	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioStats, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
@@ -307,10 +310,62 @@ void Game::Update()
 	lootSystem->Update();
 	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
+
+	activationSystem->Update(*registry, deltaTime, simulationSettings, tileMap);
+
+	const Uint64 aiStart = SDL_GetPerformanceCounter();
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
+	const double aiMs = (SDL_GetPerformanceCounter() - aiStart) * 1000.0 / SDL_GetPerformanceFrequency();
+	Uint64 movementPerformanceStart = SDL_GetPerformanceCounter();
 	movementSystem->Update(*registry, deltaTime, tileMap);
+	const double movementMsEnd = ((SDL_GetPerformanceCounter() - movementPerformanceStart) * 1000.0 / SDL_GetPerformanceFrequency());
+
 	animationSystem->Update(*registry);
+	Uint64 colPerformance = SDL_GetPerformanceCounter();
 	collisionSystem->Update(*registry, eventBus);
+	const double collisionMs = ((SDL_GetPerformanceCounter() - colPerformance) * 1000.0 / SDL_GetPerformanceFrequency());
+
+	if (isDebug) {
+		aiTimeSumMs += aiMs;
+		movementTimeSumMs += movementMsEnd;
+		collisionTimeSumMs += collisionMs;
+		aiTimeMaxMs = std::max(aiTimeMaxMs, aiMs);
+		collisionTimeMaxMs = std::max(collisionTimeMaxMs, collisionMs);
+		movementTimeMaxMs = std::max(movementTimeMaxMs, movementMsEnd);
+		aiTimeFrames++;
+
+		if (aiTimeFrames == renderTimeBatch) {
+			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
+				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
+				+ ", pathfinder: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
+				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
+			Logger::Log("Movement performance: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
+			Logger::Log("Collision performance: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) );
+			aiTimeSumMs = 0.0;
+			aiTimeMaxMs = 0.0;
+			collisionTimeSumMs = 0.0;
+			collisionTimeMaxMs = 0.0;
+			movementTimeSumMs = 0.0;
+			movementTimeMaxMs = 0.0;
+			aiTimeFrames = 0;
+			aiSystem->searchesDone = 0;
+			aiSystem->searchesDeferred = 0;
+			aiSystem->pathfinderMS = 0;
+		}
+	}
+	else {
+		aiTimeSumMs = 0.0;
+		aiTimeMaxMs = 0.0;
+		aiTimeFrames = 0;
+		aiSystem->searchesDone = 0;
+		aiSystem->searchesDeferred = 0;
+		aiSystem->pathfinderMS = 0;
+		collisionTimeSumMs = 0.0;
+		collisionTimeMaxMs = 0.0;
+		movementTimeSumMs = 0.0;
+		movementTimeMaxMs = 0.0;
+	}
+
 	cameraMovementSystem->Update(*registry, camera);
 	projectileEmitSystem->Update();
 	projectileLifeCycleSystem->Update(*registry);
@@ -391,8 +446,13 @@ void Game::Render()
 
 			double tileWorldSize = tileMap.TileWorldSize();
 
+			SearchBounds bounds;
+			if (enemy.HasComponent<AIComponent>()) {
+				bounds = BoundsForEnemy(enemy.GetComponent<AIComponent>(), tileMap);
+			}
+
 			
-			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath);
+			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath, bounds);
 			const auto& lastStats = debugPathfinder.LastStats();
 
 			if (logPathStats) {
@@ -412,11 +472,9 @@ void Game::Render()
 
 			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-			const auto& states = debugPathfinder.GetTilesState();
-
 			for (int row = firstRow; row <= lastRow; ++row) {
 				for (int col = firstCol; col <= lastCol; ++col) {
-					const int state = states[tileMap.Index(col, row)];
+					const int state = debugPathfinder.TileStateAt(tileMap.Index(col, row));
 
 					if (state == Pathfinder::exploredTile) {
 						SDL_SetRenderDrawColor(renderer, 59, 185, 246, 90);

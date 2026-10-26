@@ -32,7 +32,7 @@ double Pathfinder::CostToEnter(const TileMap& tilemap, int col, int row, bool is
 
 
 
-void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours) const {
+void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds) const {
 
 	outNeighbours.clear();
 
@@ -47,6 +47,10 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 		int neighbourCol = col + dx;
 		int neighbourRow = row + dy;
 
+		if (!bounds.Contains(neighbourCol, neighbourRow)) {
+			continue;
+		}
+
 		if (tilemap.isBlocked(neighbourCol, neighbourRow, movementType)) {
 			continue;
 		}
@@ -57,7 +61,6 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 			if (tilemap.isBlocked(col + dx, row, movementType) || tilemap.isBlocked(col, row + dy, movementType)) {
 				continue;
 			}
-
 			//A diagonal grazes the corner shared with both orthogonal cells, so the entity
 			//really does travel through them: charge for the worst of the three, or the
 			//search gets a corner crossing for free
@@ -78,7 +81,7 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 
 
 
-bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath) {
+bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath, const SearchBounds& bounds) {
 	lastStats = SearchStats{};
 
 	int cols = tilemap.Cols();
@@ -87,9 +90,21 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	int cellCount = cols * rows;
 
 	auto resetStart = std::chrono::steady_clock::now();
-	costSoFar.assign(cellCount, -1.0); //never reached
-	cameFrom.assign(cellCount, -1);
-	tilesState.assign(cellCount, unreachedTile);//unreached
+
+	if (stamp.size() != static_cast<size_t>(cellCount)) {
+		costSoFar.assign(cellCount, -1.0);
+		cameFrom.assign(cellCount, -1);
+		tilesState.assign(cellCount, unreachedTile);
+		stamp.assign(cellCount, 0);
+	}
+
+	searchId++;
+
+	if (searchId == 0) {
+		stamp.assign(cellCount, 0);
+		searchId = 1;
+	}
+
 	auto resetEnd = std::chrono::steady_clock::now();
 
 	lastStats.resetMs = std::chrono::duration<double, std::milli>(resetEnd - resetStart).count();
@@ -101,6 +116,10 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	}
 
 	if (tilemap.isBlocked(goalCol, goalRow, movementType)) {
+		return false;
+	}
+
+	if (!bounds.Contains(startCol, startRow) || !bounds.Contains(goalCol, goalRow)) {
 		return false;
 	}
 
@@ -119,6 +138,8 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 		std::vector<std::pair<double, int>>,
 		std::greater<std::pair<double, int>>
 	> frontierQueue;
+
+	Touch(startIndex);
 
 	costSoFar[startIndex] = 0.0;
 	tilesState[startIndex] = frontierTile;
@@ -146,11 +167,13 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 
 
-		FindNeighbours(tilemap, current, movementType, neighbours);
+		FindNeighbours(tilemap, current, movementType, neighbours, bounds);
 
 		for (const auto& nb : neighbours) {
 			int next = nb.first;
 			double stepCost = nb.second;
+
+			Touch(next);
 
 			double newCost = costSoFar[current] + stepCost;
 
@@ -171,8 +194,10 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 		}
 
 	}
+
 	auto searchEnd = std::chrono::steady_clock::now();
 	lastStats.searchMs = std::chrono::duration<double, std::milli>(searchEnd - searchStart).count();
+	Touch(goalIndex);
 	lastStats.pathCost = costSoFar[goalIndex];
 	lastStats.found = lastStats.pathCost >= 0.0;
 

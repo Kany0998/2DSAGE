@@ -9,6 +9,7 @@
 #include "../Pathfinding/Pathfinder.h"
 #include "../Inventory/InventoryUISettings.h"
 #include "../Audio/AudioSettings.h"
+#include "SimulationSettings.h"
 #include "../Loot/LootDatabase.h"
 #include "../Audio/AudioStats.h"
 #include "../Abilities/AbilityDatabase.h"
@@ -46,6 +47,7 @@ class AISystem;
 class RenderTileMapSystem;
 class LootSystem;
 class AudioSystem;
+class ActivationSystem;
 
 class Game
 {
@@ -58,6 +60,14 @@ class Game
 		int millisecondsPreviousFrame = 0;
 		SDL_Rect camera;
 		Uint32 currentTick;
+
+		double aiTimeSumMs = 0.0;
+		double aiTimeMaxMs = 0.0;
+		int aiTimeFrames = 0;
+		double movementTimeSumMs = 0.0;
+		double movementTimeMaxMs = 0.0;
+		double collisionTimeSumMs = 0.0;
+		double collisionTimeMaxMs = 0.0;
 
 		sol::state lua;
 
@@ -82,6 +92,7 @@ class Game
 		bool logPathStats = false;		//log the next debug search once (set by keys 1/2/3)
 		std::string debugPathMode = "A*";
 		AudioSettings audioSettings;
+		SimulationSettings simulationSettings;
 		std::vector<int> debugPath;
 		AudioStats audioStats;
 		PathBenchmarkSettings pathBenchmark;
@@ -113,6 +124,7 @@ class Game
 		std::unique_ptr<RenderTileMapSystem> renderTileMapSystem;
 		std::unique_ptr<LootSystem> lootSystem;
 		std::unique_ptr<AudioSystem> audioSystem;
+		std::unique_ptr<ActivationSystem> activationSystem;
 
 
 	public:
