@@ -1,6 +1,7 @@
 #ifndef PATHFINDER_H
 #define PATHFINDER_H
 
+#include "PathPenalty.h"
 #include <utility>
 #include <vector>
 #include <limits>
@@ -62,12 +63,12 @@ class Pathfinder {
 		static constexpr double diagonalMinMultiplier = 0.2;
 
 		double OctileHeuristic(int col, int row, int goalCol, int goalRow) const;
-		void FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds) const;
+		void FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds, const PathPenalty* pathPenalty) const;
 		double CostToEnter(const TileMap& tilemap, int col, int row, bool isDiagonal) const;
 
-		double LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier) const;
-		void SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path) const;
-		double PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep) const;
+		double LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier, const PathPenalty* pathPenalty) const;
+		void SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path, const PathPenalty* pathPenalty) const;
+		double PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep, const PathPenalty* pathPenalty) const;
 
 		void Touch(int index) {
 			if (stamp[index] == searchId) {
@@ -85,7 +86,8 @@ class Pathfinder {
 		//Line samples per tile: higher is more accurate about thin obstacles and narrow
 		//bands of slow ground, at a linear cost in lookups
 		double lineSamplesPerTile = 4.0;
-		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath, const SearchBounds& bounds = SearchBounds{});
+		bool FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType,
+			std::vector<int>& outPath, const SearchBounds& bounds = SearchBounds{}, const PathPenalty* pathPenalty = nullptr);
 
 		const SearchStats& LastStats() const {
 			return lastStats;
