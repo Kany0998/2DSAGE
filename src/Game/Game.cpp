@@ -269,6 +269,7 @@ void Game::Setup()
 	controls = Controls::Load(lua);
 	inventoryUI = InventoryUISettings::Load(lua);
 	simulationSettings = SimulationSettings::Load(lua);
+	flankingSettings = FlankingSettings::Load(lua);
 	audioSettings = AudioSettings::Load(lua);
 	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioStats, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
@@ -314,7 +315,7 @@ void Game::Update()
 	activationSystem->Update(*registry, deltaTime, simulationSettings, tileMap);
 
 	const Uint64 aiStart = SDL_GetPerformanceCounter();
-	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
+	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder, flankingSettings);
 	const double aiMs = (SDL_GetPerformanceCounter() - aiStart) * 1000.0 / SDL_GetPerformanceFrequency();
 	Uint64 movementPerformanceStart = SDL_GetPerformanceCounter();
 	movementSystem->Update(*registry, deltaTime, tileMap);
@@ -450,7 +451,7 @@ void Game::Render()
 			if (enemy.HasComponent<AIComponent>()) {
 				bounds = BoundsForEnemy(enemy.GetComponent<AIComponent>(), tileMap);
 			}
-
+			
 			
 			debugPathfinder.FindPath(tileMap, startCol, startRow, goalCol, goalRow, MovementType_Ground, debugPath, bounds);
 			const auto& lastStats = debugPathfinder.LastStats();

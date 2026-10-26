@@ -10,6 +10,7 @@
 #include "../Inventory/InventoryUISettings.h"
 #include "../Audio/AudioSettings.h"
 #include "SimulationSettings.h"
+#include "FlankingSettings.h"
 #include "../Loot/LootDatabase.h"
 #include "../Audio/AudioStats.h"
 #include "../Abilities/AbilityDatabase.h"
@@ -93,6 +94,7 @@ class Game
 		std::string debugPathMode = "A*";
 		AudioSettings audioSettings;
 		SimulationSettings simulationSettings;
+		FlankingSettings flankingSettings;
 		std::vector<int> debugPath;
 		AudioStats audioStats;
 		PathBenchmarkSettings pathBenchmark;

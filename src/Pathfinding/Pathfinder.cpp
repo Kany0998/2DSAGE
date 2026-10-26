@@ -32,7 +32,7 @@ double Pathfinder::CostToEnter(const TileMap& tilemap, int col, int row, bool is
 
 
 
-void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds) const {
+void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, int movementType, std::vector<std::pair<int, double>>& outNeighbours, const SearchBounds& bounds, const PathPenalty* pathPenalty) const {
 
 	outNeighbours.clear();
 
@@ -74,6 +74,9 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 
 		int neighbourIndex = tilemap.Index(neighbourCol, neighbourRow);
 		double cost = CostToEnter(tilemap, neighbourCol, neighbourRow, isDiagonal);
+		if (pathPenalty != nullptr) {
+			cost += pathPenalty->ExtraCostAt(neighbourIndex);
+		}
 
 		outNeighbours.push_back({ neighbourIndex, cost });
 	}
@@ -81,7 +84,8 @@ void Pathfinder::FindNeighbours(const TileMap& tilemap, int currentCellIndex, in
 
 
 
-bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType, std::vector<int>& outPath, const SearchBounds& bounds) {
+bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, int goalCol, int goalRow, int movementType,
+	std::vector<int>& outPath, const SearchBounds& bounds, const PathPenalty* pathPenalty) {
 	lastStats = SearchStats{};
 
 	int cols = tilemap.Cols();
@@ -110,6 +114,7 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	lastStats.resetMs = std::chrono::duration<double, std::milli>(resetEnd - resetStart).count();
 
 	outPath.clear();
+	lastRawPath.clear();
 
 	if (!tilemap.isInside(startCol, startRow) || !tilemap.isInside(goalCol, goalRow)) {
 		return false;
@@ -167,7 +172,7 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 
 
 
-		FindNeighbours(tilemap, current, movementType, neighbours, bounds);
+		FindNeighbours(tilemap, current, movementType, neighbours, bounds, pathPenalty);
 
 		for (const auto& nb : neighbours) {
 			int next = nb.first;
@@ -213,22 +218,19 @@ bool Pathfinder::FindPath(const TileMap& tilemap, int startCol, int startRow, in
 	}
 	std::reverse(outPath.begin(), outPath.end());
 
-	
+	lastRawPath = outPath;
 
 	if (smoothingEnable) {
 		auto smoothStart = std::chrono::steady_clock::now();
-		SmoothPath(tilemap, startIndex, movementType, outPath);
+		SmoothPath(tilemap, startIndex, movementType, outPath, pathPenalty);
 		auto smoothEnd = std::chrono::steady_clock::now();
 
 		lastStats.smoothMs = std::chrono::duration<double, std::milli>(smoothEnd - smoothStart).count();
 	}
-
-	
-
 	return true;
 }
 
-double Pathfinder::LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier) const {
+double Pathfinder::LineCost(const TileMap& tilemap, int fromIndex, int toIndex, int movementType, double minMultiplier, const PathPenalty* pathPenalty) const {
 
 	const double tileWorldSize = tilemap.TileWorldSize();
 
@@ -256,6 +258,8 @@ double Pathfinder::LineCost(const TileMap& tilemap, int fromIndex, int toIndex, 
 	const double offsetY = dx / lineLength * tileWorldSize * lineClearanceInTiles;
 
 	double cost = 0.0;
+
+	int lastCell = fromIndex;
 
 	for (int i = 1; i <= steps; ++i) {
 		const double t = static_cast<double>(i) / steps;
@@ -289,12 +293,20 @@ double Pathfinder::LineCost(const TileMap& tilemap, int fromIndex, int toIndex, 
 		}
 
 		cost += (distancePerSample / tileWorldSize) / worstMultiplier;
+
+		if (pathPenalty != nullptr) {
+			const int cell = tilemap.Index(tilemap.colAt(x), tilemap.rowAt(y));
+			if (cell != lastCell) {
+				cost += pathPenalty->ExtraCostAt(cell);
+				lastCell = cell;
+			}
+		}
 	}
 
 	return cost;
 }
 
-double Pathfinder::PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep) const {
+double Pathfinder::PathSegmentCost(const TileMap& tilemap, int fromIndex, const std::vector<int>& path, int firstStep, int lastStep, const PathPenalty* pathPenalty) const {
 
 	double cost = 0.0;
 	int previous = fromIndex;
@@ -310,12 +322,15 @@ double Pathfinder::PathSegmentCost(const TileMap& tilemap, int fromIndex, const 
 		const bool isDiagonal = (nextCol != previousCol) && (nextRow != previousRow);
 
 		cost += CostToEnter(tilemap, nextCol, nextRow, isDiagonal);
+		if (pathPenalty != nullptr) {
+			cost += pathPenalty->ExtraCostAt(next);
+		}
 		previous = next;
 	}
 	return cost;
 }
 
-void Pathfinder::SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path) const {
+void Pathfinder::SmoothPath(const TileMap& tilemap, int startIndex, int movementType, std::vector<int>& path, const PathPenalty* pathPenalty) const {
 	if (path.size() < 2) {
 		return;
 	}
@@ -332,13 +347,13 @@ void Pathfinder::SmoothPath(const TileMap& tilemap, int startIndex, int movement
 		//Furthest cell on the remaining route that can be reached in a straight line
 		int best = i;
 		for (int j = cellCount - 1; j > i; --j) {
-			const double lineCost = LineCost(tilemap, anchor, path[j], movementType, smoothingMinMultiplier);
+			const double lineCost = LineCost(tilemap, anchor, path[j], movementType, smoothingMinMultiplier, pathPenalty);
 
 			if(lineCost < 0.0){
 				continue;
 			}
 
-			const double segmentCost = PathSegmentCost(tilemap, anchor, path, i, j);
+			const double segmentCost = PathSegmentCost(tilemap, anchor, path, i, j, pathPenalty);
 
 			//Straighten only when the shortcut is no dearer than the route it replaces,
 			//so a detour the search made around slow ground survives smoothing
