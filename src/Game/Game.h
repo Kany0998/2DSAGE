@@ -64,6 +64,10 @@ class Game
 		double aiTimeSumMs = 0.0;
 		double aiTimeMaxMs = 0.0;
 		int aiTimeFrames = 0;
+		double movementTimeSumMs = 0.0;
+		double movementTimeMaxMs = 0.0;
+		double collisionTimeSumMs = 0.0;
+		double collisionTimeMaxMs = 0.0;
 
 		sol::state lua;
 

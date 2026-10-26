@@ -316,18 +316,37 @@ void Game::Update()
 	const Uint64 aiStart = SDL_GetPerformanceCounter();
 	aiSystem->Update(*registry, deltaTime, tileMap, pathfinder);
 	const double aiMs = (SDL_GetPerformanceCounter() - aiStart) * 1000.0 / SDL_GetPerformanceFrequency();
+	Uint64 movementPerformanceStart = SDL_GetPerformanceCounter();
+	movementSystem->Update(*registry, deltaTime, tileMap);
+	const double movementMsEnd = ((SDL_GetPerformanceCounter() - movementPerformanceStart) * 1000.0 / SDL_GetPerformanceFrequency());
+
+	animationSystem->Update(*registry);
+	Uint64 colPerformance = SDL_GetPerformanceCounter();
+	collisionSystem->Update(*registry, eventBus);
+	const double collisionMs = ((SDL_GetPerformanceCounter() - colPerformance) * 1000.0 / SDL_GetPerformanceFrequency());
+
 	if (isDebug) {
 		aiTimeSumMs += aiMs;
+		movementTimeSumMs += movementMsEnd;
+		collisionTimeSumMs += collisionMs;
 		aiTimeMaxMs = std::max(aiTimeMaxMs, aiMs);
+		collisionTimeMaxMs = std::max(collisionTimeMaxMs, collisionMs);
+		movementTimeMaxMs = std::max(movementTimeMaxMs, movementMsEnd);
 		aiTimeFrames++;
 
 		if (aiTimeFrames == renderTimeBatch) {
 			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
 				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
-				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size()) 
-					+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
-			aiTimeSumMs = 0;
-			aiTimeMaxMs = 0;
+				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
+				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
+			Logger::Log("Movement performace: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
+			Logger::Log("Collision performace: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) );
+			aiTimeSumMs = 0.0;
+			aiTimeMaxMs = 0.0;
+			collisionTimeSumMs = 0.0;
+			collisionTimeMaxMs = 0.0;
+			movementTimeSumMs = 0.0;
+			movementTimeMaxMs = 0.0;
 			aiTimeFrames = 0;
 			aiSystem->searchesDone = 0;
 			aiSystem->searchesDeferred = 0;
@@ -335,17 +354,18 @@ void Game::Update()
 		}
 	}
 	else {
-		aiTimeSumMs = 0;
-		aiTimeMaxMs = 0;
+		aiTimeSumMs = 0.0;
+		aiTimeMaxMs = 0.0;
 		aiTimeFrames = 0;
 		aiSystem->searchesDone = 0;
 		aiSystem->searchesDeferred = 0;
 		aiSystem->pathfinderMS = 0;
+		collisionTimeSumMs = 0.0;
+		collisionTimeMaxMs = 0.0;
+		movementTimeSumMs = 0.0;
+		movementTimeMaxMs = 0.0;
 	}
 
-	movementSystem->Update(*registry, deltaTime, tileMap);
-	animationSystem->Update(*registry);
-	collisionSystem->Update(*registry, eventBus);
 	cameraMovementSystem->Update(*registry, camera);
 	projectileEmitSystem->Update();
 	projectileLifeCycleSystem->Update(*registry);
