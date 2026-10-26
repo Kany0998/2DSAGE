@@ -58,7 +58,7 @@ PathBenchmarkSettings PathBenchmarkSettings::Load(sol::state& lua, const TileMap
 			}
 
 			if (boundedTiles < 0) {
-				Logger::Warn("PathBenchmark: route: " + route.name + " has bound_radius_tiles < 0 : "+std::to_string(boundedTiles) +" which is not allowed , chaning it to default" + std::to_string(route.boundRadiusTiles));
+				Logger::Warn("PathBenchmark: route: " + route.name + " has bound_radius_tiles < 0 : "+std::to_string(boundedTiles) +" which is not allowed , changing it to default" + std::to_string(route.boundRadiusTiles));
 			}
 			else {
 				route.boundRadiusTiles = boundedTiles;

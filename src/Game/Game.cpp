@@ -337,10 +337,10 @@ void Game::Update()
 		if (aiTimeFrames == renderTimeBatch) {
 			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
 				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
-				+ ", pathfindner: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
+				+ ", pathfinder: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
 				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
-			Logger::Log("Movement performace: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
-			Logger::Log("Collision performace: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) );
+			Logger::Log("Movement performance: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
+			Logger::Log("Collision performance: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) );
 			aiTimeSumMs = 0.0;
 			aiTimeMaxMs = 0.0;
 			collisionTimeSumMs = 0.0;
