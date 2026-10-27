@@ -329,7 +329,7 @@ void Game::Update()
 
 	//Editor mode toggke
 	if (editorMode) {
-		editorSystem->Update();
+		editorSystem->Update(deltaTime, camera, tileMap);
 		return;
 	}
 
@@ -564,7 +564,7 @@ void Game::Render()
 	//Create gui frames
 	ImGui::NewFrame();
 	if (editorMode) {
-		renderEditorGUISystem->Update();
+		renderEditorGUISystem->Update(camera, tileMap);
 	}
 	else {
 		renderGUISystem->Update(*registry, camera, isDebug, tileMap);
