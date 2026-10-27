@@ -6,41 +6,46 @@
 
 
 
-int TileMap::Index(int col, int row) const
-{
+int TileMap::Index(int col, int row) const{
 	return row * cols + col;
 }
 
-int TileMap::IndexToRow(int index) const
-{
+int TileMap::IndexToRow(int index) const{
 	return index / cols;
 }
 
-int TileMap::IndexToCol(int index) const
-{
+int TileMap::IndexToCol(int index) const{
 	return index % cols;
 }
 
-bool TileMap::isInside(int col, int row) const
-{
+bool TileMap::isInside(int col, int row) const{
 	return col >= 0 && col < cols && row >= 0 && row < rows;
 }
 
 
 
-int TileMap::tileAt(int col, int row) const
-{
-	if(!isInside(col, row))
-	{
+int TileMap::tileAt(int col, int row) const{
+	if(!isInside(col, row)){
 		return -1;
 	}
 	return tileIds[Index(col, row)];
 }
 
+void TileMap::SetTile(int col, int row, int tileId) {
+	if (!isInside(col, row)){
+		return;
+	}
+
+	if (tileId < 0 || tileId >= tileIdCount) {
+		return;
+	}
+
+	tileIds[Index(col, row)] = tileId;
+}
+
 double TileMap::SpeedMultiplierAt(int col, int row) const {
 
-	if (!isInside(col, row))
-	{
+	if (!isInside(col, row)){
 		return 1;
 	}
 	int tileId = tileIds[Index(col, row)];
@@ -150,39 +155,33 @@ void TileMap::setStepSound(int tileId, const std::string& id) {
 
 
 
-int TileMap::colAt(double worldX) const
-{
+int TileMap::colAt(double worldX) const{
 	return static_cast<int>(std::floor(worldX / tileWorldSize));
 }
 
 
 
-int TileMap::rowAt(double worldY) const
-{
+int TileMap::rowAt(double worldY) const{
 	return static_cast<int>(std::floor(worldY / tileWorldSize));
 }
 
 
 
-bool TileMap::isBlocked(int col, int row, int movementType) const
-{
-	if (!isInside(col, row))
-	{
+bool TileMap::isBlocked(int col, int row, int movementType) const{
+	if (!isInside(col, row)){
 		return true;
 	}
 
 	int tileId = tileAt(col, row);
 
-	if(tileId < 0 || tileId >= tileIdCount)
-	{
+	if(tileId < 0 || tileId >= tileIdCount){
 		return true;
 	}
 
 	return (blockMasks[tileId] & movementType) != 0;
 }
 
-bool TileMap::isBlockedAtWorld(double worldX, double worldY, int movementType) const
-{
+bool TileMap::isBlockedAtWorld(double worldX, double worldY, int movementType) const{
 	int col = colAt(worldX);
 	int row = rowAt(worldY);
 	return isBlocked(col, row, movementType);
@@ -200,8 +199,7 @@ std::string TileMap::StepSoundAtWorld(double worldX, double worldY) const {
 	return StepSoundAt(col, row);
 }
 
-void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale)
-{
+void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale){
 	rows = mapRows;
 	cols = mapCols;
 	tileSize = mapTileSize;
@@ -213,8 +211,7 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 
 	std::ifstream mapFile(filePath);
 
-	if (!mapFile.is_open())
-	{
+	if (!mapFile.is_open()){
 		Logger::Err("Failed to open map file: " + filePath);
 		return;
 	}
@@ -227,15 +224,12 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 
 
 
-	for (int y = 0; y < rows; ++y)
-	{
-		for (int x = 0; x < cols; ++x)
-		{
+	for (int y = 0; y < rows; ++y){
+		for (int x = 0; x < cols; ++x){
 			char firstDigit;
 			char secondDigit;
 
-			if (!mapFile.get(firstDigit) || !mapFile.get(secondDigit))
-			{
+			if (!mapFile.get(firstDigit) || !mapFile.get(secondDigit)){
 				Logger::Err("Unexpected end of map file: " + filePath);
 				return;
 			}

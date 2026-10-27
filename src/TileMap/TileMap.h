@@ -46,6 +46,7 @@ class TileMap {
 
 		bool isInside(int col, int row) const;
 		int tileAt(int col, int row) const;
+		void SetTile(int col, int row, int tileId);
 		double SpeedMultiplierAt(int col, int row) const;
 		double MaxSpeedMultiplier() const;
 		const std::string& StepSoundAt(int col, int row) const;

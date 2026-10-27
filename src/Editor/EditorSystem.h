@@ -16,7 +16,7 @@ class EditorSystem {
 			editorState(editorState) {
 		}
 
-		void Update(double deltaTime, SDL_Rect& camera, const TileMap& tileMap) {
+		void Update(double deltaTime, SDL_Rect& camera, TileMap& tileMap) {
 			
 			const Uint8* keys = SDL_GetKeyboardState(nullptr);
 
@@ -68,21 +68,30 @@ class EditorSystem {
 			const Uint32 mouseButtons = SDL_GetMouseState(nullptr, nullptr);
 			const bool leftDown = mouseButtons & SDL_BUTTON(SDL_BUTTON_LEFT);
 			const bool clicked = leftDown && !wasLeftDown;
+			const bool hovered = editorState.hoveredCol != -1;
 			wasLeftDown = leftDown;
+			
 
-			if (clicked && editorState.hoveredCol != -1) {
-				switch (editorState.tool) {
-				
-					case EditorTool::Pick :
+			switch (editorState.tool) {
+
+				case EditorTool::Pick:
+					if (clicked && hovered) {
 						editorState.selectedTileId = tileMap.tileAt(editorState.hoveredCol, editorState.hoveredRow);
-						break;
-					case EditorTool::Paint :
-						//TODO
-						break;
-					case EditorTool::Fill :
-						//TODO
-						break;
-				}
+					}
+					break;
+				case EditorTool::Paint:
+					if (leftDown && hovered) {
+						PaintCell(editorState.hoveredCol, editorState.hoveredRow, tileMap);
+					}
+					break;
+				case EditorTool::Fill:
+					//TODO flood fill on click
+					break;
+			}
+
+			if (!leftDown) {
+				lastPaintedCol = -1;
+				lastPaintedRow = -1;
 			}
 
 		}
@@ -91,6 +100,25 @@ class EditorSystem {
 	private:
 		EditorState& editorState;
 		bool wasLeftDown = false;
+		int lastPaintedCol = -1;
+		int lastPaintedRow = -1;
+
+		void PaintCell(int col, int row, TileMap& tileMap) {
+			//No point of painting same tile twice, same cell as last frame
+			if (col == lastPaintedCol && row == lastPaintedRow) {
+				return;
+			}
+
+			lastPaintedCol = col;
+			lastPaintedRow = row;
+
+			//No point of painting tile that has the same texture as paint has
+			if (tileMap.tileAt(col, row) == editorState.selectedTileId) {
+				return;
+			}
+
+			tileMap.SetTile(col, row, editorState.selectedTileId);
+		}
 };
 
 #endif // !EDITORSYSTEM_H
