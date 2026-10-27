@@ -270,7 +270,7 @@ void Game::Setup()
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 	activationSystem = std::make_unique<ActivationSystem>();
 	editorSystem = std::make_unique<EditorSystem>(editorState);
-	renderEditorGUISystem = std::make_unique<RenderEditorGUISystem>(editorState);
+	renderEditorGUISystem = std::make_unique<RenderEditorGUISystem>(editorState, *assetStore);
 	
 
 	//create bindings between c++ and lua

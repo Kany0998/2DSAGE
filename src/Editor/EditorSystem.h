@@ -65,11 +65,32 @@ class EditorSystem {
 				editorState.hoveredRow = -1;
 			}
 
+			const Uint32 mouseButtons = SDL_GetMouseState(nullptr, nullptr);
+			const bool leftDown = mouseButtons & SDL_BUTTON(SDL_BUTTON_LEFT);
+			const bool clicked = leftDown && !wasLeftDown;
+			wasLeftDown = leftDown;
+
+			if (clicked && editorState.hoveredCol != -1) {
+				switch (editorState.tool) {
+				
+					case EditorTool::Pick :
+						editorState.selectedTileId = tileMap.tileAt(editorState.hoveredCol, editorState.hoveredRow);
+						break;
+					case EditorTool::Paint :
+						//TODO
+						break;
+					case EditorTool::Fill :
+						//TODO
+						break;
+				}
+			}
+
 		}
 
 
 	private:
 		EditorState& editorState;
+		bool wasLeftDown = false;
 };
 
 #endif // !EDITORSYSTEM_H
