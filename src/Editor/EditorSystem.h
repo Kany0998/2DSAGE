@@ -9,6 +9,8 @@
 #include <imgui/imgui.h>
 #include <memory>
 #include <algorithm>
+#include <queue>
+#include <utility>
 
 class EditorSystem {
 
@@ -119,7 +121,9 @@ class EditorSystem {
 					}
 					break;
 				case EditorTool::Fill:
-					//TODO flood fill on click
+					if (clicked && hovered) {
+						FillFrom(editorState.hoveredCol, editorState.hoveredRow, tileMap);
+					}
 					break;
 			}
 
@@ -143,6 +147,10 @@ class EditorSystem {
 		int lastPaintedCol = -1;
 		int lastPaintedRow = -1;
 
+		static constexpr int directions = 4;
+		static constexpr int dirX[directions] = {0, 1, 0, -1};
+		static constexpr int dirY[directions] = {-1, 0, 1, 0};
+
 		std::unique_ptr<PaintCommand> currentStroke;
 
 		void PaintCell(int col, int row, TileMap& tileMap) {
@@ -165,6 +173,51 @@ class EditorSystem {
 
 			currentStroke->Add(col, row, tileMap.tileAt(col, row), editorState.selectedTileId);
 			tileMap.SetTile(col, row, editorState.selectedTileId);
+		}
+
+		void FillFrom(int col, int row, TileMap& tileMap) {
+			const int target = tileMap.tileAt(col, row);
+			const int newId = editorState.selectedTileId;
+
+			if (target == newId) {
+				return;				//lack of this if means endless loop
+			}
+
+			auto command = std::make_unique<PaintCommand>();
+			std::queue<std::pair<int, int>> toVisit;		//cells that waits for expansion
+			int count = 1;
+
+			command->Add(col, row, target, newId);
+			tileMap.SetTile(col, row, newId);
+			toVisit.push({ col, row });
+			
+
+			while (!toVisit.empty()) {
+				
+				auto cell = toVisit.front();
+				toVisit.pop();
+
+				for (int i = 0; i < directions; ++i) {
+					int nCol = cell.first + dirX[i];
+					int nRow = cell.second + dirY[i];
+
+					if (tileMap.isInside(nCol, nRow) && tileMap.tileAt(nCol, nRow) == target) {
+						if (count == editorState.fillLimit) {
+							command->Undo(tileMap);
+							editorState.message = "Area too big more then fillLimit: "+ std::to_string(editorState.fillLimit) + ", nothing filled";
+							return;
+						}
+						count++;
+						command->Add(nCol, nRow, target, newId);
+						tileMap.SetTile(nCol, nRow, newId);
+						toVisit.push({ nCol, nRow });
+					}
+				}
+			}
+			editorState.message = "Filled: " + std::to_string(count) + " tiles";
+			editorState.undoStack.push_back(std::move(command));
+			editorState.redoStack.clear();
+			return;
 		}
 };
 

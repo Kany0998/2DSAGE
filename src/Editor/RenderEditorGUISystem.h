@@ -60,6 +60,7 @@ class RenderEditorGUISystem {
 				ImGui::Text("no cell");
 			}
 
+
 			ImGui::End();
 
 
@@ -113,6 +114,15 @@ class RenderEditorGUISystem {
 			if (ImGui::RadioButton("Pick", editorState.tool == EditorTool::Pick)) {
 				editorState.tool = EditorTool::Pick;
 			}
+			
+			if (editorState.tool == EditorTool::Fill) {
+				ImGui::Separator();
+				ImGui::InputInt("Fill limit", &editorState.fillLimit);
+				if (editorState.fillLimit < 1) {
+					editorState.fillLimit = 1;
+				}
+			}
+			ImGui::TextUnformatted(editorState.message.c_str());
 
 			ImGui::Separator();
 
@@ -128,7 +138,6 @@ class RenderEditorGUISystem {
 				if (ImGui::ImageButton(texture, ImVec2(40, 40), uv0, uv1)) {
 					editorState.selectedTileId = id;
 				}
-
 				ImGui::PopID();
 
 				if ((id + 1) % tilesPerRow != 0) {

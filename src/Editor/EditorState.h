@@ -4,6 +4,7 @@
 #include "EditorCommand.h"
 #include <memory>
 #include <vector>
+#include <string>
 
 
 enum class EditorTool {
@@ -17,6 +18,8 @@ struct EditorState {
 	EditorTool tool = EditorTool::Paint;	//default tool paint(brush)
 	int hoveredCol = -1;
 	int hoveredRow = -1;
+	int fillLimit = 100000;
+	std::string message;
 
 	std::vector<std::unique_ptr<EditorCommand>> undoStack;
 	std::vector<std::unique_ptr<EditorCommand>> redoStack;
