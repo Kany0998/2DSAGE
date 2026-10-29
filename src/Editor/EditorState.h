@@ -20,6 +20,8 @@ struct EditorState {
 	int hoveredRow = -1;
 	int fillLimit = 100000;
 	std::string message;
+	char saveFileName[128] = "";
+	bool saveRequested = false;
 
 	std::vector<std::unique_ptr<EditorCommand>> undoStack;
 	std::vector<std::unique_ptr<EditorCommand>> redoStack;

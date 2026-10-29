@@ -3,6 +3,9 @@
 #include <fstream>
 #include <cmath>
 #include <string>
+#include <sstream>
+#include <stdexcept>
+#include <filesystem>
 
 
 
@@ -199,15 +202,17 @@ std::string TileMap::StepSoundAtWorld(double worldX, double worldY) const {
 	return StepSoundAt(col, row);
 }
 
-void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale){
-	rows = mapRows;
-	cols = mapCols;
+void TileMap::load(const std::string& filePath, int mapTileSize, double mapTileScale){
+	
 	tileSize = mapTileSize;
 	tileScale = mapTileScale;
-
 	tileWorldSize = tileSize * tileScale;
 
-	tileIds.assign(rows * cols, 0);
+	for (int i = 0; i < tileIdCount; ++i) {
+		speedMultipliers[i] = 1.0;
+		frictions[i] = 1.0;
+		accelerations[i] = 0.0;
+	}
 
 	std::ifstream mapFile(filePath);
 
@@ -216,27 +221,92 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 		return;
 	}
 
-	for (int i = 0; i < tileIdCount; ++i) {
-		speedMultipliers[i] = 1.0;
-		frictions[i] = 1.0;
-		accelerations[i] = 0.0;
+
+	std::vector<std::vector<int>> parsed;		//one inner vector per map row (tileEditorChange)
+	std::string line;
+	int lineNumber = 0;
+
+	while (std::getline(mapFile, line)) {		 // reads one line, returns false at the end of the file
+		lineNumber++;
+		if (line.ends_with("\r")) {
+			line.pop_back();					//  \r appares when file is made on windows
+		}
+
+		if (line.empty()) {
+			continue;							//trailing newline at the end of the file
+		}
+
+		std::vector<int> values;
+		std::stringstream lineStream(line);
+		std::string token;
+		
+		try {
+			while (std::getline(lineStream, token, ',')) {		// third argument = stop at ',' instead of '\n'
+				const int tileId = std::stoi(token);
+
+				if (tileId < 0 || tileId >= tileIdCount) {
+					Logger::Err(filePath + " line " + std::to_string(lineNumber) + ": tile id " + std::to_string(tileId)
+						+ " is out of range 0-" + std::to_string(tileIdCount - 1));
+					return;
+				}
+				values.push_back(tileId);
+			}
+		}
+
+		catch (const std::exception&){
+			Logger::Err(filePath + " line " + std::to_string(lineNumber) + ": '" + token + "' is not a tile id");
+			return;
+		}
+
+		if (!parsed.empty() && values.size() != parsed[0].size()) {
+			Logger::Err(filePath + " line" + std::to_string(lineNumber) + ": " + std::to_string(values.size()) + " tiles, expected: " + std::to_string(parsed[0].size()));
+			return;
+		}
+
+		parsed.push_back(values);
 	}
 
+	if (parsed.empty()) {
+		Logger::Err("Map file is empty: " + filePath);
+		return;
+	}
 
+	rows = parsed.size();
+	cols = parsed[0].size();
+	tileIds.assign(rows * cols, 0);
+	fileName = std::filesystem::path(filePath).filename().string();
 
-	for (int y = 0; y < rows; ++y){
-		for (int x = 0; x < cols; ++x){
-			char firstDigit;
-			char secondDigit;
-
-			if (!mapFile.get(firstDigit) || !mapFile.get(secondDigit)){
-				Logger::Err("Unexpected end of map file: " + filePath);
-				return;
-			}
-
-			int tileId = (firstDigit - '0') * 10 + (secondDigit - '0');
-			tileIds[Index(x, y)] = tileId;
-			mapFile.ignore(); // Ignore the space or ,
+	for (int y = 0; y < rows; ++y) {
+		for (int x = 0; x < cols; ++x) {
+			tileIds[Index(x, y)] = parsed[y][x];
 		}
 	}
+
+
+}
+
+bool TileMap::Save(const std::string& filePath) const {
+	std::ofstream mapFile(filePath);
+
+	if (!mapFile.is_open()) {
+		Logger::Err("Failed to open map file: " + filePath);
+		return false;
+	}
+
+	const int rowsNum = Rows();
+	const int colsNum = Cols();
+	for (int row = 0; row < rowsNum; ++row) {
+		for (int col = 0; col < colsNum; ++col) {
+			
+			if (col > 0) {
+				mapFile << ',';
+			}
+			mapFile << tileAt(col, row);
+
+		}
+		if (row < rowsNum - 1) {
+			mapFile << '\n';
+		}
+	}
+	return true;
 }

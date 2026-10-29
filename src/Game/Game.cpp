@@ -120,6 +120,7 @@ void Game::Initialize()
 
 	//Initialize ImGui
 	ImGui::CreateContext();
+	ImGui_ImplSDL2_InitForD3D(window);
 	ImGuiSDL::Initialize(renderer, windowWidth, windowHeight);
 
 	//Initialize camera view with entire screen area
@@ -589,6 +590,7 @@ void Game::Run()
 void Game::Destroy()
 {
 	ImGuiSDL::Deinitialize();
+	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
 	//Free every SDL_Texture/TTF_Font now, while the renderer and SDL_ttf are

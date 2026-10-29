@@ -102,7 +102,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	int tileSize = map["tileSize"];
 	double tileScale = map["tileScale"];
 
-	tileMap.load(mapFilePath, mapNumRows, mapNumCols, tileSize, tileScale);
+	tileMap.load(mapFilePath, tileSize, tileScale);
 	tileMap.setTextureAssetId(mapTextureAssetId);
 
 	//Read the tile properties from the lua file
@@ -158,8 +158,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	}
 	
 
-	Game::mapWidth = mapNumCols * tileSize * tileScale;
-	Game::mapHeight = mapNumRows * tileSize * tileScale;
+	Game::mapWidth = tileMap.Cols() * tileSize * tileScale;
+	Game::mapHeight = tileMap.Rows() * tileSize * tileScale;
 
 	//Read the level entites and Components
 	sol::table entites = level["entities"];

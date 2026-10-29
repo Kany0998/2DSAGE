@@ -14,6 +14,7 @@ class TileMap {
 		double tileScale = 0.0;
 		double tileWorldSize = 0.0;
 		static constexpr int tileIdCount = 100;
+		std::string fileName;
 
 		// What each tile id blocks, indexed by the id itself. Ids in the .map file are
 		// two digits, so 100 slots covers every one of them. 0 means "blocks nothing",
@@ -33,7 +34,8 @@ class TileMap {
 		int IndexToRow(int index) const;
 		int IndexToCol(int index) const;
 
-		void load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale);
+		void load(const std::string& filePath, int mapTileSize, double mapTileScale);
+		bool Save(const std::string& filePath) const;
 		void setBlockMask(int tileId, int mask);
 		void setSpeedMultiplier(int tileId, double speedMultiplier);
 		void setFriction(int tileId, double friction);
@@ -62,6 +64,7 @@ class TileMap {
 		double TileWorldSize() const { return tileWorldSize; }
 		const std::string& TextureAssetId() const { return textureAssetId; }
 		int TileSize() const { return tileSize; }
+		const std::string& FileName() const { return fileName; }
 };
 
 

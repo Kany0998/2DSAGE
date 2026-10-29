@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include <format>
+#include <filesystem>
 
 class EditorSystem {
 
@@ -23,38 +25,42 @@ class EditorSystem {
 		void Update(double deltaTime, SDL_Rect& camera, TileMap& tileMap) {
 			
 			const Uint8* keys = SDL_GetKeyboardState(nullptr);
-
+			const bool ctrl = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL];
 			int speed = 800;
+
+			ImGuiIO& io = ImGui::GetIO();
+			const bool typing = io.WantCaptureKeyboard;
 
 			if (keys[SDL_SCANCODE_LSHIFT]) {
 				speed = 1600;
 			}
 
-			if (keys[SDL_SCANCODE_W]) {
-				camera.y -= static_cast<int>(speed * deltaTime);
-			}
+			if (!ctrl && !typing) {
+				if (keys[SDL_SCANCODE_W]) {
+					camera.y -= static_cast<int>(speed * deltaTime);
+				}
 
-			if (keys[SDL_SCANCODE_A]) {
-				camera.x -= static_cast<int>(speed * deltaTime);
-			}
+				if (keys[SDL_SCANCODE_A]) {
+					camera.x -= static_cast<int>(speed * deltaTime);
+				}
 
-			if (keys[SDL_SCANCODE_S]) {
-				camera.y += static_cast<int>(speed * deltaTime);
-			}
+				if (keys[SDL_SCANCODE_S]) {
+					camera.y += static_cast<int>(speed * deltaTime);
+				}
 
-			if (keys[SDL_SCANCODE_D]) {
-				camera.x += static_cast<int>(speed * deltaTime);
+				if (keys[SDL_SCANCODE_D]) {
+					camera.x += static_cast<int>(speed * deltaTime);
+				}
 			}
-
 
 			const int mapWidthPixels = static_cast<int>(tileMap.Cols() * tileMap.TileWorldSize());
 			const int mapHeightPixels = static_cast<int>(tileMap.Rows() * tileMap.TileWorldSize());
-			camera.x = std::clamp(camera.x, 0 , mapWidthPixels - camera.w);
-			camera.y = std::clamp(camera.y, 0 , mapHeightPixels- camera.h);
+			const int maxCameraX = std::max(0, mapWidthPixels - camera.w);
+			const int maxCameraY = std::max(0, mapHeightPixels - camera.h);
+			camera.x = std::clamp(camera.x, 0 , maxCameraX);
+			camera.y = std::clamp(camera.y, 0 , maxCameraY);
 
 			//Hovering mouse over the tile
-			ImGuiIO& io = ImGui::GetIO();
-
 			if (!io.WantCaptureMouse) {
 
 				double worldX = io.MousePos.x + camera.x;
@@ -82,15 +88,18 @@ class EditorSystem {
 			const bool hovered = editorState.hoveredCol != -1;
 			wasLeftDown = leftDown;
 
-			const auto ctrl = keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL];
 
-			const bool undoDown = ctrl && keys[SDL_SCANCODE_Z];
+			const bool undoDown = !typing && ctrl && keys[SDL_SCANCODE_Z];
 			const bool undoPressed = undoDown && !wasUndoDown;
 			wasUndoDown = undoDown;
 
-			const bool redoDown = ctrl && keys[SDL_SCANCODE_Y];
+			const bool redoDown = !typing && ctrl && keys[SDL_SCANCODE_Y];
 			const bool redoPressed = redoDown && !wasRedoDown;
 			wasRedoDown = redoDown;
+
+			const bool saveDown = ctrl && keys[SDL_SCANCODE_S];
+			const bool savePressed = saveDown && !wasSaveDown;
+			wasSaveDown = saveDown;
 
 
 			if (undoPressed && !leftDown && !editorState.undoStack.empty()) {
@@ -107,6 +116,17 @@ class EditorSystem {
 				editorState.undoStack.push_back(std::move(command));
 			}
 			
+
+			if (!saveNameFilled) {
+				auto result = std::format_to_n(editorState.saveFileName, sizeof(editorState.saveFileName) - 1, "{}", tileMap.FileName());
+				*result.out = '\0';
+				saveNameFilled = true;
+			}
+
+			if ((savePressed || editorState.saveRequested) && !leftDown) {
+				SaveMap(tileMap);
+			}
+			editorState.saveRequested = false;
 
 			switch (editorState.tool) {
 
@@ -144,6 +164,8 @@ class EditorSystem {
 		bool wasLeftDown = false;
 		bool wasUndoDown = false;
 		bool wasRedoDown = false;
+		bool wasSaveDown = false;
+		bool saveNameFilled = false;
 		int lastPaintedCol = -1;
 		int lastPaintedRow = -1;
 
@@ -218,6 +240,32 @@ class EditorSystem {
 			editorState.undoStack.push_back(std::move(command));
 			editorState.redoStack.clear();
 			return;
+		}
+
+		void SaveMap(TileMap& tileMap) {
+			const std::string name = editorState.saveFileName;
+			if (name.empty()) {
+				editorState.message = "Enter file name";
+				return;
+			}
+
+			const auto sourcePath = std::string(ASSETS_SOURCE_DIR) + "/tilemaps/" + name;
+			const auto buildPath = "./assets/tilemaps/" + name;
+
+			//Keep the previous version one file away. A new name has nothing to back up,
+			//so a failed copy is fine; the error_code overload reports it instead of throwing
+
+			std::error_code errorCode;
+			std::filesystem::copy_file(sourcePath, sourcePath + ".bak", std::filesystem::copy_options::overwrite_existing, errorCode);
+
+			if (!tileMap.Save(sourcePath)) {
+				editorState.message = "Save failed: " + name;
+				return;
+			}
+
+			//The build copy is what the running game reads, so update it too (no rebuild needed)
+			tileMap.Save(buildPath);
+			editorState.message = "Saved " + name + " (previous version in .bak)";
 		}
 };
 

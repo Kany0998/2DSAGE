@@ -122,6 +122,13 @@ class RenderEditorGUISystem {
 					editorState.fillLimit = 1;
 				}
 			}
+			ImGui::Separator();
+
+			ImGui::InputText("File", editorState.saveFileName, sizeof(editorState.saveFileName));
+			if (ImGui::Button("Save")) {
+				editorState.saveRequested = true;
+			}
+
 			ImGui::TextUnformatted(editorState.message.c_str());
 
 			ImGui::Separator();
