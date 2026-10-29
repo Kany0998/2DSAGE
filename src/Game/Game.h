@@ -15,6 +15,7 @@
 #include "../Audio/AudioStats.h"
 #include "../Abilities/AbilityDatabase.h"
 #include "../Pathfinding/PathBenchmark.h"
+#include "../Editor/EditorState.h"
 #include "Controls.h"
 #include <sol/sol.hpp>
 
@@ -49,12 +50,15 @@ class RenderTileMapSystem;
 class LootSystem;
 class AudioSystem;
 class ActivationSystem;
+class RenderEditorGUISystem;
+class EditorSystem;
 
 class Game
 {
 	private:
 		bool isRunning;
 		bool isDebug;
+		bool editorMode;
 		bool audioReady = false;     //false = no audio device, the game runs silently
 		SDL_Window* window;
 		SDL_Renderer* renderer;
@@ -98,6 +102,7 @@ class Game
 		std::vector<int> debugPath;
 		AudioStats audioStats;
 		PathBenchmarkSettings pathBenchmark;
+		EditorState editorState;
 
 		//Systems are owned directly by Game now instead of going through a
 		//Registry-managed system map (entt has no notion of "systems" - they're
@@ -127,6 +132,8 @@ class Game
 		std::unique_ptr<LootSystem> lootSystem;
 		std::unique_ptr<AudioSystem> audioSystem;
 		std::unique_ptr<ActivationSystem> activationSystem;
+		std::unique_ptr<EditorSystem> editorSystem;
+		std::unique_ptr<RenderEditorGUISystem> renderEditorGUISystem;
 
 
 	public:

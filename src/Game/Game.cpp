@@ -27,6 +27,8 @@
 #include "../Systems/LootSystem.h"
 #include "../Systems/AudioSystem.h"
 #include "../Systems/ActivationSystem.h"
+#include "../Editor/RenderEditorGUISystem.h"
+#include "../Editor/EditorSystem.h"
 #include "../Components/TransformComponent.h"
 #include "../Components/RigidBodyComponent.h"
 #include "../Components/AttributesComponent.h"
@@ -54,6 +56,7 @@ Game::Game()
 	//TODO: implement
 	isRunning = false;
 	isDebug = false;
+	editorMode = false;
 	registry = std::make_unique<Registry>();
 	assetStore = std::make_unique<AssetStore>();
 	eventBus = std::make_unique<EventBus>();
@@ -117,6 +120,7 @@ void Game::Initialize()
 
 	//Initialize ImGui
 	ImGui::CreateContext();
+	ImGui_ImplSDL2_InitForD3D(window);
 	ImGuiSDL::Initialize(renderer, windowWidth, windowHeight);
 
 	//Initialize camera view with entire screen area
@@ -143,58 +147,87 @@ void Game::ProccessInput()
 		io.MouseDown[1] = buttons & SDL_BUTTON(SDL_BUTTON_RIGHT);
 
 		//Handle core SDl events
-		switch (sdlEvent.type)
-		{
+		switch (sdlEvent.type){
 			case SDL_QUIT:
 				isRunning = false;
 				break;
 
 			case SDL_KEYDOWN:
-				if(sdlEvent.key.keysym.sym == SDLK_ESCAPE)
-				{
+
+				if (io.WantCaptureKeyboard) {
+					break;                       // ImGui is typing: no game shortcuts
+				}
+
+				if(sdlEvent.key.keysym.sym == SDLK_ESCAPE){
 					isRunning = false;
 				}
 
-				if (sdlEvent.key.keysym.sym == SDLK_x)
-				{
+				if (sdlEvent.key.keysym.sym == SDLK_x){
 					isDebug = !isDebug;
 				}
 
+				if (sdlEvent.key.keysym.sym == controls.editor) {
+					editorMode = !editorMode;
+
+					if (!editorMode) {
+						Game::mapWidth = static_cast<int>(tileMap.Cols() * tileMap.TileWorldSize());
+						Game::mapHeight = static_cast<int>(tileMap.Rows() * tileMap.TileWorldSize());
+						for (auto rawEntity : registry->Raw().view <AIComponent>()) {
+							Entity entity(rawEntity, registry.get());
+							auto& enemyAI = entity.GetComponent<AIComponent>();
+							EnterAIState(enemyAI, enemyAI.state);
+						}
+					}
+					
+
+					
+					if (audioReady) {
+						//get channels count
+						int channelCount = Mix_AllocateChannels(-1);
+						// int channel = 1 make everything silent except ambience loop
+						// int channel = 0 make everything silent
+						for (int channel = 1; channel < channelCount; ++channel) {
+							if (editorMode) {
+								Mix_Pause(channel);
+							}
+							else {
+								Mix_Resume(channel);
+							}
+						}
+					}
+
+				}
+
 				if (isDebug) {
-					if (sdlEvent.key.keysym.sym == SDLK_1)
-					{
+					if (sdlEvent.key.keysym.sym == SDLK_1){
 						debugPathfinder.gWeight = 1.0;
 						debugPathfinder.hWeight = 0.0;
 						debugPathMode = "Dijkstra";
 						logPathStats = true;
 					}
 
-					if (sdlEvent.key.keysym.sym == SDLK_2)
-					{
+					if (sdlEvent.key.keysym.sym == SDLK_2){
 						debugPathfinder.gWeight = 1.0;
 						debugPathfinder.hWeight = 1.0;
 						debugPathMode = "A*";
 						logPathStats = true;
 					}
 
-					if (sdlEvent.key.keysym.sym == SDLK_3)
-					{
+					if (sdlEvent.key.keysym.sym == SDLK_3){
 						debugPathfinder.gWeight = 0.0;
 						debugPathfinder.hWeight = 1.0;
 						debugPathMode = "Greedy";
 						logPathStats = true;
 					}
 
-					if (sdlEvent.key.keysym.sym == SDLK_4)
-					{
+					if (sdlEvent.key.keysym.sym == SDLK_4){
 						debugPathfinder.gWeight = 1.0;
 						debugPathfinder.hWeight = 1.0 / std::max(1.0, tileMap.MaxSpeedMultiplier());
 						debugPathMode = "A* admissible";
 						logPathStats = true;
 					}
 
-					if (sdlEvent.key.keysym.sym == SDLK_F9)
-					{
+					if (sdlEvent.key.keysym.sym == SDLK_F9){
 						if (pathBenchmark.routes.empty()) {
 							Logger::Log("There are no routes");
 						}
@@ -252,6 +285,9 @@ void Game::Setup()
 	renderTileMapSystem = std::make_unique<RenderTileMapSystem>();
 	lootSystem = std::make_unique<LootSystem>(*registry, lootDatabase, itemDatabase, *assetStore, eventBus);
 	activationSystem = std::make_unique<ActivationSystem>();
+	editorSystem = std::make_unique<EditorSystem>(editorState);
+	renderEditorGUISystem = std::make_unique<RenderEditorGUISystem>(editorState, *assetStore);
+	
 
 	//create bindings between c++ and lua
 	scriptSystem->CreateLuaBindings(lua, *registry, *assetStore, tileMap);
@@ -306,6 +342,12 @@ void Game::Update()
 	audioSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
+
+	//Editor mode toggke
+	if (editorMode) {
+		editorSystem->Update(deltaTime, camera, tileMap);
+		return;
+	}
 
 	// invoke all the systems to update
 	lootSystem->Update();
@@ -535,8 +577,16 @@ void Game::Render()
 			
 		}
 	}
-
-	renderGUISystem->Update(*registry, camera, isDebug, tileMap);
+	//Create gui frames
+	ImGui::NewFrame();
+	if (editorMode) {
+		renderEditorGUISystem->Update(camera, tileMap);
+	}
+	else {
+		renderGUISystem->Update(*registry, camera, isDebug, tileMap);
+	}
+	ImGui::Render();
+	ImGuiSDL::Render(ImGui::GetDrawData());
 
 	SDL_RenderPresent(renderer);
 }
@@ -555,6 +605,7 @@ void Game::Run()
 void Game::Destroy()
 {
 	ImGuiSDL::Deinitialize();
+	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
 	//Free every SDL_Texture/TTF_Font now, while the renderer and SDL_ttf are

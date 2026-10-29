@@ -37,6 +37,13 @@ target_include_directories(2DSAGE PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/libs"
 )
 
+# The game reads a copy of assets/ next to the exe, which every build overwrites.
+# Editors that save files (e.g. the tilemap editor) write to the source folder too,
+# so their changes survive the next build.
+target_compile_definitions(2DSAGE PRIVATE
+    ASSETS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets"
+)
+
 target_link_libraries(2DSAGE PRIVATE
     SDL2::SDL2main
     SDL2::SDL2

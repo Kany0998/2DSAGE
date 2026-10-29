@@ -80,7 +80,6 @@ class RenderGUISystem
 		void Update(Registry& registry, const SDL_Rect& camera, bool isDebug, const TileMap& tilemap)
 		{
 			//Render GUI elements here
-			ImGui::NewFrame();
 
 			if (!bannerImage.empty()) {
 				const Uint32 age = SDL_GetTicks() - bannerTime;
@@ -593,9 +592,6 @@ class RenderGUISystem
 				}
 				ImGui::End();
 			}
-
-			ImGui::Render();
-			ImGuiSDL::Render(ImGui::GetDrawData());
 		}
 
 	private:

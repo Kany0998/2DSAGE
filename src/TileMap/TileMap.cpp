@@ -3,44 +3,54 @@
 #include <fstream>
 #include <cmath>
 #include <string>
+#include <sstream>
+#include <stdexcept>
+#include <filesystem>
+#include <algorithm>
+#include <utility>
 
 
 
-int TileMap::Index(int col, int row) const
-{
+int TileMap::Index(int col, int row) const{
 	return row * cols + col;
 }
 
-int TileMap::IndexToRow(int index) const
-{
+int TileMap::IndexToRow(int index) const{
 	return index / cols;
 }
 
-int TileMap::IndexToCol(int index) const
-{
+int TileMap::IndexToCol(int index) const{
 	return index % cols;
 }
 
-bool TileMap::isInside(int col, int row) const
-{
+bool TileMap::isInside(int col, int row) const{
 	return col >= 0 && col < cols && row >= 0 && row < rows;
 }
 
 
 
-int TileMap::tileAt(int col, int row) const
-{
-	if(!isInside(col, row))
-	{
+int TileMap::tileAt(int col, int row) const{
+	if(!isInside(col, row)){
 		return -1;
 	}
 	return tileIds[Index(col, row)];
 }
 
+void TileMap::SetTile(int col, int row, int tileId) {
+	if (!isInside(col, row)){
+		return;
+	}
+
+	if (tileId < 0 || tileId >= tileIdCount) {
+		return;
+	}
+
+	tileIds[Index(col, row)] = tileId;
+}
+
 double TileMap::SpeedMultiplierAt(int col, int row) const {
 
-	if (!isInside(col, row))
-	{
+	if (!isInside(col, row)){
 		return 1;
 	}
 	int tileId = tileIds[Index(col, row)];
@@ -150,39 +160,33 @@ void TileMap::setStepSound(int tileId, const std::string& id) {
 
 
 
-int TileMap::colAt(double worldX) const
-{
+int TileMap::colAt(double worldX) const{
 	return static_cast<int>(std::floor(worldX / tileWorldSize));
 }
 
 
 
-int TileMap::rowAt(double worldY) const
-{
+int TileMap::rowAt(double worldY) const{
 	return static_cast<int>(std::floor(worldY / tileWorldSize));
 }
 
 
 
-bool TileMap::isBlocked(int col, int row, int movementType) const
-{
-	if (!isInside(col, row))
-	{
+bool TileMap::isBlocked(int col, int row, int movementType) const{
+	if (!isInside(col, row)){
 		return true;
 	}
 
 	int tileId = tileAt(col, row);
 
-	if(tileId < 0 || tileId >= tileIdCount)
-	{
+	if(tileId < 0 || tileId >= tileIdCount){
 		return true;
 	}
 
 	return (blockMasks[tileId] & movementType) != 0;
 }
 
-bool TileMap::isBlockedAtWorld(double worldX, double worldY, int movementType) const
-{
+bool TileMap::isBlockedAtWorld(double worldX, double worldY, int movementType) const{
 	int col = colAt(worldX);
 	int row = rowAt(worldY);
 	return isBlocked(col, row, movementType);
@@ -200,24 +204,11 @@ std::string TileMap::StepSoundAtWorld(double worldX, double worldY) const {
 	return StepSoundAt(col, row);
 }
 
-void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int mapTileSize, double mapTileScale)
-{
-	rows = mapRows;
-	cols = mapCols;
+void TileMap::load(const std::string& filePath, int mapTileSize, double mapTileScale){
+	
 	tileSize = mapTileSize;
 	tileScale = mapTileScale;
-
 	tileWorldSize = tileSize * tileScale;
-
-	tileIds.assign(rows * cols, 0);
-
-	std::ifstream mapFile(filePath);
-
-	if (!mapFile.is_open())
-	{
-		Logger::Err("Failed to open map file: " + filePath);
-		return;
-	}
 
 	for (int i = 0; i < tileIdCount; ++i) {
 		speedMultipliers[i] = 1.0;
@@ -225,24 +216,134 @@ void TileMap::load(const std::string& filePath, int mapRows, int mapCols, int ma
 		accelerations[i] = 0.0;
 	}
 
+	std::ifstream mapFile(filePath);
+
+	if (!mapFile.is_open()){
+		Logger::Err("Failed to open map file: " + filePath);
+		return;
+	}
 
 
-	for (int y = 0; y < rows; ++y)
-	{
-		for (int x = 0; x < cols; ++x)
-		{
-			char firstDigit;
-			char secondDigit;
+	std::vector<std::vector<int>> parsed;		//one inner vector per map row (tileEditorChange)
+	std::string line;
+	int lineNumber = 0;
 
-			if (!mapFile.get(firstDigit) || !mapFile.get(secondDigit))
-			{
-				Logger::Err("Unexpected end of map file: " + filePath);
-				return;
+	while (std::getline(mapFile, line)) {		 // reads one line, returns false at the end of the file
+		lineNumber++;
+		if (line.ends_with("\r")) {
+			line.pop_back();					//  \r appares when file is made on windows
+		}
+
+		if (line.empty()) {
+			continue;							//trailing newline at the end of the file
+		}
+
+		std::vector<int> values;
+		std::stringstream lineStream(line);
+		std::string token;
+		
+		try {
+			while (std::getline(lineStream, token, ',')) {		// third argument = stop at ',' instead of '\n'
+				const int tileId = std::stoi(token);
+
+				if (tileId < 0 || tileId >= tileIdCount) {
+					Logger::Err(filePath + " line " + std::to_string(lineNumber) + ": tile id " + std::to_string(tileId)
+						+ " is out of range 0-" + std::to_string(tileIdCount - 1));
+					return;
+				}
+				values.push_back(tileId);
 			}
+		}
 
-			int tileId = (firstDigit - '0') * 10 + (secondDigit - '0');
-			tileIds[Index(x, y)] = tileId;
-			mapFile.ignore(); // Ignore the space or ,
+		catch (const std::exception&){
+			Logger::Err(filePath + " line " + std::to_string(lineNumber) + ": '" + token + "' is not a tile id");
+			return;
+		}
+
+		if (!parsed.empty() && values.size() != parsed[0].size()) {
+			Logger::Err(filePath + " line" + std::to_string(lineNumber) + ": " + std::to_string(values.size()) + " tiles, expected: " + std::to_string(parsed[0].size()));
+			return;
+		}
+
+		parsed.push_back(values);
+	}
+
+	if (parsed.empty()) {
+		Logger::Err("Map file is empty: " + filePath);
+		return;
+	}
+
+	const int parsedRows = static_cast<int>(parsed.size());
+	const int parsedCols = static_cast<int>(parsed[0].size());
+
+	if (parsedCols > maxMapSize || parsedRows > maxMapSize) {
+		Logger::Err(filePath + ": map "+std::to_string(parsedCols)+" x "+std::to_string(parsedRows)+" exceeds the limit " + std::to_string(maxMapSize) + ", raise TileMap::maxMapSize");
+		return;
+	}
+	
+	rows = parsedRows;
+	cols = parsedCols;
+
+	tileIds.assign(rows * cols, 0);
+	fileName = std::filesystem::path(filePath).filename().string();
+
+	for (int y = 0; y < rows; ++y) {
+		for (int x = 0; x < cols; ++x) {
+			tileIds[Index(x, y)] = parsed[y][x];
 		}
 	}
+
+
+}
+
+bool TileMap::Save(const std::string& filePath) const {
+	std::ofstream mapFile(filePath);
+
+	if (!mapFile.is_open()) {
+		Logger::Err("Failed to open map file: " + filePath);
+		return false;
+	}
+
+	const int rowsNum = Rows();
+	const int colsNum = Cols();
+	for (int row = 0; row < rowsNum; ++row) {
+		for (int col = 0; col < colsNum; ++col) {
+			
+			if (col > 0) {
+				mapFile << ',';
+			}
+			mapFile << tileAt(col, row);
+
+		}
+		if (row < rowsNum - 1) {
+			mapFile << '\n';
+		}
+	}
+	return true;
+}
+
+
+void TileMap::Resize(int newCols, int newRows, int fillId) {
+	
+
+	if (fillId < 0 || fillId >= tileIdCount) {
+		return;
+	}
+
+	if (newCols <= 0 || newRows <= 0 || newCols > maxMapSize || newRows > maxMapSize) {
+		return;
+	}
+
+	std::vector <int> newIds(newCols * newRows, fillId);
+	const int copyCols = std::min(Cols(), newCols);
+	const int copyRows = std::min(Rows(), newRows);
+
+	for (int row = 0; row < copyRows; ++row) {
+		for (int col = 0; col < copyCols; ++col) {
+			newIds[row * newCols + col] = tileIds[Index(col, row)];
+		}
+	}
+	tileIds = std::move(newIds);
+	cols = newCols;
+	rows = newRows;
 }

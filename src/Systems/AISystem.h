@@ -64,82 +64,6 @@ class AISystem
 			const int playerRow = tileMap.rowAt(playerCenter.y);
 			const int playerCellIndex = tileMap.Index(playerCol, playerRow);
 
-			if (flankingSettings.enable) {
-				chasers.clear();
-				//Fill all the chasers with the data
-				for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
-					Entity entity(rawEntity, &registry);
-
-					const auto& enemyAI = entity.GetComponent<AIComponent>();
-					if (enemyAI.state != AIState::Chase) {
-						continue;
-					}
-
-					if (enemyAI.scriptControlsVelocity) {
-						continue;
-					}
-
-					const glm::vec2 enemyCenter = EntityCenter(entity.GetComponent<TransformComponent>(), entity.GetComponent<SpriteComponent>());
-					const double dx = playerCenter.x - enemyCenter.x;
-					const double dy = playerCenter.y - enemyCenter.y;
-					const double distanceSquared = dx * dx + dy * dy;
-					chasers.push_back({ std::sqrt(distanceSquared), rawEntity });
-				}
-
-				std::vector<std::pair<double, entt::entity>> ordered;
-
-				for (auto entity : lastFrameOrder) {
-					for (const auto& entry : chasers) {
-						if (entry.second == entity) {
-							ordered.push_back(entry);
-							break;
-						}
-					}
-				}
-
-				std::vector<std::pair<double, entt::entity>> newcomers;
-
-				for (const auto& entry : chasers) {
-					bool known = false;
-
-					for (const auto handle : lastFrameOrder) {
-						if (handle == entry.second) {           // it was ranked last frame
-							known = true;
-							break;
-						}
-					}
-					if (!known) {
-						newcomers.push_back(entry);             // not ranked last frame -> newcomer
-					}
-				}
-
-				std::sort(newcomers.begin(), newcomers.end(), [](const std::pair<double, entt::entity>& a, const std::pair<double, entt::entity>& b) {return a.first < b.first;});
-				ordered.insert(ordered.end(), newcomers.begin(), newcomers.end());
-
-				const double margin = flankingSettings.swapRankMarginTiles * tileMap.TileWorldSize();
-				bool swapped;
-
-				do {
-					swapped = false;
-					for (size_t i = 0; i + 1 < ordered.size(); ++i) {
-						if (ordered[i + 1].first + margin < ordered[i].first) {
-							std::swap(ordered[i], ordered[i + 1]);
-							swapped = true;
-						}
-					}
-				} while (swapped);
-
-				chasers = ordered;
-				lastFrameOrder.clear();
-				for (const auto& entry : ordered) {
-					lastFrameOrder.push_back(entry.second);
-				}
-			}
-			else {
-				chasers.clear();
-				lastFrameOrder.clear();
-			}
-
 			int searchesThisFrame = 0;
 
 			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
@@ -404,15 +328,19 @@ class AISystem
 
 						const PathPenalty* penalty = nullptr;
 
-						if (flankingSettings.enable && !chasers.empty() && chasers[0].second != rawEntity) {
+						if (flankingSettings.enable) {
 							lanePenalty.Clear(tileMap.Cols() * tileMap.Rows());
-							for (auto& entry : chasers) {
-								if (entry.second == rawEntity) {
-									break; //Everyone after me is further
+							for (auto otherRaw : registry.Raw().view<AIComponent, ActiveComponent>()) {
+								if (otherRaw == rawEntity) {
+									continue;
 								}
-								Entity other(entry.second, &registry);
+								Entity other(otherRaw, &registry);
 								
 								const auto& otherEnemyAI = other.GetComponent<AIComponent>();
+								if (otherEnemyAI.state != AIState::Chase || otherEnemyAI.scriptControlsVelocity) {
+									continue;
+								}
+
 								for (const int cellIndex : otherEnemyAI.laneCells) {
 									const int cellCol = tileMap.IndexToCol(cellIndex);
 									const int cellRow = tileMap.IndexToRow(cellIndex);
@@ -546,10 +474,6 @@ class AISystem
 
 		static constexpr double aggroCooldownSeconds = 5.0;
 
-		//chasers sorted closest-first each frame
-		std::vector<std::pair<double, entt::entity>> chasers;
-
-		std::vector<entt::entity> lastFrameOrder;
 
 		PathPenalty lanePenalty;
 
