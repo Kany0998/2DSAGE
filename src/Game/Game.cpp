@@ -164,11 +164,21 @@ void Game::ProccessInput()
 				if (sdlEvent.key.keysym.sym == controls.editor) {
 					editorMode = !editorMode;
 
-					//get channels count
-					int channelCount = Mix_AllocateChannels(-1);
+					if (!editorMode) {
+						Game::mapWidth = static_cast<int>(tileMap.Cols() * tileMap.TileWorldSize());
+						Game::mapHeight = static_cast<int>(tileMap.Rows() * tileMap.TileWorldSize());
+						for (auto rawEntity : registry->Raw().view <AIComponent>()) {
+							Entity entity(rawEntity, registry.get());
+							auto& enemyAI = entity.GetComponent<AIComponent>();
+							EnterAIState(enemyAI, enemyAI.state);
+						}
+					}
+					
 
 					
 					if (audioReady) {
+						//get channels count
+						int channelCount = Mix_AllocateChannels(-1);
 						// int channel = 1 make everything silent except ambience loop
 						// int channel = 0 make everything silent
 						for (int channel = 1; channel < channelCount; ++channel) {

@@ -27,6 +27,7 @@ class TileMap {
 
 
 
+
 	public:
 
 		int Index(int col, int row) const;
@@ -36,6 +37,7 @@ class TileMap {
 
 		void load(const std::string& filePath, int mapTileSize, double mapTileScale);
 		bool Save(const std::string& filePath) const;
+		void Resize(int newCols, int newRows, int fillId);
 		void setBlockMask(int tileId, int mask);
 		void setSpeedMultiplier(int tileId, double speedMultiplier);
 		void setFriction(int tileId, double friction);
@@ -65,6 +67,8 @@ class TileMap {
 		const std::string& TextureAssetId() const { return textureAssetId; }
 		int TileSize() const { return tileSize; }
 		const std::string& FileName() const { return fileName; }
+
+		static constexpr int maxMapSize = 2000;
 };
 
 

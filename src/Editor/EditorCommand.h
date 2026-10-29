@@ -43,5 +43,30 @@ class PaintCommand : public EditorCommand {
 		}
 };
 
+//Resize Commands
+class ResizeCommand : public EditorCommand {
+	public:
+		int oldCols = 0;
+		int oldRows = 0;
+		std::vector<int> oldTiles;
+		int newCols = 0;
+		int newRows = 0;
+		int fillId = 0;
+
+		void Redo(TileMap& tileMap) override {
+			tileMap.Resize(newCols, newRows, fillId);
+		}
+
+		void Undo(TileMap& tileMap) override {
+			tileMap.Resize(oldCols, oldRows, fillId);
+			for (int row = 0; row < oldRows; ++row) {
+				for (int col = 0; col < oldCols; ++col) {
+					tileMap.SetTile(col, row, oldTiles[row * oldCols + col]);
+				}
+			}
+		}
+
+};
+
 
 #endif // !EDITORCOMMAND_H

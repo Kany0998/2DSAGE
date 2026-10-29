@@ -22,6 +22,9 @@ struct EditorState {
 	std::string message;
 	char saveFileName[128] = "";
 	bool saveRequested = false;
+	int resizeCols = 0;
+	int resizeRows = 0;
+	bool resizeRequested = false;
 
 	std::vector<std::unique_ptr<EditorCommand>> undoStack;
 	std::vector<std::unique_ptr<EditorCommand>> redoStack;

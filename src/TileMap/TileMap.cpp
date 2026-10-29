@@ -6,6 +6,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <filesystem>
+#include <algorithm>
+#include <utility>
 
 
 
@@ -271,8 +273,17 @@ void TileMap::load(const std::string& filePath, int mapTileSize, double mapTileS
 		return;
 	}
 
-	rows = parsed.size();
-	cols = parsed[0].size();
+	const int parsedRows = static_cast<int>(parsed.size());
+	const int parsedCols = static_cast<int>(parsed[0].size());
+
+	if (parsedCols > maxMapSize || parsedRows > maxMapSize) {
+		Logger::Err(filePath + ": map "+std::to_string(parsedCols)+" x "+std::to_string(parsedRows)+" exceeds the limit " + std::to_string(maxMapSize) + ", raise TileMap::maxMapSize");
+		return;
+	}
+	
+	rows = parsedRows;
+	cols = parsedCols;
+
 	tileIds.assign(rows * cols, 0);
 	fileName = std::filesystem::path(filePath).filename().string();
 
@@ -309,4 +320,30 @@ bool TileMap::Save(const std::string& filePath) const {
 		}
 	}
 	return true;
+}
+
+
+void TileMap::Resize(int newCols, int newRows, int fillId) {
+	
+
+	if (fillId < 0 || fillId >= tileIdCount) {
+		return;
+	}
+
+	if (newCols <= 0 || newRows <= 0 || newCols > maxMapSize || newRows > maxMapSize) {
+		return;
+	}
+
+	std::vector <int> newIds(newCols * newRows, fillId);
+	const int copyCols = std::min(Cols(), newCols);
+	const int copyRows = std::min(Rows(), newRows);
+
+	for (int row = 0; row < copyRows; ++row) {
+		for (int col = 0; col < copyCols; ++col) {
+			newIds[row * newCols + col] = tileIds[Index(col, row)];
+		}
+	}
+	tileIds = std::move(newIds);
+	cols = newCols;
+	rows = newRows;
 }

@@ -117,16 +117,24 @@ class EditorSystem {
 			}
 			
 
-			if (!saveNameFilled) {
+			if (!fieldsFilled) {
 				auto result = std::format_to_n(editorState.saveFileName, sizeof(editorState.saveFileName) - 1, "{}", tileMap.FileName());
 				*result.out = '\0';
-				saveNameFilled = true;
+				fieldsFilled = true;
+				editorState.resizeCols = tileMap.Cols();
+				editorState.resizeRows = tileMap.Rows();
 			}
 
 			if ((savePressed || editorState.saveRequested) && !leftDown) {
 				SaveMap(tileMap);
 			}
 			editorState.saveRequested = false;
+
+			if (editorState.resizeRequested && !leftDown) {
+				ResizeMap(tileMap);
+			}
+			editorState.resizeRequested = false;
+
 
 			switch (editorState.tool) {
 
@@ -165,7 +173,7 @@ class EditorSystem {
 		bool wasUndoDown = false;
 		bool wasRedoDown = false;
 		bool wasSaveDown = false;
-		bool saveNameFilled = false;
+		bool fieldsFilled = false;
 		int lastPaintedCol = -1;
 		int lastPaintedRow = -1;
 
@@ -266,6 +274,38 @@ class EditorSystem {
 			//The build copy is what the running game reads, so update it too (no rebuild needed)
 			tileMap.Save(buildPath);
 			editorState.message = "Saved " + name + " (previous version in .bak)";
+		}
+
+		void ResizeMap(TileMap& tileMap) {
+			int cols = editorState.resizeCols;
+			int rows = editorState.resizeRows;
+
+			if (cols < 1 || rows < 1 || cols > TileMap::maxMapSize || rows > TileMap::maxMapSize) {
+				editorState.message = "Size must be  1-" + std::to_string(TileMap::maxMapSize) + ", skip (will be change in future update to chunks)";
+				return;
+			}
+
+			else if (cols == tileMap.Cols() && rows == tileMap.Rows()) {
+				editorState.message = "Same size,skipped";
+				return;
+			}
+
+			auto command = std::make_unique<ResizeCommand>();
+			command->oldCols = tileMap.Cols();
+			command->oldRows = tileMap.Rows();
+			command->newCols = cols;
+			command->newRows = rows;
+			command->fillId = editorState.selectedTileId;
+			command->oldTiles.reserve(command->oldCols * command->oldRows);
+			for (auto row = 0; row < command->oldRows; ++row) {
+				for (auto col = 0; col < command->oldCols; ++col) {
+					command->oldTiles.push_back(tileMap.tileAt(col, row));
+				}
+			}
+			command->Redo(tileMap);
+			editorState.undoStack.push_back(std::move(command));
+			editorState.redoStack.clear();
+			editorState.message = "Resize to Cols: " + std::to_string(cols) + " x Rows: " + std::to_string(rows);
 		}
 };
 

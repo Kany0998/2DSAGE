@@ -122,8 +122,18 @@ class RenderEditorGUISystem {
 					editorState.fillLimit = 1;
 				}
 			}
+
+			ImGui::Separator();
+			ImGui::SetNextItemWidth(120.0f);
+			ImGui::InputInt("Cols", &editorState.resizeCols);
+			ImGui::SetNextItemWidth(120.0f);
+			ImGui::InputInt("Rows", &editorState.resizeRows);
+			if (ImGui::Button("Resize")) {
+				editorState.resizeRequested = true;
+			}
 			ImGui::Separator();
 
+			ImGui::SetNextItemWidth(120.0f);
 			ImGui::InputText("File", editorState.saveFileName, sizeof(editorState.saveFileName));
 			if (ImGui::Button("Save")) {
 				editorState.saveRequested = true;
