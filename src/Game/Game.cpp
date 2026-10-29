@@ -153,6 +153,11 @@ void Game::ProccessInput()
 				break;
 
 			case SDL_KEYDOWN:
+
+				if (io.WantCaptureKeyboard) {
+					break;                       // ImGui is typing: no game shortcuts
+				}
+
 				if(sdlEvent.key.keysym.sym == SDLK_ESCAPE){
 					isRunning = false;
 				}
