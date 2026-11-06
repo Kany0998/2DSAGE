@@ -383,7 +383,8 @@ void Game::Update()
 				+ ", pathfinder: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
 				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
 			Logger::Log("Movement performance: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
-			Logger::Log("Collision performance: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) );
+			Logger::Log("Collision performance: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) +
+				", pairs tested: " +std::to_string(collisionSystem->pairsTested) + ", events fired: " + std::to_string(collisionSystem->collisionsEvents));
 			aiTimeSumMs = 0.0;
 			aiTimeMaxMs = 0.0;
 			collisionTimeSumMs = 0.0;

@@ -10,99 +10,60 @@
 #include "../Events/CollisionEvent.h"
 #include "../Utils/EntityGeometry.h"
 
-class CollisionSystem
-{
+class CollisionSystem{
 	public:
 		CollisionSystem() = default;
 
-		void Update(Registry& registry, std::unique_ptr<EventBus>& eventBus)
-		{
-			//Check all the enteties that have the box collider
-			//to see if they are colliding with each other
-			std::vector<Entity> entities;
-			for (auto rawEntity : registry.Raw().view<TransformComponent, BoxColliderComponent, SpriteComponent>())
-			{
-				entities.emplace_back(rawEntity, &registry);
+		int pairsTested = 0;
+		int collisionsEvents = 0;
+
+		void Update(Registry& registry, std::unique_ptr<EventBus>& eventBus){
+			
+			pairsTested = 0;
+			collisionsEvents = 0;
+			colliders.clear();
+
+			// read once per entity
+			for (auto rawEntity : registry.Raw().view<TransformComponent, BoxColliderComponent, SpriteComponent>()){
+				
+				Entity entity(rawEntity, &registry);
+
+				const auto& entityTransform = entity.GetComponent<TransformComponent>();
+				auto& entityCollider = entity.GetComponent<BoxColliderComponent>();
+
+				entityCollider.isColliding = false;
+
+				// Plain values only (box by value, layer as int): a collision event can create entities and move components, so a pointer into component storage could dangle.
+				const int entityLayer = entity.GetComponent<SpriteComponent>().layer;
+				
+				colliders.push_back({ entity, BoxAt(entity, entityTransform.position.x, entityTransform.position.y), entityLayer });
 			}
 
-			for (auto entity : entities)
-			{
-				auto& collider = entity.GetComponent<BoxColliderComponent>();
-				collider.isColliding = false;
-			}
+			// every pair once: j starts after i
+			for (size_t i = 0; i < colliders.size(); ++i) {
+				for (size_t j = i + 1; j < colliders.size(); ++j) {
+					
+					pairsTested++;
 
-			//looping all the entities that system is intrested in
-			for (auto i = entities.begin(); i != entities.end(); i++)
-			{
-				Entity a = *i;
-				auto aTransform = a.GetComponent<TransformComponent>();
-				auto& aCollider = a.GetComponent<BoxColliderComponent>();
-				//Only the layer is needed, and a bare int cannot dangle when a collision
-				//event below creates entities: SpriteComponent also carries a std::string,
-				//so copying the whole component per pair would allocate
-				const int aLayer = a.GetComponent<SpriteComponent>().layer;
-				//loop rest eneties on right of i never loop enties on left
-				for (auto j = i; j != entities.end(); j++)
-				{
-					Entity b = *j;
-					//bypass if somehow a is b
-					if (a == b)
-					{
-						continue;
-					}
-					auto bTransform = b.GetComponent<TransformComponent>();
-					auto& bCollider = b.GetComponent<BoxColliderComponent>();
-					const int bLayer = b.GetComponent<SpriteComponent>().layer;
-					//BoxAt applies the collider offset, the same box MovementSystem and PushResolver use
-					const Box aBox = BoxAt(a, aTransform.position.x, aTransform.position.y);
-					const Box bBox = BoxAt(b, bTransform.position.x, bTransform.position.y);
-					bool collisonHappend = Overlaps(aBox, bBox);
-
-					if (collisonHappend)
-					{
-						//Friendly fire / self-fire pairs never register as a collision at all
-						//(no isColliding flag, no event) - see IsCollisionExempt() below.
-						if (IsCollisionExempt(a, b))
-						{
-							continue;
-						}
-
-						//Logger::Log("Entity " + std::to_string(a.GetId()) + " is colliding with " +std::to_string(b.GetId()) );
-						//TODO: Event type
-						//possible collision events make sure that gound player/enemy wont destroy player/enemy in air just by simple collsion
-						bool playerInAir_vs_EnemyInAir =
-							(aLayer == 7 && bLayer == 6) ||
-							(bLayer == 7 && aLayer == 6);
-						bool playerInAir_vs_EnemyOnGround =
-							(aLayer == 7 && bLayer == 3) ||
-							(bLayer == 7 && aLayer == 3);
-						bool playerOnGround_vs_EnemyInAIr =
-							(aLayer == 4 && bLayer == 6) ||
-							(bLayer ==  4 && aLayer == 6);
-
-						if (playerInAir_vs_EnemyInAir)
-						{
-							aCollider.isColliding = true;
-							bCollider.isColliding = true;
-							eventBus->EmitEvent<CollisionEvent>(a, b);
-						}
-						else if (playerInAir_vs_EnemyOnGround || playerOnGround_vs_EnemyInAIr)
-						{
-							continue;
-						}
-						//collsion on gorund most likely
-						else
-						{
-							aCollider.isColliding = true;
-							bCollider.isColliding = true;
-							eventBus->EmitEvent<CollisionEvent>(a, b);
-						}
+					if (Overlaps(colliders[i].box, colliders[j].box)) {
+						
+						HandlePair(colliders[i], colliders[j], eventBus);
 					}
 				}
 			}
 		}
 
 
+	private:
+
+		struct Collidable {
+			Entity entity;
+			Box box;
+			int layer;
+		};
+
+		std::vector<Collidable> colliders;
+		
 		// Pairs that overlap spatially but should never be treated as a real collision:
 		//  - two enemies overlapping each other
 		//  - two projectiles overlapping each other, friendly or not
@@ -111,48 +72,82 @@ class CollisionSystem
 		// Uses ProjectileComponent::isFriendly plus the existing Tag/Group data, so it
 		// applies the same way regardless of whether the entity came from the Lua level
 		// or was spawned at runtime through the ImGui "Create new enemy" tool.
-		bool IsCollisionExempt(Entity a, Entity b)
-		{
-			if (a.BelongsToGroup("enemies") && b.BelongsToGroup("enemies"))
-			{
+		bool IsCollisionExempt(Entity a, Entity b) {
+			if (a.BelongsToGroup("enemies") && b.BelongsToGroup("enemies")) {
 				return true;
 			}
 
 			bool aIsProjectile = a.HasComponent<ProjectileComponent>();
 			bool bIsProjectile = b.HasComponent<ProjectileComponent>();
 
-			if (aIsProjectile && bIsProjectile)
-			{
+			if (aIsProjectile && bIsProjectile) {
 				return true;
 			}
 
-			if (aIsProjectile)
-			{
+			if (aIsProjectile) {
 				bool aIsFriendly = a.GetComponent<ProjectileComponent>().isFriendly;
-				if (aIsFriendly && b.HasTag("player"))
-				{
+				if (aIsFriendly && b.HasTag("player")) {
 					return true;
 				}
-				if (!aIsFriendly && b.BelongsToGroup("enemies"))
-				{
+				if (!aIsFriendly && b.BelongsToGroup("enemies")) {
 					return true;
 				}
 			}
 
-			if (bIsProjectile)
-			{
+			if (bIsProjectile) {
 				bool bIsFriendly = b.GetComponent<ProjectileComponent>().isFriendly;
-				if (bIsFriendly && a.HasTag("player"))
-				{
+				if (bIsFriendly && a.HasTag("player")) {
 					return true;
 				}
-				if (!bIsFriendly && a.BelongsToGroup("enemies"))
-				{
+				if (!bIsFriendly && a.BelongsToGroup("enemies")) {
 					return true;
 				}
 			}
 
 			return false;
+		}
+
+		void HandlePair(Collidable& a, Collidable& b, std::unique_ptr<EventBus>& eventBus) {
+			
+			if (IsCollisionExempt(a.entity, b.entity)){
+				return;
+			}
+
+			const int aLayer = a.layer;
+			const int bLayer = b.layer;
+
+
+			//possible collision events make sure that gound player/enemy wont destroy player/enemy in air just by simple collsion
+			bool playerInAir_vs_EnemyInAir =
+				(aLayer == 7 && bLayer == 6) ||
+				(bLayer == 7 && aLayer == 6);
+
+			bool playerInAir_vs_EnemyOnGround =
+				(aLayer == 7 && bLayer == 3) ||
+				(bLayer == 7 && aLayer == 3);
+
+			bool playerOnGround_vs_EnemyInAIr =
+				(aLayer == 4 && bLayer == 6) ||
+				(bLayer == 4 && aLayer == 6);
+
+			if (playerInAir_vs_EnemyInAir){
+				a.entity.GetComponent<BoxColliderComponent>().isColliding = true;
+				b.entity.GetComponent<BoxColliderComponent>().isColliding = true;
+				eventBus->EmitEvent<CollisionEvent>(a.entity, b.entity);
+				collisionsEvents++;
+			}
+
+			else if (playerInAir_vs_EnemyOnGround || playerOnGround_vs_EnemyInAIr){
+				return;
+			}
+
+			//collsion on gorund most likely
+			else{
+				a.entity.GetComponent<BoxColliderComponent>().isColliding = true;
+				b.entity.GetComponent<BoxColliderComponent>().isColliding = true;
+				eventBus->EmitEvent<CollisionEvent>(a.entity, b.entity);
+				collisionsEvents++;
+			}
 		}
 };
 
