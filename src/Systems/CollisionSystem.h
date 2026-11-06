@@ -9,6 +9,9 @@
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 #include "../Utils/EntityGeometry.h"
+#include <algorithm>
+#include <utility>
+
 
 class CollisionSystem{
 	public:
@@ -39,14 +42,24 @@ class CollisionSystem{
 				colliders.push_back({ entity, BoxAt(entity, entityTransform.position.x, entityTransform.position.y), entityLayer });
 			}
 
+			std::sort(colliders.begin(), colliders.end(), [](const Collidable& a, const Collidable& b) {
+				return a.box.left < b.box.left;
+				});
+
 			// every pair once: j starts after i
 			for (size_t i = 0; i < colliders.size(); ++i) {
+
+				const double rightEdge = colliders[i].box.left + colliders[i].box.width;
 				for (size_t j = i + 1; j < colliders.size(); ++j) {
 					
+					// sorted by left: every later box starts even further right, none can reach box i
+					if (rightEdge <= colliders[j].box.left) {
+						break;
+					}
+
 					pairsTested++;
 
 					if (Overlaps(colliders[i].box, colliders[j].box)) {
-						
 						HandlePair(colliders[i], colliders[j], eventBus);
 					}
 				}
@@ -149,6 +162,7 @@ class CollisionSystem{
 				collisionsEvents++;
 			}
 		}
+
 };
 
 
