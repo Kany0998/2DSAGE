@@ -143,6 +143,21 @@ class RenderEditorGUISystem {
 
 			ImGui::Separator();
 
+			const ImGuiStyle& style = ImGui::GetStyle();
+
+			//image + frame padding on both sides + gap to the next button
+			const float cellWidth = tileButtonSize + 2.0f * style.FramePadding.x + style.ItemSpacing.x;
+			const float cellHeight = tileButtonSize + 2.0f * style.FramePadding.y + style.ItemSpacing.y;
+
+			//Small tilesets shouldn't leave an empty box
+			const int shownRows = std::min(rows, visibleTileRows);
+
+			const float childWidth = tilesPerRow * cellWidth + style.ScrollbarSize + 2.0f * style.WindowPadding.x;
+			const float childHeight = shownRows * cellHeight + 2.0f * style.WindowPadding.y;
+
+			//Scrolling region for the tiles, the rest of the window stays fixed
+			ImGui::BeginChild("TilePalette", ImVec2(childWidth, childHeight), true);
+
 			for (int id = 0; id < count ; ++id) {
 				int posX = (id % tilesPerRow) * tileSize;
 				int posY = (id / tilesPerRow) * tileSize;
@@ -152,7 +167,7 @@ class RenderEditorGUISystem {
 				const ImVec2 uv1 = ImVec2(static_cast<float>(posX + tileSize) / textureWidth, static_cast<float>(posY + tileSize) / textureHeight);
 				
 				ImGui::PushID(id);
-				if (ImGui::ImageButton(texture, ImVec2(40, 40), uv0, uv1)) {
+				if (ImGui::ImageButton(texture, ImVec2(tileButtonSize, tileButtonSize), uv0, uv1)) {
 					editorState.selectedTileId = id;
 				}
 				ImGui::PopID();
@@ -166,7 +181,7 @@ class RenderEditorGUISystem {
 					ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 255, 0, 255), 0.0f, 0, 2.0f);
 				}
 			}
-
+			ImGui::EndChild();
 			ImGui::End();
 
 
@@ -176,6 +191,9 @@ class RenderEditorGUISystem {
 	private:
 		EditorState& editorState;
 		AssetStore& assetStore;
+
+		static constexpr float tileButtonSize = 40.0f;
+		static constexpr int visibleTileRows = 5;
 };
 
 #endif // !RENDEREDITORGUISYSTEM_H
