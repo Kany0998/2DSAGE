@@ -31,6 +31,8 @@ class AISystem
 		//Flip to see every search in the console; used for the repath measurements
 		bool logSearches = false;
 		int searchesDone = 0;
+		//Oldest path among deferred enemies this batch: keeps growing = starvation, bounded = a queue
+		double longestWaitSeconds = 0.0;
 		int searchesDeferred = 0;
 		double pathfinderMS = 0;
 
@@ -213,13 +215,15 @@ class AISystem
 					const int patrolRow = tileMap.IndexToRow(enemyAI.patrolTargetCell);
 
 					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
 
-					if (shouldSearch) {
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+					}
 
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
+					if (shouldSearch && canSearch) {
+
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
@@ -236,7 +240,6 @@ class AISystem
 							continue;
 						}
 					}
-					
 
 					const double targetX = patrolCol * tileWorldSize + tileWorldSize / 2.0;
 					const double targetY = patrolRow * tileWorldSize + tileWorldSize / 2.0;
@@ -254,14 +257,14 @@ class AISystem
 
 					enemyAI.repathTimer += deltaTime;
 					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= repathInterval;
+					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
 
-					if (shouldSearch) {
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+					}
 
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
-
+					if (shouldSearch && canSearch) {
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
@@ -317,14 +320,15 @@ class AISystem
 
 					//A player who stands still costs no searches at all
 					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
 
-					if (shouldSearch) {
-						//Over budget: keep the old path and try again next frame
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
+					//Over budget: keep the old path and try again next frame
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+					}
 
+					if (shouldSearch && canSearch) {
 
 						const PathPenalty* penalty = nullptr;
 
@@ -434,7 +438,6 @@ class AISystem
 						}
 
 					}
-
 
 					//Hulls touching, not centres coinciding, so a stop distance of 0 still looks right
 					const double enemyHalfSize = enemySprite.width * enemyTransform.scale.x / 2.0;
