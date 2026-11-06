@@ -6,11 +6,12 @@
 #include "../Components/TransformComponent.h"
 #include "../Components//SpriteComponent.h"
 #include "../Components/ProjectileComponent.h"
+#include "../Components/AIComponent.h"
+#include "../Components/ActiveComponent.h"
 #include "../EventBus/EventBus.h"
 #include "../Events/CollisionEvent.h"
 #include "../Utils/EntityGeometry.h"
 #include <algorithm>
-#include <utility>
 
 
 class CollisionSystem{
@@ -31,10 +32,19 @@ class CollisionSystem{
 				
 				Entity entity(rawEntity, &registry);
 
-				const auto& entityTransform = entity.GetComponent<TransformComponent>();
 				auto& entityCollider = entity.GetComponent<BoxColliderComponent>();
-
 				entityCollider.isColliding = false;
+
+				// Sleeping enemies (AI without ActiveComponent) are skipped: they don't move, and no
+				// friendly projectile reaches them. With the current Lua content the longest friendly
+				// shot is ~11 tiles, below the activation radius of 20 tiles (SimulationSettings).
+				// These values live in Lua: re-check this rule when weapon, ability or activation
+				// ranges change. Culling off makes every enemy active, so nothing is skipped.
+				if (entity.HasComponent<AIComponent>() && !entity.HasComponent<ActiveComponent>()) {
+					continue;
+				}
+
+				const auto& entityTransform = entity.GetComponent<TransformComponent>();
 
 				// Plain values only (box by value, layer as int): a collision event can create entities and move components, so a pointer into component storage could dangle.
 				const int entityLayer = entity.GetComponent<SpriteComponent>().layer;
@@ -42,9 +52,8 @@ class CollisionSystem{
 				colliders.push_back({ entity, BoxAt(entity, entityTransform.position.x, entityTransform.position.y), entityLayer });
 			}
 
-			std::sort(colliders.begin(), colliders.end(), [](const Collidable& a, const Collidable& b) {
-				return a.box.left < b.box.left;
-				});
+			std::sort(colliders.begin(), colliders.end(), [](const Collidable& a, const Collidable& b) {return a.box.left < b.box.left;});
+		
 
 			// every pair once: j starts after i
 			for (size_t i = 0; i < colliders.size(); ++i) {
