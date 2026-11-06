@@ -65,10 +65,13 @@ class AISystem
 			const int playerCol = tileMap.colAt(playerCenter.x);
 			const int playerRow = tileMap.rowAt(playerCenter.y);
 			const int playerCellIndex = tileMap.Index(playerCol, playerRow);
+			int position = -1;
+			int lastServed = -1;
 
 			int searchesThisFrame = 0;
 
 			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
+				++position;
 				Entity entity(rawEntity, &registry);
 				auto& enemyAI = entity.GetComponent<AIComponent>();
 				const auto& enemyTransform = entity.GetComponent<TransformComponent>();
@@ -215,7 +218,7 @@ class AISystem
 					const int patrolRow = tileMap.IndexToRow(enemyAI.patrolTargetCell);
 
 					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= repathInterval;
-					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					if (shouldSearch && !canSearch) {
 						searchesDeferred++;
@@ -228,6 +231,7 @@ class AISystem
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0;
 						enemyAI.lastTargetCell = enemyAI.patrolTargetCell;
@@ -257,7 +261,7 @@ class AISystem
 
 					enemyAI.repathTimer += deltaTime;
 					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= repathInterval;
-					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					if (shouldSearch && !canSearch) {
 						searchesDeferred++;
@@ -269,6 +273,7 @@ class AISystem
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
 						enemyAI.lastTargetCell = spawnCellIndex;
@@ -320,7 +325,7 @@ class AISystem
 
 					//A player who stands still costs no searches at all
 					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= repathInterval;
-					const bool canSearch = searchesThisFrame < maxSearchesPerFrame;
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					//Over budget: keep the old path and try again next frame
 					if (shouldSearch && !canSearch) {
@@ -368,6 +373,7 @@ class AISystem
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
 						enemyAI.lastTargetCell = playerCellIndex;
@@ -447,6 +453,7 @@ class AISystem
 					FollowPath(enemyAI, enemyRigidBody, enemyCenter, playerCenter, effectiveStopRange, tileMap, deltaTime);
 				}
 			}
+			searchCursor = lastServed + 1;
 		}
 
 
@@ -477,9 +484,9 @@ class AISystem
 
 		static constexpr double aggroCooldownSeconds = 5.0;
 
-
 		PathPenalty lanePenalty;
 
+		int searchCursor = 0;
 
 		//Steers along ai.path; the last leg aims at finalTarget itself rather than its tile centre.
 		//Returns true once within stopDistance of finalTarget, having stopped there
@@ -548,6 +555,10 @@ class AISystem
 			//Velocity, never position: MovementSystem still applies terrain collision and speedPower
 			rigidBody.velocity = glm::vec2(wdx / length * speedThisFrame, wdy / length * speedThisFrame);
 			return false;
+		}
+
+		bool CanSearch(int position, int searchesThisFrame) const{
+			return (searchesThisFrame < maxSearchesPerFrame) && (position >= searchCursor);
 		}
 
 		
