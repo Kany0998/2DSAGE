@@ -9,14 +9,16 @@ struct AnimationComponent
 	int currentFrame;
 	int frameSpeedRate;
 	bool isLoop;
+	bool onlyWhenMoving;
 	int startTime;
 
-	AnimationComponent(int numFrames = 1, int frameSpeedRate = 1, bool isLoop = true)
+	AnimationComponent(int numFrames = 1, int frameSpeedRate = 1, bool isLoop = true, bool onlyWhenMoving = false)
 	{
 		this->numFrames = numFrames;
 		this->currentFrame = 1;
 		this->frameSpeedRate = frameSpeedRate;
 		this->isLoop = isLoop;
+		this->onlyWhenMoving = onlyWhenMoving;
 		this->startTime = SDL_GetTicks();
 	}
 };

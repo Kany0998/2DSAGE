@@ -260,7 +260,9 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			{
 				newEntity.AddComponent<AnimationComponent>(
 					entity["components"]["animation"]["num_frames"].get_or(1),
-					entity["components"]["animation"]["speed_rate"].get_or(1)
+					entity["components"]["animation"]["speed_rate"].get_or(1),
+					entity["components"]["animation"]["is_loop"].get_or(true),
+					entity["components"]["animation"]["only_when_moving"].get_or(false)
 				);
 			}
 
