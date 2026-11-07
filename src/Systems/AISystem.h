@@ -339,9 +339,14 @@ class AISystem
 
 				if (enemyAI.state == AIState::Chase) {
 					enemyAI.repathTimer += deltaTime;
+					const bool firstSearch = enemyAI.lastTargetCell == -1;
+					const int distanceInTiles = std::max(std::abs(enemyCol - playerCol), std::abs(enemyRow - playerRow));
+					const bool playerMoved = playerCellIndex != enemyAI.lastTargetCell;
 
-					//A player who stands still costs no searches at all
-					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= chaseRepathSeconds;
+					//search on entering Chase quickly after a failure when the player changed cell and the
+					//distance-based gap has passed or every staleRefreshSeconds while the player stands still
+					const bool shouldSearch = firstSearch || (enemyAI.failedSearchCount > 0 && enemyAI.repathTimer >= retryAfterFailSeconds)
+						|| (playerMoved && enemyAI.repathTimer >= ChaseGap(distanceInTiles)) || enemyAI.repathTimer >= staleRefreshSeconds;
 					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					//Over budget: keep the old path and try again next frame
@@ -488,8 +493,12 @@ class AISystem
 		//the target did not move refresh only in case the enemy was pushed off its path (like slipped on ice)
 		static constexpr double staleRefreshSeconds = 2.0;
 
-		//player moves a chase path older than this is searched again even if the player has not changed cell
-		static constexpr double chaseRepathSeconds = 0.5;
+		//One tile further from goal means +0.1 sec
+		static constexpr double chaseGapPerTile = 0.1;
+
+		//Close chasers stay sharp (at most 4 searches/s) far ones never hold a path older than this while the player moves
+		static constexpr double minChaseGap = 0.25;
+		static constexpr double maxChaseGap = 1.50;
 
 		//Searching is the expensive part of a frame; enemies over budget wait rather than stall
 		static constexpr int maxSearchesPerFrame = 2;
@@ -587,6 +596,11 @@ class AISystem
 		//The whole budget rule: budget left this frame, and this enemy's turn has come
 		bool CanSearch(int position, int searchesThisFrame) const{
 			return (searchesThisFrame < maxSearchesPerFrame) && (position >= searchCursor);
+		}
+
+		//The chase repath timer depanded on tile distance
+		static double ChaseGap(int distanceInTiles) {
+			return std::clamp(distanceInTiles * chaseGapPerTile, minChaseGap, maxChaseGap);
 		}
 
 		
