@@ -31,7 +31,7 @@ class AISystem
 		//Flip to see every search in the console; used for the repath measurements
 		bool logSearches = false;
 		int searchesDone = 0;
-		//Oldest path among deferred enemies this batch: keeps growing = starvation, bounded = a queue
+		//Longest an enemy has asked for a search without being served, this batch: keeps growing = starvation, bounded = a queue
 		double longestWaitSeconds = 0.0;
 		int searchesDeferred = 0;
 		double pathfinderMS = 0;
@@ -65,6 +65,7 @@ class AISystem
 			const int playerCol = tileMap.colAt(playerCenter.x);
 			const int playerRow = tileMap.rowAt(playerCenter.y);
 			const int playerCellIndex = tileMap.Index(playerCol, playerRow);
+
 			int position = -1;
 			int lastServed = -1;
 
@@ -151,6 +152,10 @@ class AISystem
 					Logger::Log("Enemy " + std::to_string(entity.GetId()) + (enemyAI.state == AIState::Chase ? " started chasing" : " stopped chasing"));
 				}
 
+
+				//==================== PATROL ====================
+
+
 				if (enemyAI.state == AIState::Patrol) {
 					if (enemyAI.patrolRadius <= 0.0) {
 						enemyRigidBody.velocity = glm::vec2{ 0.0, 0.0 };
@@ -217,12 +222,13 @@ class AISystem
 					const int patrolCol = tileMap.IndexToCol(enemyAI.patrolTargetCell);
 					const int patrolRow = tileMap.IndexToRow(enemyAI.patrolTargetCell);
 
-					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= staleRefreshSeconds;
 					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					if (shouldSearch && !canSearch) {
 						searchesDeferred++;
-						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
 					}
 
 					if (shouldSearch && canSearch) {
@@ -233,7 +239,8 @@ class AISystem
 						searchesThisFrame++;
 						lastServed = position;
 						searchesDone++;
-						enemyAI.repathTimer = 0;
+						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = enemyAI.patrolTargetCell;
 						enemyAI.waypointIndex = 0;
 
@@ -255,17 +262,22 @@ class AISystem
 					continue;
 				}
 
+
+
+				//==================== RETURN ====================
+
 				if (enemyAI.state == AIState::Return) {
 					const int spawnCellIndex = tileMap.Index(spawnCol, spawnRow);
 
 
 					enemyAI.repathTimer += deltaTime;
-					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= repathInterval;
+					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= (enemyAI.failedSearchCount > 0 ? retryAfterFailSeconds : staleRefreshSeconds);
 					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					if (shouldSearch && !canSearch) {
 						searchesDeferred++;
-						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
 					}
 
 					if (shouldSearch && canSearch) {
@@ -276,6 +288,7 @@ class AISystem
 						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = spawnCellIndex;
 						enemyAI.waypointIndex = 0;
 
@@ -320,17 +333,22 @@ class AISystem
 					continue;
 				}
 
+
+				//==================== CHASE ====================
+
+
 				if (enemyAI.state == AIState::Chase) {
 					enemyAI.repathTimer += deltaTime;
 
 					//A player who stands still costs no searches at all
-					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= chaseRepathSeconds;
 					const bool canSearch = CanSearch(position, searchesThisFrame);
 
 					//Over budget: keep the old path and try again next frame
 					if (shouldSearch && !canSearch) {
 						searchesDeferred++;
-						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.repathTimer);
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
 					}
 
 					if (shouldSearch && canSearch) {
@@ -376,6 +394,7 @@ class AISystem
 						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = playerCellIndex;
 						enemyAI.waypointIndex = 0;
 
@@ -453,6 +472,7 @@ class AISystem
 					FollowPath(enemyAI, enemyRigidBody, enemyCenter, playerCenter, effectiveStopRange, tileMap, deltaTime);
 				}
 			}
+			//Nobody served (-1) gives 0: the round is over, start again from the front
 			searchCursor = lastServed + 1;
 		}
 
@@ -462,8 +482,14 @@ class AISystem
 		//flip state every frame
 		static constexpr double chaseExitMultiplier = 1.2;
 
-		//A path older than this is searched again even if the player has not changed cell
-		static constexpr double repathInterval = 0.5;
+		//A failed search is retried this soon: Return snaps home after maxFailedSearches so retries must stay quick
+		static constexpr double retryAfterFailSeconds = 0.5;
+
+		//the target did not move refresh only in case the enemy was pushed off its path (like slipped on ice)
+		static constexpr double staleRefreshSeconds = 2.0;
+
+		//player moves a chase path older than this is searched again even if the player has not changed cell
+		static constexpr double chaseRepathSeconds = 0.5;
 
 		//Searching is the expensive part of a frame; enemies over budget wait rather than stall
 		static constexpr int maxSearchesPerFrame = 2;
@@ -486,6 +512,7 @@ class AISystem
 
 		PathPenalty lanePenalty;
 
+		// Where serving starts next frame : right after the last enemy served, so the budget takes turns instead of always going to the front of the view
 		int searchCursor = 0;
 
 		//Steers along ai.path; the last leg aims at finalTarget itself rather than its tile centre.
@@ -557,6 +584,7 @@ class AISystem
 			return false;
 		}
 
+		//The whole budget rule: budget left this frame, and this enemy's turn has come
 		bool CanSearch(int position, int searchesThisFrame) const{
 			return (searchesThisFrame < maxSearchesPerFrame) && (position >= searchCursor);
 		}
