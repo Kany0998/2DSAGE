@@ -258,6 +258,7 @@ class AISystem
 					if (FollowPath(enemyAI, enemyRigidBody, enemyCenter, glm::vec2(targetX, targetY), tileWorldSize * arrivalRadiusInTiles, tileMap, deltaTime)) {
 						enemyAI.patrolPauseTimer = enemyAI.patrolPause;
 						enemyAI.patrolTargetCell = -1;
+						enemyAI.waitingSeconds = 0.0;
 					}
 					continue;
 				}
@@ -339,6 +340,7 @@ class AISystem
 
 				if (enemyAI.state == AIState::Chase) {
 					enemyAI.repathTimer += deltaTime;
+
 					const bool firstSearch = enemyAI.lastTargetCell == -1;
 					const int distanceInTiles = std::max(std::abs(enemyCol - playerCol), std::abs(enemyRow - playerRow));
 					const bool playerMoved = playerCellIndex != enemyAI.lastTargetCell;
