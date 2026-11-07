@@ -39,6 +39,7 @@ struct AIComponent {
 	int failedSearchCount;
 	double aggroCooldown;
 	double aggroTimer;
+	double waitingSeconds;			//How long this enemy has asked for a search without being served only for the debug line
 
 	std::vector<int> laneCells;
 
@@ -60,9 +61,10 @@ struct AIComponent {
 		this->scriptControlsVelocity = false;
 		this->patrolTargetCell = -1;
 		this->patrolPauseTimer = 0.0;
-		this->failedSearchCount = 0.0;
+		this->failedSearchCount = 0;
 		this->aggroCooldown = 0.0;
 		this->aggroTimer = 0.0;
+		this->waitingSeconds = 0.0;
 
 	}
 
@@ -75,6 +77,7 @@ inline void EnterAIState(AIComponent& ai, AIState next) {
 	ai.waypointIndex = 0;
 	ai.lastTargetCell = -1;
 	ai.repathTimer = 0.0;
+	ai.waitingSeconds = 0.0;
 	ai.failedSearchCount = 0;
 	ai.laneCells.clear();
 	if (next == AIState::Patrol) {

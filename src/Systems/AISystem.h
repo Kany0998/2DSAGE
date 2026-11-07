@@ -31,6 +31,8 @@ class AISystem
 		//Flip to see every search in the console; used for the repath measurements
 		bool logSearches = false;
 		int searchesDone = 0;
+		//Longest an enemy has asked for a search without being served, this batch: keeps growing = starvation, bounded = a queue
+		double longestWaitSeconds = 0.0;
 		int searchesDeferred = 0;
 		double pathfinderMS = 0;
 
@@ -64,9 +66,13 @@ class AISystem
 			const int playerRow = tileMap.rowAt(playerCenter.y);
 			const int playerCellIndex = tileMap.Index(playerCol, playerRow);
 
+			int position = -1;
+			int lastServed = -1;
+
 			int searchesThisFrame = 0;
 
 			for (auto rawEntity : registry.Raw().view<AIComponent, TransformComponent, SpriteComponent, RigidBodyComponent, MovementTypeComponent, ActiveComponent>()) {
+				++position;
 				Entity entity(rawEntity, &registry);
 				auto& enemyAI = entity.GetComponent<AIComponent>();
 				const auto& enemyTransform = entity.GetComponent<TransformComponent>();
@@ -146,6 +152,10 @@ class AISystem
 					Logger::Log("Enemy " + std::to_string(entity.GetId()) + (enemyAI.state == AIState::Chase ? " started chasing" : " stopped chasing"));
 				}
 
+
+				//==================== PATROL ====================
+
+
 				if (enemyAI.state == AIState::Patrol) {
 					if (enemyAI.patrolRadius <= 0.0) {
 						enemyRigidBody.velocity = glm::vec2{ 0.0, 0.0 };
@@ -212,20 +222,25 @@ class AISystem
 					const int patrolCol = tileMap.IndexToCol(enemyAI.patrolTargetCell);
 					const int patrolRow = tileMap.IndexToRow(enemyAI.patrolTargetCell);
 
-					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool shouldSearch = enemyAI.lastTargetCell != enemyAI.patrolTargetCell || enemyAI.repathTimer >= staleRefreshSeconds;
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
-					if (shouldSearch) {
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
+					}
 
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
+					if (shouldSearch && canSearch) {
+
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, patrolCol, patrolRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
-						enemyAI.repathTimer = 0;
+						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = enemyAI.patrolTargetCell;
 						enemyAI.waypointIndex = 0;
 
@@ -236,7 +251,6 @@ class AISystem
 							continue;
 						}
 					}
-					
 
 					const double targetX = patrolCol * tileWorldSize + tileWorldSize / 2.0;
 					const double targetY = patrolRow * tileWorldSize + tileWorldSize / 2.0;
@@ -244,30 +258,38 @@ class AISystem
 					if (FollowPath(enemyAI, enemyRigidBody, enemyCenter, glm::vec2(targetX, targetY), tileWorldSize * arrivalRadiusInTiles, tileMap, deltaTime)) {
 						enemyAI.patrolPauseTimer = enemyAI.patrolPause;
 						enemyAI.patrolTargetCell = -1;
+						enemyAI.waitingSeconds = 0.0;
 					}
 					continue;
 				}
+
+
+
+				//==================== RETURN ====================
 
 				if (enemyAI.state == AIState::Return) {
 					const int spawnCellIndex = tileMap.Index(spawnCol, spawnRow);
 
 
 					enemyAI.repathTimer += deltaTime;
-					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= repathInterval;
+					const bool shouldSearch = enemyAI.lastTargetCell != spawnCellIndex || enemyAI.repathTimer >= (enemyAI.failedSearchCount > 0 ? retryAfterFailSeconds : staleRefreshSeconds);
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
-					if (shouldSearch) {
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
+					}
 
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
-
+					if (shouldSearch && canSearch) {
 
 						const bool found = pathfinder.FindPath(tileMap, enemyCol, enemyRow, spawnCol, spawnRow, enemyMovementType.movementType, enemyAI.path, searchBounds);
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = spawnCellIndex;
 						enemyAI.waypointIndex = 0;
 
@@ -312,19 +334,31 @@ class AISystem
 					continue;
 				}
 
+
+				//==================== CHASE ====================
+
+
 				if (enemyAI.state == AIState::Chase) {
 					enemyAI.repathTimer += deltaTime;
 
-					//A player who stands still costs no searches at all
-					const bool shouldSearch = playerCellIndex != enemyAI.lastTargetCell || enemyAI.repathTimer >= repathInterval;
+					const bool firstSearch = enemyAI.lastTargetCell == -1;
+					const int distanceInTiles = std::max(std::abs(enemyCol - playerCol), std::abs(enemyRow - playerRow));
+					const bool playerMoved = playerCellIndex != enemyAI.lastTargetCell;
 
-					if (shouldSearch) {
-						//Over budget: keep the old path and try again next frame
-						if (searchesThisFrame >= maxSearchesPerFrame) {
-							searchesDeferred++;
-							continue;
-						}
+					//search on entering Chase quickly after a failure when the player changed cell and the
+					//distance-based gap has passed or every staleRefreshSeconds while the player stands still
+					const bool shouldSearch = firstSearch || (enemyAI.failedSearchCount > 0 && enemyAI.repathTimer >= retryAfterFailSeconds)
+						|| (playerMoved && enemyAI.repathTimer >= ChaseGap(distanceInTiles)) || enemyAI.repathTimer >= staleRefreshSeconds;
+					const bool canSearch = CanSearch(position, searchesThisFrame);
 
+					//Over budget: keep the old path and try again next frame
+					if (shouldSearch && !canSearch) {
+						searchesDeferred++;
+						enemyAI.waitingSeconds += deltaTime;
+						longestWaitSeconds = std::max(longestWaitSeconds, enemyAI.waitingSeconds);
+					}
+
+					if (shouldSearch && canSearch) {
 
 						const PathPenalty* penalty = nullptr;
 
@@ -364,8 +398,10 @@ class AISystem
 						pathfinderMS += pathfinder.LastStats().searchMs + pathfinder.LastStats().resetMs;
 
 						searchesThisFrame++;
+						lastServed = position;
 						searchesDone++;
 						enemyAI.repathTimer = 0.0;
+						enemyAI.waitingSeconds = 0.0;
 						enemyAI.lastTargetCell = playerCellIndex;
 						enemyAI.waypointIndex = 0;
 
@@ -435,7 +471,6 @@ class AISystem
 
 					}
 
-
 					//Hulls touching, not centres coinciding, so a stop distance of 0 still looks right
 					const double enemyHalfSize = enemySprite.width * enemyTransform.scale.x / 2.0;
 					const double playerHalfSize = playerSprite.width * playerTransform.scale.x / 2.0;
@@ -444,6 +479,8 @@ class AISystem
 					FollowPath(enemyAI, enemyRigidBody, enemyCenter, playerCenter, effectiveStopRange, tileMap, deltaTime);
 				}
 			}
+			//Nobody served (-1) gives 0: the round is over, start again from the front
+			searchCursor = lastServed + 1;
 		}
 
 
@@ -452,8 +489,18 @@ class AISystem
 		//flip state every frame
 		static constexpr double chaseExitMultiplier = 1.2;
 
-		//A path older than this is searched again even if the player has not changed cell
-		static constexpr double repathInterval = 0.5;
+		//A failed search is retried this soon: Return snaps home after maxFailedSearches so retries must stay quick
+		static constexpr double retryAfterFailSeconds = 0.5;
+
+		//the target did not move refresh only in case the enemy was pushed off its path (like slipped on ice)
+		static constexpr double staleRefreshSeconds = 2.0;
+
+		//One tile further from goal means +0.1 sec
+		static constexpr double chaseGapPerTile = 0.1;
+
+		//Close chasers stay sharp (at most 4 searches/s) far ones never hold a path older than this while the player moves
+		static constexpr double minChaseGap = 0.25;
+		static constexpr double maxChaseGap = 1.50;
 
 		//Searching is the expensive part of a frame; enemies over budget wait rather than stall
 		static constexpr int maxSearchesPerFrame = 2;
@@ -474,9 +521,10 @@ class AISystem
 
 		static constexpr double aggroCooldownSeconds = 5.0;
 
-
 		PathPenalty lanePenalty;
 
+		// Where serving starts next frame : right after the last enemy served, so the budget takes turns instead of always going to the front of the view
+		int searchCursor = 0;
 
 		//Steers along ai.path; the last leg aims at finalTarget itself rather than its tile centre.
 		//Returns true once within stopDistance of finalTarget, having stopped there
@@ -545,6 +593,16 @@ class AISystem
 			//Velocity, never position: MovementSystem still applies terrain collision and speedPower
 			rigidBody.velocity = glm::vec2(wdx / length * speedThisFrame, wdy / length * speedThisFrame);
 			return false;
+		}
+
+		//The whole budget rule: budget left this frame, and this enemy's turn has come
+		bool CanSearch(int position, int searchesThisFrame) const{
+			return (searchesThisFrame < maxSearchesPerFrame) && (position >= searchCursor);
+		}
+
+		//The chase repath timer depanded on tile distance
+		static double ChaseGap(int distanceInTiles) {
+			return std::clamp(distanceInTiles * chaseGapPerTile, minChaseGap, maxChaseGap);
 		}
 
 		

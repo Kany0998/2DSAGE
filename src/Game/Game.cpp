@@ -381,7 +381,7 @@ void Game::Update()
 			Logger::Log("AI: avg: " + std::to_string(aiTimeSumMs / aiTimeFrames) + " ms/frame, max: " + std::to_string(aiTimeMaxMs) +
 				" ms, searches: " + std::to_string(aiSystem->searchesDone) + ", deferred: " + std::to_string(aiSystem->searchesDeferred)
 				+ ", pathfinder: " + std::to_string(aiSystem->pathfinderMS) + " ms, enemies: " + std::to_string(registry->Raw().view<AIComponent>().size())
-				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()));
+				+ ", active: " + std::to_string(registry->Raw().view<ActiveComponent>().size()) + ", longest wait: " + std::to_string(aiSystem->longestWaitSeconds) +" s");
 			Logger::Log("Movement performance: " + std::to_string(movementTimeSumMs / aiTimeFrames) + " ms/frame, max: "+ std::to_string(movementTimeMaxMs) );
 			Logger::Log("Collision performance: " + std::to_string(collisionTimeSumMs / aiTimeFrames) + " ms/frame, max: "+std::to_string(collisionTimeMaxMs) +
 				", pairs tested: " +std::to_string(collisionSystem->pairsTested) + ", events fired: " + std::to_string(collisionSystem->collisionsEvents));
@@ -395,6 +395,7 @@ void Game::Update()
 			aiSystem->searchesDone = 0;
 			aiSystem->searchesDeferred = 0;
 			aiSystem->pathfinderMS = 0;
+			aiSystem->longestWaitSeconds = 0.0;
 		}
 	}
 	else {
@@ -408,6 +409,7 @@ void Game::Update()
 		collisionTimeMaxMs = 0.0;
 		movementTimeSumMs = 0.0;
 		movementTimeMaxMs = 0.0;
+		aiSystem->longestWaitSeconds = 0.0;
 	}
 
 	cameraMovementSystem->Update(*registry, camera);
