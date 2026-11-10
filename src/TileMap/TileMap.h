@@ -13,7 +13,7 @@ class TileMap {
 		std::string textureAssetId;
 		double tileScale = 0.0;
 		double tileWorldSize = 0.0;
-		static constexpr int tileIdCount = 100;
+		static constexpr int tileIdCount = 256;
 		std::string fileName;
 
 		// What each tile id blocks, indexed by the id itself. Ids in the .map file are

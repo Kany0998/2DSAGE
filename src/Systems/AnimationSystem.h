@@ -22,6 +22,14 @@ class AnimationSystem
 				auto& animation = entity.GetComponent<AnimationComponent>();
 				auto& sprite = entity.GetComponent<SpriteComponent>();
 
+				if (entity.HasComponent<RigidBodyComponent>() && entity.GetComponent<RigidBodyComponent>().velocity.x < 0 && !entity.HasTag("player")) {
+					sprite.flip = SDL_FLIP_HORIZONTAL;
+				}
+
+				else {
+					sprite.flip = SDL_FLIP_NONE;
+				}
+
 				if (animation.onlyWhenMoving && (entity.HasComponent<RigidBodyComponent>() && entity.GetComponent<RigidBodyComponent>().velocity == glm::vec2(0.0, 0.0))) {
 					animation.currentFrame = 0;
 					animation.startTime = SDL_GetTicks();

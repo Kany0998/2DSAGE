@@ -9,6 +9,8 @@ else
 	map_texute_asset_id = "tilemap-texture-night"
 end
 
+map_texute_asset_id = "tilemap-texture-test"
+
 --tables for level 1
 Level = {
 	--Table of assets
@@ -35,19 +37,18 @@ Level = {
 
 	tilemap =
 	{
-		map_file = "./assets/tilemaps/jungle.map",
+		map_file = "./assets/tilemaps/LevelOne.map",
 		texture_asset_id = map_texute_asset_id,
 		mapNumRows = 20,
 		mapNumCols = 25,
-		tileSize = 32,
-		tileScale = 4.0,
+		tileSize = 16,
+		tileScale = 8.0,
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.70, acceleration = 400, step_sound = "footstep-ice"},
-			[1] = {tile_id = 9, speed_multiplier = 2.5},   -- shore
-			[2] = {tile_id = 15, speed_multiplier = 0.7},    -- swamp
-			[3] = {tile_id = 14, speed_multiplier = 0.5},    -- shallow water
+			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.90, acceleration = 100, step_sound = "footstep-ice"},
+			[1] = {tile_id = 81, speed_multiplier = 1.0, friction = 0.60, acceleration = 200, step_sound = "footstep-ice"},
+			[2] = {tile_id = 9, speed_multiplier = 1.2},   -- plains
 		},
 	},
 
@@ -64,7 +65,6 @@ Level = {
 			{ name =  "obstacle", from = {col =11, row = 6}, to = {col =21, row = 6}},
 			{ name =  "water", from = {col =1,row = 7}, to = {col =7,row = 7}},
 			{ name =  "unreachable", from = {col =11,row = 6}, to = {col =3,row = 1}},
-			{ name = "unreachable near bounded", from = {col = 11, row = 6}, to = {col = 3, row = 1}, bound_radius_tiles = 20 },
 			{ name = "shore", from = {col = 11, row = 6}, to = {col = 21, row = 7} },
 		},
 	},
@@ -81,7 +81,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 1000, y = 1000},
+					position = {x = 330, y = 900},
 					scale = {x = 3.0, y = 3.0},
 					rotation = 0.0 --deg
 				},
@@ -103,7 +103,9 @@ Level = {
 				animation = 
 				{
 					num_frames = 2,
-					speed_rate = 10
+					speed_rate = 10,
+					is_loop = true,
+					only_when_moving = true
 				},
 				boxcollider =
 				{
@@ -124,7 +126,7 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 1,
+					defense = 1000,
 					wisdom = 100,
 					vitality = 1,
 					speed = 100,
@@ -149,10 +151,10 @@ Level = {
 				},
 				keyboard_controlled =
 				{
-					up_velocity = {x = 0, y = -100},
-					right_velocity = {x = 100, y = 0},
-					down_velocity = {x = 0, y = 100},
-					left_velocity = {x = -100, y = 0},
+					up_velocity = {x = 0, y = -130},
+					right_velocity = {x = 130, y = 0},
+					down_velocity = {x = 0, y = 130},
+					left_velocity = {x = -130, y = 0},
 					diagnalMovement = true
 				},
 				progression =
@@ -166,7 +168,7 @@ Level = {
 				},
 				movement_type =
 				{
-					type = "ground"
+					type = "flying"
 				},
 				camera_follow =
 				{
@@ -210,8 +212,8 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 1216, y = 1216},
-					scale = {x = 2.0, y = 2.0},
+					position = {x = 1400, y = 850},
+					scale = {x = 4.0, y = 4.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
@@ -221,18 +223,25 @@ Level = {
 				},
 				sprite = 
 				{
-					texture_asset_id = "tank-texture",
-					width = 32,
-					height = 32,
+					texture_asset_id = "goblin-texture",
+					width = 16,
+					height = 16,
 					layer  = 3,
 					fixed = false,
 					src_rect_x = 0,
 					src_rect_y = 0
 				},
+				animation = 
+				{
+					num_frames = 4,
+					speed_rate = 4,
+					is_loop = true,
+					only_when_moving = true
+				},
 				boxcollider =
 				{
-					width = 32,
-					height = 32,
+					width = 16,
+					height = 16,
 					offset = {x = 0, y = 0}
 				},
 				health =
@@ -247,7 +256,7 @@ Level = {
 				sounds = 
 				{ 
 					hurt = "enemy-hurt",
-					death = "enemy-hurt",
+					death = "goblin-idle-3",
 					idle = "goblin-idle-1",
 					idle_min_seconds = 5,
 					idle_max_seconds = 12
@@ -268,9 +277,9 @@ Level = {
 				},
 				ai =
 				{
-					detection_range = 12,
+					detection_range = 8,
 					stop_distance = 1.0,
-					leash_range = 10,
+					leash_range = 105,
 					move_speed = 100,
 					patrol_radius = 3,   -- tiles, measured from the spawn point
 					patrol_pause = 2.0  -- seconds to wait after reaching a point
@@ -293,7 +302,7 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = -100, y = 0},
+					velocity = {x = 0, y = 0},
 					mass = 2.5
 				},
 				sprite = 
@@ -753,7 +762,7 @@ Level = {
 				},
 				rigidbody =
 				{
-					velocity = {x = 100, y = 0},
+					velocity = {x = 0, y = 0},
 					mass = 1.5
 				},
 				sprite = 
@@ -774,8 +783,8 @@ Level = {
 				},
 				health =
 				{
-					health_points = 10000,
-					max_health_points = 10000
+					health_points = 100,
+					max_health_points = 100
 				},
 				experience_reward =
 				{
@@ -826,7 +835,8 @@ Controls =
 	equipment = "I",
 	backpack = "B", 
 	character = "C",
-	options = "O"
+	options = "O",
+	editor = "E"
 }
 
 InventoryUI =
@@ -859,10 +869,17 @@ AudioSettings =
 
 SimulationSettings =
 {
-    enable = true,
+    enable = false,
     activate_radius_tiles = 20,
     deactivate_radius_tiles = 26,
     check_interval_seconds = 0.25,
+}
+
+FlankingSettings =
+{
+    enable = true,
+    penalty_tiles_cost = 4.0,
+    ignore_radius_tiles = 5,
 }
 
 --map in pixels
@@ -870,7 +887,7 @@ map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.ti
 map_height = Level.tilemap.mapNumRows * Level.tilemap.tileSize * Level.tilemap.tileScale
 
 
-stress_enemies = 0                       -- 0 = off; e.g. 500 or 2000 for the measurement
+stress_enemies = 500                      -- 0 = off; e.g. 500 or 2000 for the measurement
 
 local tile_world_size = Level.tilemap.tileSize * Level.tilemap.tileScale
 
@@ -887,7 +904,7 @@ local function MakeStressTank(xpos, ypos)
 				},
 				rigidbody =
 				{
-					velocity = {x = -100, y = 0},
+					velocity = {x = 0, y = 0},
 					mass = 2.5
 				},
 				sprite = 
@@ -943,7 +960,7 @@ local function MakeStressTank(xpos, ypos)
 					stop_distance = 1.0,
 					leash_range = 8,
 					move_speed = 100,
-					patrol_radius = 3,   -- tiles, measured from the spawn point
+					patrol_radius = 3,
 					patrol_pause = 2.0
 				},
 				loot = { table = "forest_tank" }
@@ -957,4 +974,18 @@ for i = 0, stress_enemies - 1 do
     local col = copy_x * 25 + 18          -- local (18, 12): walkable in every copy
     local row = copy_y * 20 + 12
     table.insert(Level.entities, MakeStressTank(col * tile_world_size, row * tile_world_size))
+end
+
+
+--flank_test = true   -- flank_40x40.map: 4 chasers in the right yard
+if flank_test then
+    local chaser_cells = { {33, 14}, {34, 14}, {35, 15}, {35, 16}, {32, 19}, {33, 20}, {33, 18} }
+    for _, cell in ipairs(chaser_cells) do
+        local tank = MakeStressTank(cell[1] * tile_world_size, cell[2] * tile_world_size)
+        tank.components.transform.scale = {x = 2.0, y = 2.0}   -- fits a 1-tile lane
+        tank.components.ai.detection_range = 38                 -- they see you at once
+        tank.components.ai.leash_range = 52                     -- both lanes inside the leash
+		tank.components.ai.move_speed = 50
+        table.insert(Level.entities, tank)
+    end
 end

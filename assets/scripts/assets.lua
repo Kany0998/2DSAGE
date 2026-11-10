@@ -7,6 +7,7 @@ return {
 	[0] =
 	{type = "texture", id = "tilemap-texture-day",   file = "./assets/tilemaps/jungle.png"},
 	{type = "texture", id = "tilemap-texture-night", file = "./assets/tilemaps/jungle-night.png"},
+	{type = "texture", id = "tilemap-texture-test", file = "./assets/tilemaps/Map_tiles.png"},
 
 	-- units and props
 	{type = "texture", id = "chopper-texture", file = "./assets/images/chopper-spritesheet.png"},
@@ -15,6 +16,7 @@ return {
 	{type = "texture", id = "truck-texture",   file = "./assets/images/truck-ford-right.png"},
 	{type = "texture", id = "tree-texture",    file = "./assets/images/tree.png"},
 	{type = "texture", id = "radar-texture",   file = "./assets/images/radar.png"},
+	{type = "texture", id = "goblin-texture",   file = "./assets/images/enemies/desert-goblin.png"},
 
 	-- projectiles
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
