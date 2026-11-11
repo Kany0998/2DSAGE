@@ -2,7 +2,6 @@
 #include <iostream>
 #include <ctime>
 #include <chrono>
-#include <ctime>
 
 std::deque<LogEntry> Logger::messages;
 
@@ -11,7 +10,13 @@ std::string CurrentDateTimeToString()
 {
     std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::tm tm_buf;
-    localtime_s(&tm_buf, &now);
+
+#ifdef _WIN32
+	localtime_s(&tm_buf, &now);
+#else
+	localtime_r(&now, &tm_buf);
+#endif
+
 
     std::string output(30, '\0');
     std::strftime(&output[0], output.size(), "%d-%b-%Y %H:%M:%S", &tm_buf);
