@@ -119,7 +119,9 @@ void Game::Initialize()
 
 	//Initialize ImGui
 	ImGui::CreateContext();
-	ImGui_ImplSDL2_InitForD3D(window);
+	// The SDL backend only needs the window here; rendering goes through SDL_Renderer + ImGuiSDL.
+	// InitForOpenGL has no platform assert (InitForD3D asserts outside Windows); the GL context is unused.
+	ImGui_ImplSDL2_InitForOpenGL(window, nullptr);
 	ImGuiSDL::Initialize(renderer, windowWidth, windowHeight);
 
 	//Initialize camera view with entire screen area
@@ -381,7 +383,7 @@ void Game::Update()
 	registry->Update();
 
 
-	//set the game state 
+	//set the game (important placment if we place this above registry->Update() we can have memory leak since enemies killed in last frame werent removed)
 	if (gameState == GameState::Playing) {
 		if (!registry->HasEntityWithTag("player")) {
 			gameState = GameState::Dead;
