@@ -82,7 +82,7 @@ Level = {
 				transform =
 				{
 					position = {x = 330, y = 900},
-					scale = {x = 3.0, y = 3.0},
+					scale = {x = 6.0, y = 6.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
@@ -92,9 +92,9 @@ Level = {
 				},
 				sprite = 
 				{
-					texture_asset_id = "chopper-texture",
-					width = 32,
-					height = 32,
+					texture_asset_id = "goblin-player-texture",
+					width = 16,
+					height = 16,
 					layer = 7,
 					fixed = false,
 					src_rect_x = 0,
@@ -102,16 +102,22 @@ Level = {
 				},
 				animation = 
 				{
-					num_frames = 2,
-					speed_rate = 10,
+					num_frames = 4,
+					speed_rate = 8,
 					is_loop = true,
-					only_when_moving = true
+					only_when_moving = true,
+					attack = 
+					{ 
+						attack_texture_asset_id = "goblin-player-attack-texture", 
+						attack_frames = 1, 
+						attack_speed_rate = 4 
+					}
 				},
 				boxcollider =
 				{
-					width = 32,
-					height = 32,
-					offset = {x = 0, y = 5}
+					width = 16,
+					height = 16,
+					offset = {x = 0, y = 0}
 				},
 				health =
 				{
@@ -151,10 +157,10 @@ Level = {
 				},
 				keyboard_controlled =
 				{
-					up_velocity = {x = 0, y = -130},
-					right_velocity = {x = 130, y = 0},
-					down_velocity = {x = 0, y = 130},
-					left_velocity = {x = -130, y = 0},
+					up_velocity = {x = 0, y = -100},
+					right_velocity = {x = 100, y = 0},
+					down_velocity = {x = 0, y = 100},
+					left_velocity = {x = -100, y = 0},
 					diagnalMovement = true
 				},
 				progression =
@@ -223,7 +229,7 @@ Level = {
 				},
 				sprite = 
 				{
-					texture_asset_id = "goblin-texture",
+					texture_asset_id = "desert-goblin-texture",
 					width = 16,
 					height = 16,
 					layer  = 3,
@@ -236,7 +242,13 @@ Level = {
 					num_frames = 4,
 					speed_rate = 4,
 					is_loop = true,
-					only_when_moving = true
+					only_when_moving = true,
+					attack = 
+					{ 
+						attack_texture_asset_id = "desert-goblin-attack-texture", 
+						attack_frames = 1, 
+						attack_speed_rate = 2 
+					}
 				},
 				boxcollider =
 				{
@@ -269,7 +281,8 @@ Level = {
 					projectile_damage = 100,
 					aim_at_player = true,
 					attack_range = 4,
-					friendly = false
+					friendly = false,
+					projectile_texture = "desert-goblin-bullet"
 				},
 				movement_type =
 				{
@@ -279,7 +292,7 @@ Level = {
 				{
 					detection_range = 8,
 					stop_distance = 1.0,
-					leash_range = 105,
+					leash_range = 15,
 					move_speed = 100,
 					patrol_radius = 3,   -- tiles, measured from the spawn point
 					patrol_pause = 2.0  -- seconds to wait after reaching a point

@@ -16,12 +16,26 @@ return {
 	{type = "texture", id = "truck-texture",   file = "./assets/images/truck-ford-right.png"},
 	{type = "texture", id = "tree-texture",    file = "./assets/images/tree.png"},
 	{type = "texture", id = "radar-texture",   file = "./assets/images/radar.png"},
-	{type = "texture", id = "goblin-texture",   file = "./assets/images/enemies/desert-goblin.png"},
+
+	{type = "texture", id = "goblin-player-texture", file = "./assets/images/player/goblin-spritesheet.png"},
+	{type = "texture", id = "goblin-player-attack-texture", file = "./assets/images/player/goblin-attack-spritesheet.png"},
+
+	{type = "texture", id = "desert-goblin-texture",   file = "./assets/images/enemies/desert-goblin.png"},
+	{type = "texture", id = "desert-goblin-attack-texture",   file = "./assets/images/enemies/desert-goblin-attack.png"},
+
+	{type = "texture", id = "taiga-goblin-texture",   file = "./assets/images/enemies/taiga-goblin.png"},
+	{type = "texture", id = "taiga-goblin-attack-texture",   file = "./assets/images/enemies/taiga-goblin-attack.png"},
+
+	{type = "texture", id = "sawanna-goblin-texture",   file = "./assets/images/enemies/sawanna-goblin.png"},
+	{type = "texture", id = "sawanna-goblin-attack-texture",   file = "./assets/images/enemies/sawanna-goblin-attack.png"},
 
 	-- projectiles
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
 	{type = "texture", id = "iron-sword-bullet", file = "./assets/images/weapons/iron-sword-bullet.png"},
 	{type = "texture", id = "black-shield-shot", file = "./assets/images/ability/shield/black-shield-shot.png", facing_degrees = 45.0},
+	{type = "texture", id = "desert-goblin-bullet",    file = "./assets/images/enemies/desert-goblin-bullet.png"},
+	{type = "texture", id = "taiga-goblin-bullet",    file = "./assets/images/enemies/taiga-goblin-bullet.png"},
+	{type = "texture", id = "sawanna-goblin-bullet",    file = "./assets/images/enemies/sawanna-goblin-bullet.png"},
 
 	-- item icons
 	{type = "texture", id = "iron-sword",    file = "./assets/images/weapons/iron-sword.png"},

@@ -241,8 +241,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 			//Sprite
 			sol::optional<sol::table> sprite = entity["components"]["sprite"];
-			if (sprite != sol::nullopt)
-			{
+			if (sprite != sol::nullopt){
 				newEntity.AddComponent<SpriteComponent>(
 					entity["components"]["sprite"]["texture_asset_id"],
 					entity["components"]["sprite"]["width"],
@@ -256,14 +255,60 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 			//animation
 			sol::optional<sol::table> animation = entity["components"]["animation"];
-			if (animation != sol::nullopt)
-			{
-				newEntity.AddComponent<AnimationComponent>(
-					entity["components"]["animation"]["num_frames"].get_or(1),
-					entity["components"]["animation"]["speed_rate"].get_or(1),
-					entity["components"]["animation"]["is_loop"].get_or(true),
-					entity["components"]["animation"]["only_when_moving"].get_or(false)
-				);
+			if (animation != sol::nullopt){
+
+				sol::table animationTable = animation.value();
+
+				newEntity.AddComponent<AnimationComponent>();
+
+				auto& anim = newEntity.GetComponent<AnimationComponent>();
+
+				int numFrames = animationTable["num_frames"].get_or(1);
+				int speedRate = animationTable["speed_rate"].get_or(1);
+
+				if (numFrames <= 0) {
+					Logger::Warn("animation: num_frames <= 0 :" + std::to_string(numFrames) + " ,which is not allowed changing it to 1");
+					numFrames = 1;
+				}
+
+				if (speedRate < 0) {
+					Logger::Warn("animation: speed_rate < 0 :" + std::to_string(speedRate) + " ,which is not allowed changing it to 0");
+					speedRate = 0;
+				}
+
+
+				anim.numFrames = numFrames;
+				anim.frameSpeedRate = speedRate;
+				anim.isLoop = animationTable["is_loop"].get_or(true);
+				anim.onlyWhenMoving = animationTable["only_when_moving"].get_or(false);
+				
+				sol::optional<sol::table> attack = animationTable["attack"];
+				if (attack != sol::nullopt) {
+					sol::table attackTable = attack.value();
+
+					std::string attackTexture = attackTable["attack_texture_asset_id"].get_or(std::string(""));
+					int attackFrames = attackTable["attack_frames"].get_or(1);
+					int attackSpeed = attackTable["attack_speed_rate"].get_or(1);
+
+					if (attackTexture.empty()) {
+						Logger::Warn("animation: attack_texture_asset_id is empty, may be a typo");
+					}
+
+					if (attackFrames <= 0) {
+						Logger::Warn("animation: attack_frames <= 0 :" + std::to_string(attackFrames) + " ,which is not allowed changing it to 1");
+						attackFrames = 1;
+					}
+
+					if (attackSpeed < 1) {
+						Logger::Warn("animation: attack_speed_rate < 1 :" + std::to_string(attackSpeed) + " ,which is not allowed changing it to 1");
+						attackSpeed = 1;
+					}
+
+					anim.attackAssetId = attackTexture;
+					anim.attackNumFrames = attackFrames;
+					anim.attackSpeedRate = attackSpeed;
+				}
+
 			}
 
 			//BoxCollider
@@ -350,8 +395,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
-						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
-						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"]
+						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"].get_or(0.0),
+						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"].get_or(0.0)
 					),
 					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1.0) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10.0) * 1000),

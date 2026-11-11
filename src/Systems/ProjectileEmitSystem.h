@@ -95,8 +95,9 @@ class ProjectileEmitSystem{
 				return;
 			}
 			ProjectileProfile profile = GetProfile(entity, projectileEmitter);
+			const int shotInterval = GetShotIntervalMs(entity, profile);
 
-			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < GetShotIntervalMs(entity, profile)){
+			if (SDL_GetTicks() - projectileEmitter.lastEmittedTime < shotInterval){
 				return;
 			}
 
@@ -115,7 +116,7 @@ class ProjectileEmitSystem{
 
 			const float speed = profile.speed;
 
-			EmitProjectile(entity, projectilePosition, aimDirection * speed, profile);
+			EmitProjectile(entity, projectilePosition, aimDirection * speed, profile, shotInterval);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 		}
 
@@ -179,7 +180,7 @@ class ProjectileEmitSystem{
 			}
 
 			
-			EmitProjectile(entity, projectilePosition, shotVelocity, profile);
+			EmitProjectile(entity, projectilePosition, shotVelocity, profile, projectileEmitter.repeatRate);
 			projectileEmitter.lastEmittedTime = SDL_GetTicks();
 			
 		}
@@ -224,12 +225,12 @@ class ProjectileEmitSystem{
 			return projectilePosition;
 		}
 
-		void EmitProjectile(Entity entity, glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile){
+		void EmitProjectile(Entity entity, glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile, int shotIntervalMs){
 
 			const int finalDamage = RollScaledDamage(entity, profile.minDamage, profile.maxDamage, rng);
 			SpawnProjectile(registry, assetStore, entity, position, velocity, finalDamage, profile.lifetimeMs, profile.texture);
 			
-			eventBus->EmitEvent<ProjectileFiredEvent>(position, profile.shotSound);
+			eventBus->EmitEvent<ProjectileFiredEvent>(entity, position, velocity, profile.shotSound, shotIntervalMs);
 		}
 
 		Registry& registry;

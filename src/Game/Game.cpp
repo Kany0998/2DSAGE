@@ -332,6 +332,10 @@ void Game::Update()
 	//perform subscribtion to events for all the systems
 	damageSystem->SubscribeToEvents();
 	keyboardControlSystem->SubscribeToEvents(eventBus);
+
+	// must stay after keyboardControlSystem->Update: the keyboard writes the walk row every frame,
+	// and the animation system overwrites it while an attack pose or the facing lock is active
+	animationSystem->SubscribeToEvents(eventBus);
 	//ProjectileEmitSystem no longer subscribes to anything: it polls the mouse in its
 	//own Update() so holding the button keeps firing, which a one-shot SDL button-down
 	//event can't express.
