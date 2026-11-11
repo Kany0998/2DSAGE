@@ -53,7 +53,6 @@ int Game::mapHeight;
 
 Game::Game()
 {
-	//TODO: implement
 	isRunning = false;
 	isDebug = false;
 	editorMode = false;
@@ -198,6 +197,10 @@ void Game::ProccessInput()
 
 				}
 
+				if (sdlEvent.key.keysym.sym == SDLK_r && gameState != GameState::Playing) {
+					restartRequested = true;
+				}
+
 				if (isDebug) {
 					if (sdlEvent.key.keysym.sym == SDLK_1){
 						debugPathfinder.gWeight = 1.0;
@@ -299,6 +302,7 @@ void Game::Setup()
 	lootDatabase.Load(lua, "./assets/scripts/loot.lua", itemDatabase);
 	abilityDatabase.Load(lua, "./assets/scripts/abilities.lua", itemDatabase);
 	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
+	levelHadEnemies = !registry->GetEntitiesByGroup("enemies").empty();		//check if enemies exist
 	pathBenchmark = PathBenchmarkSettings::Load(lua, tileMap);
 	Logger::Log("Routes size: " + std::to_string(pathBenchmark.routes.size()));
 	Logger::Log("Number of runs: " + std::to_string(pathBenchmark.runs));
@@ -312,8 +316,37 @@ void Game::Setup()
 	audioSystem->StartAmbience(LevelAmbience::Load(lua));
 }
 
+
+void Game::RestartLevel() {
+	// clear everything from previous level
+	for (auto [handle] : registry->Raw().storage<entt::entity>().each()) {
+		Entity(handle, registry.get()).Kill();
+	}
+	registry->Update();
+
+	//assets, loadLevel contains all of them so we need to clear it also we halts audio
+	assetStore->ClearAssets();
+
+	//load level the same as in Setup()
+	LevelLoader loader;
+	loader.LoadLevel(lua, registry, assetStore, tileMap, itemDatabase, lootDatabase, renderer, 1);
+	levelHadEnemies = !registry->GetEntitiesByGroup("enemies").empty();
+
+	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
+	audioSystem->StartAmbience(LevelAmbience::Load(lua));
+
+	//back to playing
+	editorMode = false;
+	gameState = GameState::Playing;
+}
+
 void Game::Update()
 {
+
+	if (restartRequested) {
+		restartRequested = false;
+		RestartLevel();
+	}
 	// initial position and velocity // Fps
 	int timeToWait = frameDelay - (SDL_GetTicks() - millisecondsPreviousFrame);
 	if (timeToWait > 0 && timeToWait <= frameDelay)
@@ -346,6 +379,22 @@ void Game::Update()
 	audioSystem->SubscribeToEvents();
 	//Update the registry to process the entites that are waiting to boe created/deleted
 	registry->Update();
+
+
+	//set the game state 
+	if (gameState == GameState::Playing) {
+		if (!registry->HasEntityWithTag("player")) {
+			gameState = GameState::Dead;
+		}
+
+		else if (levelHadEnemies && registry->GetEntitiesByGroup("enemies").empty()) {
+			gameState = GameState::Victory;
+		}
+	}
+
+	if (gameState != GameState::Playing) {
+		return;
+	}
 
 	//Editor mode toggke
 	if (editorMode) {
@@ -592,6 +641,23 @@ void Game::Render()
 	else {
 		renderGUISystem->Update(*registry, camera, isDebug, tileMap);
 	}
+
+	if (gameState != GameState::Playing) {
+		const char* title = (gameState == GameState::Dead) ? "YOU DIED" : "VICTORY";
+
+		ImGui::SetNextWindowPos(ImVec2(windowWidth / 2.0f, windowHeight / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+		ImGui::Begin("##endscreen", nullptr,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+
+		ImGui::SetWindowFontScale(3.0f);
+		ImGui::Text("%s", title);
+		ImGui::SetWindowFontScale(1.5f);
+		ImGui::Text("Press R to restart");
+
+		ImGui::End();
+	}
+
 	ImGui::Render();
 	ImGuiSDL::Render(ImGui::GetDrawData());
 

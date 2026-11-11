@@ -53,12 +53,22 @@ class ActivationSystem;
 class RenderEditorGUISystem;
 class EditorSystem;
 
+
+enum class GameState {
+	Playing,
+	Dead,
+	Victory
+};
+
 class Game
 {
 	private:
 		bool isRunning;
 		bool isDebug;
 		bool editorMode;
+		GameState gameState = GameState::Playing;
+		bool levelHadEnemies = false;
+		bool restartRequested = false;
 		bool audioReady = false;     //false = no audio device, the game runs silently
 		SDL_Window* window;
 		SDL_Renderer* renderer;
@@ -142,6 +152,7 @@ class Game
 		void Initialize();
 		void Destroy();
 		void Run();
+		void RestartLevel();
 		void Setup();
 		void ProccessInput();
 		void Update();

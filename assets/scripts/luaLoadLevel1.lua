@@ -121,7 +121,7 @@ Level = {
 				},
 				health =
 				{
-					health_points = 1000,
+					health_points = 100,
 					max_health_points = 1000
 				},
 				mana =
@@ -132,7 +132,7 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 1000,
+					defense = 1,
 					wisdom = 100,
 					vitality = 1,
 					speed = 100,
@@ -900,7 +900,7 @@ map_width = Level.tilemap.mapNumCols * Level.tilemap.tileSize * Level.tilemap.ti
 map_height = Level.tilemap.mapNumRows * Level.tilemap.tileSize * Level.tilemap.tileScale
 
 
-stress_enemies = 500                      -- 0 = off; e.g. 500 or 2000 for the measurement
+stress_enemies = 0                      -- 0 = off; e.g. 500 or 2000 for the measurement
 
 local tile_world_size = Level.tilemap.tileSize * Level.tilemap.tileScale
 
