@@ -315,14 +315,37 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 			sol::optional<sol::table> collider = entity["components"]["boxcollider"];
 			if (collider != sol::nullopt)
 			{
-				newEntity.AddComponent<BoxColliderComponent>(
-					entity["components"]["boxcollider"]["width"],
-					entity["components"]["boxcollider"]["height"],
-					glm::vec2(
-						entity["components"]["boxcollider"]["offset"]["x"].get_or(0),
-						entity["components"]["boxcollider"]["offset"]["y"].get_or(0)
-					)
-				);
+				sol::table colliderTable = collider.value();
+				newEntity.AddComponent<BoxColliderComponent>();
+
+				auto& colliderComp = newEntity.GetComponent<BoxColliderComponent>();
+
+				double scaleX = 1.0;
+				double scaleY = 1.0;
+				if (newEntity.HasComponent<TransformComponent>()) {
+					scaleX = newEntity.GetComponent<TransformComponent>().scale.x;
+					scaleY = newEntity.GetComponent<TransformComponent>().scale.y;
+				}
+
+				int collWidth = entity["components"]["boxcollider"]["width"].get_or(1);
+				int collHeight = entity["components"]["boxcollider"]["height"].get_or(1);
+				int collOffsetX = static_cast<int>(entity["components"]["boxcollider"]["offset"]["x"].get_or(0.0) * scaleX);
+				int collOffsetY = static_cast<int>(entity["components"]["boxcollider"]["offset"]["y"].get_or(0.0) * scaleY);
+
+				if (collWidth < 1) {
+					Logger::Warn("boxcollider: width < 1: " + std::to_string(collWidth) + " ,which is not allowed for boxcolliders changing it to 1");
+					collWidth = 1;
+				}
+
+				if (collHeight < 1) {
+					Logger::Warn("boxcollider: height < 1: " + std::to_string(collHeight) + " ,which is not allowed for boxcolliders changing it to 1");
+					collHeight = 1;
+				}
+
+				colliderComp.width = collWidth;
+				colliderComp.height = collHeight;
+				colliderComp.offset.x = collOffsetX;
+				colliderComp.offset.y = collOffsetY;
 			}
 
 			//Health
@@ -407,6 +430,23 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture")),
 					entity["components"]["projectile_emitter"]["shot_sound"].get_or(std::string(""))
 				);
+
+				auto& emitProject = newEntity.GetComponent<ProjectileEmitterComponent>();
+				int pelletCount = entity["components"]["projectile_emitter"]["pellet_count"].get_or(1);
+				float spreadDeg = entity["components"]["projectile_emitter"]["spread_degrees"].get_or(0.0f);
+
+				if (pelletCount < 1) {
+					Logger::Warn("projectile_emitter: pellet_count < 1:" + std::to_string(pelletCount) + " ,which is not allowed, changing it to 1");
+					pelletCount = 1;
+				}
+
+				if (spreadDeg < 0.0f || spreadDeg > 180.0f) {
+					Logger::Warn("projectile_emitter: spread_degrees < 0.0 or spread_degrees > 180.0: " + std::to_string(spreadDeg) + " ,which is not allowed, clamping it to (0.0, 180.0)");
+					spreadDeg = std::clamp(spreadDeg, 0.0f, 180.0f);
+				}
+
+				emitProject.pelletCount = pelletCount;
+				emitProject.spreadDegrees = spreadDeg;
 			}
 
 			//MovementType

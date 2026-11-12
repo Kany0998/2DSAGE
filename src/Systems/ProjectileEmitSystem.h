@@ -36,6 +36,8 @@ struct ProjectileProfile {
 	float speed = 0.0f;
 	float shotsPerSecond = 1.0f;   //player only; enemies keep repeatRate
 	int lifetimeMs = 10000;
+	int pelletCount = 1;
+	float spreadDegrees = 0.0f;
 };
 
 
@@ -121,6 +123,10 @@ class ProjectileEmitSystem{
 		}
 
 		void UpdateAutomaticEmitter(Entity entity, ProjectileEmitterComponent& projectileEmitter, const TransformComponent& transform){
+
+			if (projectileEmitter.paused) {
+				return;
+			}
 
 			//Only entities ActivationSystem tagged as active may fire; it tags group "enemies" only,
 			//so an automatic shooter outside that group never shoots
@@ -228,7 +234,19 @@ class ProjectileEmitSystem{
 		void EmitProjectile(Entity entity, glm::vec2 position, glm::vec2 velocity, const ProjectileProfile& profile, int shotIntervalMs){
 
 			const int finalDamage = RollScaledDamage(entity, profile.minDamage, profile.maxDamage, rng);
-			SpawnProjectile(registry, assetStore, entity, position, velocity, finalDamage, profile.lifetimeMs, profile.texture);
+			
+			for (int i = 0; i < profile.pelletCount; i++) {
+				float offsetDegrees = 0.0f;
+
+				if (profile.pelletCount > 1) {
+					offsetDegrees = -profile.spreadDegrees / 2 + i * profile.spreadDegrees / (profile.pelletCount - 1);
+				}
+				float alpha = glm::radians(offsetDegrees);
+				glm::vec2 pelletVelocity;
+				pelletVelocity.x = velocity.x * std::cos(alpha) - velocity.y * std::sin(alpha);
+				pelletVelocity.y = velocity.x * std::sin(alpha) + velocity.y * std::cos(alpha);
+				SpawnProjectile(registry, assetStore, entity, position, pelletVelocity, finalDamage, profile.lifetimeMs, profile.texture);
+			}
 			
 			eventBus->EmitEvent<ProjectileFiredEvent>(entity, position, velocity, profile.shotSound, shotIntervalMs);
 		}
@@ -258,6 +276,8 @@ class ProjectileEmitSystem{
 			profile.speed = glm::length(emitter.projectileVelocity);
 			profile.lifetimeMs = emitter.projectileDuration;
 			profile.shotsPerSecond = BaseShotsPerSecond;
+			profile.pelletCount = emitter.pelletCount;
+			profile.spreadDegrees = emitter.spreadDegrees;
 
 			if (!entity.HasComponent<EquipmentComponent>()) {
 				return profile;
@@ -282,6 +302,8 @@ class ProjectileEmitSystem{
 				profile.speed = weapon.projectileSpeed;
 				profile.shotsPerSecond = weapon.shotPerSecond;
 				profile.lifetimeMs = static_cast<int>(std::lround(weapon.rangeTiles * tileMap.TileWorldSize() / weapon.projectileSpeed * 1000.0));
+				profile.pelletCount = weapon.pelletCount;
+				profile.spreadDegrees = weapon.spreadDegrees;
 				break;
 			}
 			return profile;
