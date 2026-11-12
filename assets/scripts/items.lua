@@ -13,7 +13,9 @@ Items = {
                 projectile_speed = 500,
 				shots_per_second = 2.0,
 				range_tiles = 2 ,
-				shot_sound = "sword-swing"
+				shot_sound = "sword-swing",
+				pellet_count = 5,
+				spread_degrees = 70
 			},
 		bag = "common",
 	},

@@ -11,6 +11,8 @@ end
 
 map_texute_asset_id = "tilemap-texture-test"
 
+local goblin_boss = dofile("./assets/scripts/goblin_boss.lua")
+
 --tables for level 1
 Level = {
 	--Table of assets
@@ -42,7 +44,7 @@ Level = {
 		mapNumRows = 20,
 		mapNumCols = 25,
 		tileSize = 16,
-		tileScale = 8.0,
+		tileScale = 6.0,
 
 		tile_properties =
 		{
@@ -82,7 +84,7 @@ Level = {
 				transform =
 				{
 					position = {x = 330, y = 900},
-					scale = {x = 6.0, y = 6.0},
+					scale = {x = 4.0, y = 4.0},
 					rotation = 0.0 --deg
 				},
 				rigidbody =
@@ -132,9 +134,9 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 1,
+					defense = 1000,
 					wisdom = 100,
-					vitality = 1,
+					vitality = 100,
 					speed = 100,
 					dexterity = 100
 				},
@@ -212,7 +214,7 @@ Level = {
 			}
 		},
 		{
-			--tank
+			--goblin
 			group = "enemies",
 			components =
 			{
@@ -302,6 +304,7 @@ Level = {
 			}
 
 		},
+		goblin_boss.make(1800, 850),
 		{
 			--tank
 			group = "enemies",
@@ -833,6 +836,7 @@ Level = {
 						local new_x = ellapsed_time * 0.09
 						local new_y = 200 + (math.sin(ellapsed_time * 0.001)* 50)
 						set_position(entity, new_x, new_y)-- set new position to c++
+
 					end
 				},
 				loot = { table = "forest_tank" }

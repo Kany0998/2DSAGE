@@ -20,14 +20,19 @@ return {
 	{type = "texture", id = "goblin-player-texture", file = "./assets/images/player/goblin-spritesheet.png"},
 	{type = "texture", id = "goblin-player-attack-texture", file = "./assets/images/player/goblin-attack-spritesheet.png"},
 
-	{type = "texture", id = "desert-goblin-texture",   file = "./assets/images/enemies/desert-goblin.png"},
-	{type = "texture", id = "desert-goblin-attack-texture",   file = "./assets/images/enemies/desert-goblin-attack.png"},
+	{type = "texture", id = "desert-goblin-texture",   file = "./assets/images/enemies/goblins/desert-goblin.png"},
+	{type = "texture", id = "desert-goblin-attack-texture",   file = "./assets/images/enemies/goblins/desert-goblin-attack.png"},
 
-	{type = "texture", id = "taiga-goblin-texture",   file = "./assets/images/enemies/taiga-goblin.png"},
-	{type = "texture", id = "taiga-goblin-attack-texture",   file = "./assets/images/enemies/taiga-goblin-attack.png"},
+	{type = "texture", id = "taiga-goblin-texture",   file = "./assets/images/enemies/goblins/taiga-goblin.png"},
+	{type = "texture", id = "taiga-goblin-attack-texture",   file = "./assets/images/enemies/goblins/taiga-goblin-attack.png"},
 
-	{type = "texture", id = "sawanna-goblin-texture",   file = "./assets/images/enemies/sawanna-goblin.png"},
-	{type = "texture", id = "sawanna-goblin-attack-texture",   file = "./assets/images/enemies/sawanna-goblin-attack.png"},
+	{type = "texture", id = "sawanna-goblin-texture",   file = "./assets/images/enemies/goblins/sawanna-goblin.png"},
+	{type = "texture", id = "sawanna-goblin-attack-texture",   file = "./assets/images/enemies/goblins/sawanna-goblin-attack.png"},
+
+	--bosses
+	{type = "texture", id = "goblin-boss-walk",   file = "./assets/images/enemies/bosses/goblin-boss-walk.png"},
+	{type = "texture", id = "goblin-boss-basic-attack",   file = "./assets/images/enemies/bosses/goblin-boss-basic-attack.png"},
+	{type = "texture", id = "goblin-boss-spin-attack",   file = "./assets/images/enemies/bosses/goblin-boss-spin-attack.png"},
 
 	-- projectiles
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
