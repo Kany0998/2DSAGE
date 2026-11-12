@@ -298,7 +298,7 @@ class RenderGUISystem
 					if (showCharacter) {
 						ImGui::SetNextWindowPos(ImVec2(10, 60), ImGuiCond_FirstUseEver);
 
-						if (ImGui::Begin("Character", &showCharacter)) {
+						if (ImGui::Begin("Character", &showCharacter, ImGuiWindowFlags_AlwaysAutoResize)) {
 							ImGui::Text("Level: %d", progression.currentLevel);
 							ImGui::Text("%d / %d exp", progression.currentExperience, progression.experienceToNextLevel);
 							ImGui::Text("Skill points: %d", progression.unspentSkillPoints);

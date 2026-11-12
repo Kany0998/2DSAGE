@@ -658,9 +658,11 @@ void Game::Render()
 	if (gameState != GameState::Playing) {
 		const char* title = "VICTORY";
 		const char* hint = "Press R to restart";
+
 		if (gameState == GameState::Dead) {
 			title = "YOU DIED";
 		}
+
 		else if (gameState == GameState::Paused) {
 			title = "PAUSED";
 			hint = "P to unpause, R to restart";

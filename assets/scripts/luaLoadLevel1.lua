@@ -64,7 +64,8 @@ Level = {
 			[0] = {tile_id = 33, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 1.00, acceleration = 100, step_sound = "footstep-ice"},
 			[1] = {tile_id = 81, speed_multiplier = 1.0, friction = 0.50, acceleration = 250, step_sound = "footstep-ice"},
 			[2] = {tile_id = 9, speed_multiplier = 1.2},   -- plains
-			[3] = {tile_id = 38, speed_multiplier = 1.5},   -- plains
+			[3] = {tile_id = 38, speed_multiplier = 1.5},   -- stone bridge
+			[4] = {tile_id = 46, blocks_ground = true, blocks_projectiles = true},   -- boss arena walls
 		},
 	},
 
@@ -201,7 +202,7 @@ Level = {
 					capacity = 30,			--0 means unlimited
 					items = 
 					{
-						"golden_ring", "black_helm", "black_chest", "black_boots", "black_legs", "golden_amulet", "horse_trinket", "shield_of_war", "legendary_shield"
+						"golden_ring"
 					}
 				},
 				equipment =
