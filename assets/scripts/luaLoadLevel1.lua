@@ -12,6 +12,19 @@ end
 map_texute_asset_id = "tilemap-texture-test"
 
 local goblin_boss = dofile("./assets/scripts/goblin_boss.lua")
+local enemies = dofile("./assets/scripts/enemies.lua")
+local obstacles = dofile("./assets/scripts/obstacles.lua")
+
+
+-- One enemy type per island difficulty grows from island to island.
+-- Each island has 4 batch centres (the centre of a circle, in world pixels).
+local ISLANDS = 
+{
+	{ make = enemies.desert_goblin,  difficulty = 1, centres = { {x = 1600, y = 350}, {x = 1200, y = 1800}, {x = 2300, y = 2200}, {x = 2000, y = 1300} } },
+	{ make = enemies.taiga_goblin,   difficulty = 2, centres = { {x = 5700, y = 700}, {x = 6700, y = 1000}, {x = 6800, y = 2000}, {x = 5500, y = 2500}, {x = 4700, y = 2100}, {x = 5500, y = 1800}, {x = 5000, y = 3000}, {x = 4000, y = 3000} } },
+	{ make = enemies.sawanna_goblin, difficulty = 3, centres = { {x = 9500, y = 4400}, {x = 8700, y = 5300}, {x = 9700, y = 6000}, {x = 10000, y = 5000} } },	
+}
+local BATCH = { min = 2, max = 4, radius = 300 }
 
 --tables for level 1
 Level = {
@@ -48,9 +61,10 @@ Level = {
 
 		tile_properties =
 		{
-			[0] = {tile_id = 21, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 0.90, acceleration = 100, step_sound = "footstep-ice"},
-			[1] = {tile_id = 81, speed_multiplier = 1.0, friction = 0.60, acceleration = 200, step_sound = "footstep-ice"},
+			[0] = {tile_id = 33, blocks_ground = true, blocks_flying = false, blocks_projectiles = false, speed_multiplier = 1.0, friction = 1.00, acceleration = 100, step_sound = "footstep-ice"},
+			[1] = {tile_id = 81, speed_multiplier = 1.0, friction = 0.50, acceleration = 250, step_sound = "footstep-ice"},
 			[2] = {tile_id = 9, speed_multiplier = 1.2},   -- plains
+			[3] = {tile_id = 38, speed_multiplier = 1.5},   -- plains
 		},
 	},
 
@@ -83,7 +97,7 @@ Level = {
 			{
 				transform =
 				{
-					position = {x = 330, y = 900},
+					position = {x = 594, y = 500},
 					scale = {x = 4.0, y = 4.0},
 					rotation = 0.0 --deg
 				},
@@ -134,7 +148,7 @@ Level = {
 				attributes =
 				{
 					attack = 50,
-					defense = 1000,
+					defense = 1,
 					wisdom = 100,
 					vitality = 100,
 					speed = 100,
@@ -172,11 +186,11 @@ Level = {
 					skill_points = 0,
 					max_level = 100,
 					experience_base = 100,	--experience needed to clear level 1
-					experience_growth = 1.15	--each level costs 15% more than the one before
+					experience_growth = 1.10	--each level costs 15% more than the one before
 				},
 				movement_type =
 				{
-					type = "flying"
+					type = "ground"
 				},
 				camera_follow =
 				{
@@ -213,436 +227,7 @@ Level = {
 				},
 			}
 		},
-		{
-			--goblin
-			group = "enemies",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1400, y = 850},
-					scale = {x = 4.0, y = 4.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 4.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "desert-goblin-texture",
-					width = 16,
-					height = 16,
-					layer  = 3,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				animation = 
-				{
-					num_frames = 4,
-					speed_rate = 4,
-					is_loop = true,
-					only_when_moving = true,
-					attack = 
-					{ 
-						attack_texture_asset_id = "desert-goblin-attack-texture", 
-						attack_frames = 1, 
-						attack_speed_rate = 2 
-					}
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 16,
-					offset = {x = 0, y = 0}
-				},
-				health =
-				{
-					health_points = 1000,
-					max_health_points = 1000
-				},
-				experience_reward =
-				{
-					experience = 50
-				},
-				sounds = 
-				{ 
-					hurt = "enemy-hurt",
-					death = "goblin-idle-3",
-					idle = "goblin-idle-1",
-					idle_min_seconds = 5,
-					idle_max_seconds = 12
-				},
-				projectile_emitter =
-				{
-					projectile_velocity = {x = 300, y = 100},
-					projectile_duration = 10, --sec
-					repeat_frequency = 1,
-					projectile_damage = 100,
-					aim_at_player = true,
-					attack_range = 4,
-					friendly = false,
-					projectile_texture = "desert-goblin-bullet"
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				ai =
-				{
-					detection_range = 8,
-					stop_distance = 1.0,
-					leash_range = 15,
-					move_speed = 100,
-					patrol_radius = 3,   -- tiles, measured from the spawn point
-					patrol_pause = 2.0  -- seconds to wait after reaching a point
-
-				},
-				loot = { table = "forest_tank" }
-			}
-
-		},
-		goblin_boss.make(1800, 850),
-		{
-			--tank
-			group = "enemies",
-			components =
-			{
-				transform =
-				{
-					position = {x = 800, y = 400},
-					scale = {x = 6.0, y = 6.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 2.5
-				},
-				sprite = 
-				{
-					texture_asset_id = "tank-texture",
-					width = 32,
-					height = 32,
-					layer  = 3,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 32,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				health =
-				{
-					health_points = 100,
-					max_health_points = 100
-				},
-				experience_reward =
-				{
-					experience = 50
-				},
-				sounds = 
-				{ 
-					hurt = "enemy-hurt",
-					death = "goblin-idle-3",
-					idle = "goblin-idle-2",
-					idle_min_seconds = 5,
-					idle_max_seconds = 12
-				},
-				projectile_emitter =
-				{
-					projectile_velocity = {x = 100, y = 0},
-					projectile_duration = 10, --sec
-					repeat_frequency = 3,
-					projectile_damage = 49,
-					aim_at_player = true,
-					friendly = false,
-					projectile_texture = "black-shield-shot"
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				ai =
-				{
-					detection_range = 6,
-					stop_distance = 1,
-					leash_range = 10,
-					move_speed = 100
-				},
-				loot = { table = "forest_tank" }
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1650, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-
-				}
-
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1700, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-					
-				}
-
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1750, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-					
-				}
-
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1800, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-					
-				}
-
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1850, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-					
-				}
-
-			}
-
-		},
-		{
-			--tree
-			group = "obstacles",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1900, y = 400},
-					scale = {x = 2.0, y = 2.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.0
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 2,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				pushable =
-				{
-					
-				}
-
-			}
-
-		},
+		goblin_boss.make(3070, 7366),
 		{
 			--campfire
 			group = "obstacles",
@@ -672,178 +257,6 @@ Level = {
 			}
 
 		},
-		{
-			--tank
-			group = "enemies",
-			components =
-			{
-				transform =
-				{
-					position = {x = 1000, y = 400},
-					scale = {x = 6.0, y = 6.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 100},
-					mass = 7.5
-				},
-				sprite = 
-				{
-					texture_asset_id = "truck-texture",
-					width = 32,
-					height = 32,
-					layer  = 3,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 32,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				health =
-				{
-					health_points = 100,
-					max_health_points = 100
-				},
-				experience_reward =
-				{
-					experience = 50
-				},
-				sounds = 
-				{ 
-					hurt = "enemy-hurt",
-					death = "goblin-idle-1",
-					idle = "goblin-idle-3",
-					idle_min_seconds = 5,
-					idle_max_seconds = 12
-				},
-				projectile_emitter =
-				{
-					projectile_velocity = {x = 100, y = 0},
-					projectile_duration = 10, --sec
-					repeat_frequency = 3,
-					aim_at_player = true,
-					projectile_damage = 49,
-					friendly = false
-				},
-				movement_type =
-				{
-					type = "ground"
-				},
-				on_update_script =
-				{
-					[0] = 
-					function(entity, delta_time, ellapsed_time)
-						-- make move truck move and turn around
-						
-						local current_position_x, current_position_y = get_position(entity)
-						local current_velocity_x, current_velocity_y = get_velocity(entity)
-
-						--if it reaches top or bottom of the map
-						if current_position_y < 10 or current_position_y > map_height - 32 then
-							set_velocity(entity, 0, current_velocity_y * -1); -- flip the entity
-						else
-							set_velocity(entity, 0, current_velocity_y); -- do not flip entity
-						end
-
-						-- set transform rotation to match going up or down
-						if(current_velocity_y < 0) then	
-							set_rotation(entity, 0) -- point up
-							set_projectile_velocity(entity, 0 , -200) --shoot up
-						else
-							set_rotation(entity, 180) -- point up
-							set_projectile_velocity(entity, 0 , 200) --shoot up
-						end
-					end
-				},
-				loot = { table = "forest_tank" }
-
-			}
-
-		},
-		{
-			--tree
-			group = "enemies",
-			components =
-			{
-				transform =
-				{
-					position = {x = 400, y = 200},
-					scale = {x = 5.0, y = 5.0},
-					rotation = 0.0 --deg
-				},
-				rigidbody =
-				{
-					velocity = {x = 0, y = 0},
-					mass = 1.5
-				},
-				sprite = 
-				{
-					texture_asset_id = "tree-texture",
-					width = 16,
-					height = 32,
-					layer  = 3,
-					fixed = false,
-					src_rect_x = 0,
-					src_rect_y = 0
-				},
-				boxcollider =
-				{
-					width = 16,
-					height = 32,
-					offset = {x = 0, y = 0}
-				},
-				health =
-				{
-					health_points = 100,
-					max_health_points = 100
-				},
-				experience_reward =
-				{
-					experience = 50000000
-				},
-				attributes =
-				{
-					attack = 150,
-					defense = 100,
-					wisdom = 10,
-					vitality = 10,
-					speed = 10,
-					dexterity = 10
-				},
-				sounds = 
-				{ 
-					hurt = "enemy-hurt" 
-				},
-				projectile_emitter =
-				{
-					projectile_velocity = {x = 100, y = 0},
-					projectile_duration = 10, --sec
-					repeat_frequency = 3,
-					projectile_damage = 49,
-					friendly = false
-				},
-				on_update_script =
-				{
-					[0] = 
-					function(entity, delta_time, ellapsed_time)
-						
-						--change position of the airplane to follow sine movement
-						local new_x = ellapsed_time * 0.09
-						local new_y = 200 + (math.sin(ellapsed_time * 0.001)* 50)
-						set_position(entity, new_x, new_y)-- set new position to c++
-
-					end
-				},
-				loot = { table = "forest_tank" }
-
-			}
-
-		}
 	}
 }
 
@@ -886,9 +299,9 @@ AudioSettings =
 
 SimulationSettings =
 {
-    enable = false,
-    activate_radius_tiles = 20,
-    deactivate_radius_tiles = 26,
+    enable = true,
+    activate_radius_tiles = 18,
+    deactivate_radius_tiles = 24,
     check_interval_seconds = 0.25,
 }
 
@@ -994,7 +407,7 @@ for i = 0, stress_enemies - 1 do
 end
 
 
---flank_test = true   -- flank_40x40.map: 4 chasers in the right yard
+flank_test = true   -- flank_40x40.map: 4 chasers in the right yard
 if flank_test then
     local chaser_cells = { {33, 14}, {34, 14}, {35, 15}, {35, 16}, {32, 19}, {33, 20}, {33, 18} }
     for _, cell in ipairs(chaser_cells) do
@@ -1005,4 +418,39 @@ if flank_test then
 		tank.components.ai.move_speed = 50
         table.insert(Level.entities, tank)
     end
+end
+
+
+-- One flat list for the engine: 3 islands x 4 centres = 12 batches
+Level.enemy_batches = {}
+for _, island in ipairs(ISLANDS) do
+	for _, centre in ipairs(island.centres) do
+		table.insert(Level.enemy_batches, {
+			make = island.make,
+			difficulty = island.difficulty,
+			x = centre.x,
+			y = centre.y,
+			min = BATCH.min,
+			max = BATCH.max, 
+			radius = BATCH.radius,
+		})
+	end
+end
+
+
+local CRATES = {
+	{ x = 824, y = 5472 },
+	{ x = 924, y = 5520 },
+	{ x = 1024, y = 5568 },
+	{ x = 1124, y = 5520 },
+	{ x = 1224, y = 5472 },
+	{ x = 1324, y = 5520 },
+	{ x = 1424, y = 5568 },
+	{ x = 1524, y = 5520 },
+	{ x = 1624, y = 5472 },
+	{ x = 1724, y = 5520 },
+}
+
+for _, p in ipairs(CRATES) do
+	table.insert(Level.entities, obstacles.make_crate(p.x, p.y))
 end

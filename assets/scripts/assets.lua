@@ -15,6 +15,7 @@ return {
 	{type = "texture", id = "tank-texture",    file = "./assets/images/tank-panther-right.png"},
 	{type = "texture", id = "truck-texture",   file = "./assets/images/truck-ford-right.png"},
 	{type = "texture", id = "tree-texture",    file = "./assets/images/tree.png"},
+	{type = "texture", id = "crate-texture",    file = "./assets/images/obstacles/crate.png"},
 	{type = "texture", id = "radar-texture",   file = "./assets/images/radar.png"},
 
 	{type = "texture", id = "goblin-player-texture", file = "./assets/images/player/goblin-spritesheet.png"},
