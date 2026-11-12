@@ -326,6 +326,8 @@ void Game::RestartLevel() {
 	}
 	registry->Update();
 
+	lootSystem->ClearPendingDrops();
+
 	//assets, loadLevel contains all of them so we need to clear it also we halts audio
 	assetStore->ClearAssets();
 

@@ -35,7 +35,10 @@ class LootSystem {
 			eventBus->SubscribeToEvent<ItemDroppedEvent>(this, &LootSystem::OnItemDropped);
 		}
 
-
+		// Drops still waiting for the next Update belong to the old level a restart throws them away.
+		void ClearPendingDrops() {
+			pendingDrops.clear();
+		}
 
 		void Update() {
 			for (const PendingDrop&  drop : pendingDrops) {
