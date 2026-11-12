@@ -27,10 +27,14 @@
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
+#include "../Logger/Logger.h"
 #include <sol/sol.hpp>
+#include <glm/glm.hpp>
 #include <string>
 #include <algorithm>
-#include "../Logger/Logger.h"
+#include <random>
+#include <cmath>
+#include <vector>
 
 LevelLoader::LevelLoader()
 {
@@ -160,6 +164,95 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 	Game::mapWidth = tileMap.Cols() * tileSize * tileScale;
 	Game::mapHeight = tileMap.Rows() * tileSize * tileScale;
+
+
+	// Enemy batches: Lua describes who/where/how many, the engine picks free spots now that the map is loaded
+	sol::optional<sol::table> batches = level["enemy_batches"];
+	if (batches) {
+		sol::table entities = level["entities"];
+
+		// the entity loop below reads entities[0], [1], ... until the first nil, so new enemies go from there
+		int next = 0;
+		while (entities[next].valid()) {
+			next++;
+		}
+
+		std::mt19937 rng(std::random_device{}());
+		std::uniform_real_distribution<double> unit(0.0, 1.0);
+		const double minSpacing = tileMap.TileWorldSize();     // 1 tile between enemies
+		const int maxTries = 20;
+
+		for (int bth = 1; ; bth++) {
+			sol::optional<sol::table> batchOption = (*batches)[bth];
+			if (!batchOption) {
+				break;                                   // end of the list
+			}
+			sol::table batch = *batchOption;
+
+			sol::optional<sol::protected_function> make = batch["make"];
+			if (!make) {
+				Logger::Warn("enemy_batches[" + std::to_string(bth) + "]: no make function, skipped");
+				continue;
+			}
+
+			const double centerX = batch["x"].get_or(0.0);
+			const double centerY = batch["y"].get_or(0.0);
+			const double radius = batch["radius"].get_or(300.0);
+			const int minCount = batch["min"].get_or(4);
+			const int maxCount = batch["max"].get_or(8);
+			const int difficulty = batch["difficulty"].get_or(1);
+
+			std::uniform_int_distribution<int> countRoll(minCount, std::max(minCount, maxCount));
+			const int count = countRoll(rng);
+
+			std::vector<glm::vec2> placed;
+			
+			for (int n = 0; n < count; n++) {
+				bool found = false;
+				glm::vec2 spot;
+
+				for (int t = 0; t < maxTries && !found; t++) {
+					const double angle = unit(rng) * 2.0 * M_PI;
+					const double range = radius * std::sqrt(unit(rng));		// even spread over the whole circle
+					spot = glm::vec2(centerX + std::cos(angle) * range, centerY + std::sin(angle) * range);
+
+					if (tileMap.isBlockedAtWorld(spot.x, spot.y, MovementType_Ground)) {
+						continue;	// wall, water or outside the map
+					}
+
+					bool tooClose = false;
+					for (const glm::vec2& other : placed) {
+						if (glm::distance(spot, other) < minSpacing) { 
+							
+							tooClose = true;
+							break; 
+						}
+					}
+
+					if (!tooClose) {
+						found = true;
+					}
+				}
+
+				if (!found) {
+					Logger::Warn("enemy_batches[" + std::to_string(bth) + "]: no free spot after " + std::to_string(maxTries) + " tries, one enemy skipped");
+					continue;
+				}
+
+				sol::protected_function_result result = (*make)(spot.x, spot.y, difficulty);
+				if (!result.valid()) {
+					sol::error err = result;
+					Logger::Err("enemy_batches[" + std::to_string(bth) + "]: make failed: " + std::string(err.what()));
+					break;                                  // the same maker would fail again for this batch
+				}
+
+				entities[next] = result.get<sol::table>();
+				next++;
+				placed.push_back(spot);
+			}
+		}
+	}
+
 
 	//Read the level entites and Components
 	sol::table entites = level["entities"];
