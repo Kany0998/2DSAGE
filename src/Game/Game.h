@@ -56,6 +56,7 @@ class EditorSystem;
 
 enum class GameState {
 	Playing,
+	Paused,
 	Dead,
 	Victory
 };

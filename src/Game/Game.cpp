@@ -203,6 +203,15 @@ void Game::ProccessInput()
 					restartRequested = true;
 				}
 
+				if (sdlEvent.key.keysym.sym == SDLK_p) {
+					if (gameState == GameState::Playing) {
+						gameState = GameState::Paused;
+					}
+					else if (gameState == GameState::Paused) {
+						gameState = GameState::Playing;
+					}
+				}
+
 				if (isDebug) {
 					if (sdlEvent.key.keysym.sym == SDLK_1){
 						debugPathfinder.gWeight = 1.0;
@@ -647,7 +656,15 @@ void Game::Render()
 	}
 
 	if (gameState != GameState::Playing) {
-		const char* title = (gameState == GameState::Dead) ? "YOU DIED" : "VICTORY";
+		const char* title = "VICTORY";
+		const char* hint = "Press R to restart";
+		if (gameState == GameState::Dead) {
+			title = "YOU DIED";
+		}
+		else if (gameState == GameState::Paused) {
+			title = "PAUSED";
+			hint = "P to unpause, R to restart";
+		}
 
 		ImGui::SetNextWindowPos(ImVec2(windowWidth / 2.0f, windowHeight / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 		ImGui::Begin("##endscreen", nullptr,
@@ -656,8 +673,9 @@ void Game::Render()
 
 		ImGui::SetWindowFontScale(3.0f);
 		ImGui::Text("%s", title);
+
 		ImGui::SetWindowFontScale(1.5f);
-		ImGui::Text("Press R to restart");
+		ImGui::Text("%s", hint);
 
 		ImGui::End();
 	}
