@@ -308,8 +308,6 @@ class RenderGUISystem
 							// The stat order comes from the SkillStat enum, so the rows, the labels and the
 							// reset below all index the same way. The labels only have to follow that order.
 
-
-
 							for (int i = 0; i < Skill_Count; i++)
 							{
 								StatRow(StatLabels[i], attributes, static_cast<SkillStat>(i), progression);
@@ -751,7 +749,7 @@ class RenderGUISystem
 		bool FindBagAt(Registry& registry, glm::vec2 worldPoint, Entity& outBag) {
 
 			bool found = false;        //has any bag contained the point yet?
-			Uint32 newest = 0;         //spawn time of the best bag so far
+			double oldest = 0.0;       //spawn time of the best bag so far
 			for (auto rawEntity : registry.Raw().view<TransformComponent, SpriteComponent, LootBagComponent>()) {
 				
 				Entity bag(rawEntity, &registry);
@@ -767,9 +765,9 @@ class RenderGUISystem
 					continue;
 				}
 
-				if (!found || bagLoot.spawnTime > newest) {
+				if (!found || bagLoot.ageMs > oldest) {
 					outBag = bag;
-					newest = bagLoot.spawnTime;
+					oldest = bagLoot.ageMs;
 					found = true;
 				}
 			}

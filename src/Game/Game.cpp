@@ -416,7 +416,7 @@ void Game::Update()
 	}
 
 	// invoke all the systems to update
-	lootSystem->Update();
+	lootSystem->Update(deltaTime);
 	audioSystem->Update();
 	keyboardControlSystem->Update(*registry);
 

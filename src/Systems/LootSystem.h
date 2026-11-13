@@ -40,7 +40,7 @@ class LootSystem {
 			pendingDrops.clear();
 		}
 
-		void Update() {
+		void Update(double deltaTime) {
 			for (const PendingDrop&  drop : pendingDrops) {
 
 				const auto tier = lootDatabase.FindBag(drop.tierId);
@@ -83,7 +83,9 @@ class LootSystem {
 				auto& bagSprite = entity.GetComponent<SpriteComponent>();
 				auto& bagLoot = entity.GetComponent<LootBagComponent>();
 
-				const Uint32 age = SDL_GetTicks() - bagLoot.spawnTime;
+				bagLoot.ageMs += deltaTime * 1000.0;
+
+				const Uint32 age = static_cast<Uint32>(bagLoot.ageMs);
 				if (age >= static_cast<Uint32>(bagLoot.lifetimeMs) || bagLoot.items.empty()) {
 					entity.Kill();
 					continue;
