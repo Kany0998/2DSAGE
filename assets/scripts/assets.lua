@@ -39,9 +39,9 @@ return {
 
 	-- projectiles (enemies)
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
-	{type = "texture", id = "desert-goblin-bullet",    file = "./assets/images/enemies/desert-goblin-bullet.png"},
-	{type = "texture", id = "taiga-goblin-bullet",    file = "./assets/images/enemies/taiga-goblin-bullet.png"},
-	{type = "texture", id = "sawanna-goblin-bullet",    file = "./assets/images/enemies/sawanna-goblin-bullet.png"},
+	{type = "texture", id = "desert-goblin-bullet",    file = "./assets/images/enemies/goblins/desert-goblin-bullet.png"},
+	{type = "texture", id = "taiga-goblin-bullet",    file = "./assets/images/enemies/goblins/taiga-goblin-bullet.png"},
+	{type = "texture", id = "sawanna-goblin-bullet",    file = "./assets/images/enemies/goblins/sawanna-goblin-bullet.png"},
 
 
 	-- item icons
