@@ -5,24 +5,24 @@
 local DIFFICULTY = {
 	[1] = { hp = 1.0, damage = 1.0, xp = 1.0 , pellet = 1, deg_spread = 0.0},   -- first island: easy
 	[2] = { hp = 1.6, damage = 2.0, xp = 2.0 , pellet = 2, deg_spread = 10.0},   -- second: medium
-	[3] = { hp = 2.4, damage = 4.0, xp = 3.0 , pellet = 3, deg_spread = 15.0},   -- third: hard
+	[3] = { hp = 2.4, damage = 3.0, xp = 4.0 , pellet = 3, deg_spread = 15.0},   -- third: hard
 }
 
 -- Everything that differs between goblin types
 local GOBLINS = {
 	desert = {
 		texture = "desert-goblin-texture", attack = "desert-goblin-attack-texture",
-		bullet = "desert-goblin-bullet", loot = "forest_tank",     -- "desert_goblin" after step 1
-		hp = 1000, damage = 100, xp = 50,
-	},
-	sawanna = {
-		texture = "sawanna-goblin-texture", attack = "sawanna-goblin-attack-texture",
-		bullet = "sawanna-goblin-bullet", loot = "forest_tank",
+		bullet = "desert-goblin-bullet", loot = "desert_goblin",
 		hp = 1000, damage = 100, xp = 50,
 	},
 	taiga = {
 		texture = "taiga-goblin-texture", attack = "taiga-goblin-attack-texture",
-		bullet = "taiga-goblin-bullet", loot = "forest_tank",
+		bullet = "taiga-goblin-bullet", loot = "taiga_goblin",
+		hp = 1000, damage = 100, xp = 50,
+	},
+	sawanna = {
+		texture = "sawanna-goblin-texture", attack = "sawanna-goblin-attack-texture",
+		bullet = "sawanna-goblin-bullet", loot = "sawanna_goblin",
 		hp = 1000, damage = 100, xp = 50,
 	},
 }
@@ -128,9 +128,9 @@ local function make_goblin(kind, x, y, difficulty)
 			},
 			ai = 
 			{
-				detection_range = 8, 
+				detection_range = 6, 
 				stop_distance = 1.0, 
-				leash_range = 15,
+				leash_range = 20,
 				move_speed = 100, 
 				patrol_radius = 3, 
 				patrol_pause = 2.0,

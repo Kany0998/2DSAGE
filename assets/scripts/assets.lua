@@ -30,40 +30,98 @@ return {
 	{type = "texture", id = "sawanna-goblin-texture",   file = "./assets/images/enemies/goblins/sawanna-goblin.png"},
 	{type = "texture", id = "sawanna-goblin-attack-texture",   file = "./assets/images/enemies/goblins/sawanna-goblin-attack.png"},
 
-	--bosses
+
+	--goblin boss
 	{type = "texture", id = "goblin-boss-walk",   file = "./assets/images/enemies/bosses/goblin-boss-walk.png"},
 	{type = "texture", id = "goblin-boss-basic-attack",   file = "./assets/images/enemies/bosses/goblin-boss-basic-attack.png"},
 	{type = "texture", id = "goblin-boss-spin-attack",   file = "./assets/images/enemies/bosses/goblin-boss-spin-attack.png"},
 
-	-- projectiles
+
+	-- projectiles (enemies)
 	{type = "texture", id = "bullet-texture",    file = "./assets/images/bullet.png"},
-	{type = "texture", id = "iron-sword-bullet", file = "./assets/images/weapons/iron-sword-bullet.png"},
-	{type = "texture", id = "black-shield-shot", file = "./assets/images/ability/shield/black-shield-shot.png", facing_degrees = 45.0},
 	{type = "texture", id = "desert-goblin-bullet",    file = "./assets/images/enemies/desert-goblin-bullet.png"},
 	{type = "texture", id = "taiga-goblin-bullet",    file = "./assets/images/enemies/taiga-goblin-bullet.png"},
 	{type = "texture", id = "sawanna-goblin-bullet",    file = "./assets/images/enemies/sawanna-goblin-bullet.png"},
 
+
 	-- item icons
+	
+	-- weapons and it's bullets
 	{type = "texture", id = "iron-sword",    file = "./assets/images/weapons/iron-sword.png"},
+	{type = "texture", id = "iron-sword-bullet", file = "./assets/images/weapons/iron-sword-bullet.png"},
+
+	{type = "texture", id = "desert-sword",    file = "./assets/images/weapons/desert-sword.png"},
+	{type = "texture", id = "desert-sword-bullet", file = "./assets/images/weapons/desert-sword-bullet.png"},
+
+	{type = "texture", id = "taiga-sword",    file = "./assets/images/weapons/taiga-sword.png"},
+	{type = "texture", id = "taiga-sword-bullet", file = "./assets/images/weapons/taiga-sword-bullet.png"},
+
+	{type = "texture", id = "sawanna-sword",    file = "./assets/images/weapons/sawanna-sword.png"},
+	{type = "texture", id = "sawanna-sword-bullet", file = "./assets/images/weapons/sawanna-sword-bullet.png"},
+
+
+	-- special abilites and it's bullets
+	{type = "texture", id = "black-shield",  file = "./assets/images/ability/shield/black-shield.png"},
+	{type = "texture", id = "black-shield-shot", file = "./assets/images/ability/shield/black-shield-shot.png", facing_degrees = 45.0},
+
+	{type = "texture", id = "desert-shield",  file = "./assets/images/ability/shield/desert-shield.png"},
+	{type = "texture", id = "desert-shield-shot", file = "./assets/images/ability/shield/desert-shield-shot.png", facing_degrees = 45.0},
+
+	{type = "texture", id = "taiga-shield",  file = "./assets/images/ability/shield/taiga-shield.png"},
+	{type = "texture", id = "taiga-shield-shot", file = "./assets/images/ability/shield/taiga-shield-shot.png", facing_degrees = 45.0},
+
+	{type = "texture", id = "sawanna-shield",  file = "./assets/images/ability/shield/sawanna-shield.png"},
+	{type = "texture", id = "sawanna-shield-shot", file = "./assets/images/ability/shield/sawanna-shield-shot.png", facing_degrees = 45.0},
+
+	-- helms
+	{type = "texture", id = "black-helm",    file = "./assets/images/armor/helm/black-helm.png"},
+	{type = "texture", id = "desert-helm",    file = "./assets/images/armor/helm/desert-helm.png"},
+	{type = "texture", id = "taiga-helm",    file = "./assets/images/armor/helm/taiga-helm.png"},
+	{type = "texture", id = "sawanna-helm",    file = "./assets/images/armor/helm/sawanna-helm.png"},
+
+
+	-- chests
+	{type = "texture", id = "black-chest",   file = "./assets/images/armor/chest/black-chest.png"},
+	{type = "texture", id = "desert-chest",   file = "./assets/images/armor/chest/desert-chest.png"},
+	{type = "texture", id = "taiga-chest",   file = "./assets/images/armor/chest/taiga-chest.png"},
+	{type = "texture", id = "sawanna-chest",   file = "./assets/images/armor/chest/sawanna-chest.png"},
+
+
+	-- legs
+	{type = "texture", id = "black-legs",    file = "./assets/images/armor/legs/black-legs.png"},
+	{type = "texture", id = "desert-legs",    file = "./assets/images/armor/legs/desert-legs.png"},
+	{type = "texture", id = "taiga-legs",    file = "./assets/images/armor/legs/taiga-legs.png"},
+	{type = "texture", id = "sawanna-legs",    file = "./assets/images/armor/legs/sawanna-legs.png"},
+
+
+	-- boots
+	{type = "texture", id = "black-boots",   file = "./assets/images/armor/feet/black-boots.png"},
+	{type = "texture", id = "desert-boots",   file = "./assets/images/armor/feet/desert-boots.png"},
+	{type = "texture", id = "taiga-boots",   file = "./assets/images/armor/feet/taiga-boots.png"},
+	{type = "texture", id = "sawanna-boots",   file = "./assets/images/armor/feet/sawanna-boots.png"},
+
+
+	-- special-items
 	{type = "texture", id = "golden-ring",   file = "./assets/images/special_items/rings/golden-ring.png"},
 	{type = "texture", id = "golden-amulet", file = "./assets/images/special_items/amulets/golden-amulet.png"},
 	{type = "texture", id = "horse-trinket", file = "./assets/images/special_items/trinkets/horse.png"},
-	{type = "texture", id = "black-shield",  file = "./assets/images/ability/shield/black-shield.png"},
-	{type = "texture", id = "black-helm",    file = "./assets/images/armor/helm/black-helm.png"},
-	{type = "texture", id = "black-chest",   file = "./assets/images/armor/chest/black-chest.png"},
-	{type = "texture", id = "black-legs",    file = "./assets/images/armor/legs/black-legs.png"},
-	{type = "texture", id = "black-boots",   file = "./assets/images/armor/feet/black-boots.png"},
+
 
 	-- loot bags/banners
 	{type = "texture", id = "common-loot-bag",   file = "./assets/images/loot_bags/common-loot-bag.png"},
+	{type = "texture", id = "uncommon-loot-bag",   file = "./assets/images/loot_bags/uncommon-loot-bag.png"},
 	{type = "texture", id = "epic-loot-bag",   file = "./assets/images/loot_bags/epic-loot-bag.png"},
 	{type = "texture", id = "legendary-loot-bag",   file = "./assets/images/loot_bags/legendary-loot-bag.png"},
 	{type = "texture", id = "legendary-loot-banner",   file = "./assets/images/loot_bags/legendary-loot-banner.png"},
 
+
 	--sound making sprites (campfire, etc.)
 	{type = "texture", id = "campfire-texture",   file = "./assets/images/sound_sprites/campfire.png"},
+
+
 	-- fonts
 	{type = "font", id = "charriot-font", file = "./assets/fonts/charriot.ttf", font_size = 10},
+
 
 	-- sounds
 	{type = "sound", id = "bag-drop",    file = "./assets/sounds/bag-drop.wav"},
@@ -88,6 +146,7 @@ return {
 	{type = "sound", id = "goblin-idle-1",    file = "./assets/sounds/goblin-idle-1.wav"},
 	{type = "sound", id = "goblin-idle-2",    file = "./assets/sounds/goblin-idle-2.wav"},
 	{type = "sound", id = "goblin-idle-3",    file = "./assets/sounds/goblin-idle-3.wav"},
+
 
 	-- music
 	{type = "music", id = "test-music",    file = "./assets/sounds/wind-3.wav"},

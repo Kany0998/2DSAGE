@@ -24,7 +24,7 @@ local ISLANDS =
 	{ make = enemies.taiga_goblin,   difficulty = 2, centres = { {x = 5700, y = 700}, {x = 6700, y = 1000}, {x = 6800, y = 2000}, {x = 5500, y = 2500}, {x = 4700, y = 2100}, {x = 5500, y = 1800}, {x = 5000, y = 3000}, {x = 4000, y = 3000} } },
 	{ make = enemies.sawanna_goblin, difficulty = 3, centres = { {x = 9500, y = 4400}, {x = 8700, y = 5300}, {x = 9700, y = 6000}, {x = 10000, y = 5000} } },	
 }
-local BATCH = { min = 2, max = 4, radius = 300 }
+local BATCH = { min = 4, max = 6, radius = 300 }
 
 --tables for level 1
 Level = {
@@ -132,13 +132,13 @@ Level = {
 				},
 				boxcollider =
 				{
-					width = 16,
-					height = 16,
-					offset = {x = 0, y = 0}
+					width = 12,
+					height = 12,
+					offset = {x = 2, y = 2}
 				},
 				health =
 				{
-					health_points = 100,
+					health_points = 1000,
 					max_health_points = 1000
 				},
 				mana =
@@ -148,12 +148,12 @@ Level = {
 				},
 				attributes =
 				{
-					attack = 50,
+					attack = 10,
 					defense = 1,
-					wisdom = 100,
-					vitality = 100,
-					speed = 100,
-					dexterity = 100
+					wisdom = 10,
+					vitality = 10,
+					speed = 80,
+					dexterity = 60
 				},
 				sounds =
 				{
@@ -408,7 +408,7 @@ for i = 0, stress_enemies - 1 do
 end
 
 
-flank_test = true   -- flank_40x40.map: 4 chasers in the right yard
+flank_test = false  -- flank_40x40.map: 4 chasers in the right yard
 if flank_test then
     local chaser_cells = { {33, 14}, {34, 14}, {35, 15}, {35, 16}, {32, 19}, {33, 20}, {33, 18} }
     for _, cell in ipairs(chaser_cells) do

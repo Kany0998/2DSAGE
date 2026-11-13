@@ -5,13 +5,13 @@ local BOSS = {
 	calm_stop = 3,		--tiles
 	angry_speed = 200,
 	angry_stop = 1,
-	shot_velocity = { x = 300, y = 100 },
+	shot_velocity = { x = 200, y = 200 },
 	angry_bullet_speed_factor = 1.5,
 	-- health % trigered 0.00 - 1.00
 	spin_below = 0.75,
 	angry_bellow = 0.50,
 	--roll chance attack duration in seconds
-	spin_roll_every = 10.0,
+	spin_roll_every = 3.0,
 	spin_chance = 0.5,
 	spin_duration = 5.0,
 	burst_every = 0.5,
@@ -156,8 +156,8 @@ local function make(x, y)
 				},
 				health =
 				{
-					health_points = 25000,
-					max_health_points = 25000
+					health_points = 50000,
+					max_health_points = 50000
 				},
 				experience_reward =
 				{
@@ -175,8 +175,8 @@ local function make(x, y)
 				{
 					projectile_velocity = {x = BOSS.shot_velocity.x, y = BOSS.shot_velocity.y},
 					projectile_duration = 10, --sec
-					repeat_frequency = 0.5,
-					projectile_damage = 100,
+					repeat_frequency = 1.0,
+					projectile_damage = 250,
 					aim_at_player = true,
 					attack_range = 12,
 					friendly = false,
@@ -202,7 +202,7 @@ local function make(x, y)
 				{ 
 					[0] = update 
 				},
-				loot = { table = "forest_tank" }
+				loot = { table = "goblin_boss" }
 			}
 		}
 end
