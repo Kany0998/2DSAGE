@@ -27,10 +27,14 @@
 #include "../TileMap/MovementType.h"
 #include "../Inventory/ItemDatabase.h"
 #include "../Inventory/InventoryRules.h"
+#include "../Logger/Logger.h"
 #include <sol/sol.hpp>
+#include <glm/glm.hpp>
 #include <string>
 #include <algorithm>
-#include "../Logger/Logger.h"
+#include <random>
+#include <cmath>
+#include <vector>
 
 LevelLoader::LevelLoader()
 {
@@ -161,6 +165,95 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 	Game::mapWidth = tileMap.Cols() * tileSize * tileScale;
 	Game::mapHeight = tileMap.Rows() * tileSize * tileScale;
 
+
+	// Enemy batches: Lua describes who/where/how many, the engine picks free spots now that the map is loaded
+	sol::optional<sol::table> batches = level["enemy_batches"];
+	if (batches) {
+		sol::table entities = level["entities"];
+
+		// the entity loop below reads entities[0], [1], ... until the first nil, so new enemies go from there
+		int next = 0;
+		while (entities[next].valid()) {
+			next++;
+		}
+
+		std::mt19937 rng(std::random_device{}());
+		std::uniform_real_distribution<double> unit(0.0, 1.0);
+		const double minSpacing = tileMap.TileWorldSize();     // 1 tile between enemies
+		const int maxTries = 20;
+
+		for (int bth = 1; ; bth++) {
+			sol::optional<sol::table> batchOption = (*batches)[bth];
+			if (!batchOption) {
+				break;                                   // end of the list
+			}
+			sol::table batch = *batchOption;
+
+			sol::optional<sol::protected_function> make = batch["make"];
+			if (!make) {
+				Logger::Warn("enemy_batches[" + std::to_string(bth) + "]: no make function, skipped");
+				continue;
+			}
+
+			const double centerX = batch["x"].get_or(0.0);
+			const double centerY = batch["y"].get_or(0.0);
+			const double radius = batch["radius"].get_or(300.0);
+			const int minCount = batch["min"].get_or(4);
+			const int maxCount = batch["max"].get_or(8);
+			const int difficulty = batch["difficulty"].get_or(1);
+
+			std::uniform_int_distribution<int> countRoll(minCount, std::max(minCount, maxCount));
+			const int count = countRoll(rng);
+
+			std::vector<glm::vec2> placed;
+			
+			for (int n = 0; n < count; n++) {
+				bool found = false;
+				glm::vec2 spot;
+
+				for (int t = 0; t < maxTries && !found; t++) {
+					const double angle = unit(rng) * 2.0 * M_PI;
+					const double range = radius * std::sqrt(unit(rng));		// even spread over the whole circle
+					spot = glm::vec2(centerX + std::cos(angle) * range, centerY + std::sin(angle) * range);
+
+					if (tileMap.isBlockedAtWorld(spot.x, spot.y, MovementType_Ground)) {
+						continue;	// wall, water or outside the map
+					}
+
+					bool tooClose = false;
+					for (const glm::vec2& other : placed) {
+						if (glm::distance(spot, other) < minSpacing) { 
+							
+							tooClose = true;
+							break; 
+						}
+					}
+
+					if (!tooClose) {
+						found = true;
+					}
+				}
+
+				if (!found) {
+					Logger::Warn("enemy_batches[" + std::to_string(bth) + "]: no free spot after " + std::to_string(maxTries) + " tries, one enemy skipped");
+					continue;
+				}
+
+				sol::protected_function_result result = (*make)(spot.x, spot.y, difficulty);
+				if (!result.valid()) {
+					sol::error err = result;
+					Logger::Err("enemy_batches[" + std::to_string(bth) + "]: make failed: " + std::string(err.what()));
+					break;                                  // the same maker would fail again for this batch
+				}
+
+				entities[next] = result.get<sol::table>();
+				next++;
+				placed.push_back(spot);
+			}
+		}
+	}
+
+
 	//Read the level entites and Components
 	sol::table entites = level["entities"];
 	i = 0;
@@ -241,8 +334,7 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 			//Sprite
 			sol::optional<sol::table> sprite = entity["components"]["sprite"];
-			if (sprite != sol::nullopt)
-			{
+			if (sprite != sol::nullopt){
 				newEntity.AddComponent<SpriteComponent>(
 					entity["components"]["sprite"]["texture_asset_id"],
 					entity["components"]["sprite"]["width"],
@@ -256,26 +348,97 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 			//animation
 			sol::optional<sol::table> animation = entity["components"]["animation"];
-			if (animation != sol::nullopt)
-			{
-				newEntity.AddComponent<AnimationComponent>(
-					entity["components"]["animation"]["num_frames"].get_or(1),
-					entity["components"]["animation"]["speed_rate"].get_or(1)
-				);
+			if (animation != sol::nullopt){
+
+				sol::table animationTable = animation.value();
+
+				newEntity.AddComponent<AnimationComponent>();
+
+				auto& anim = newEntity.GetComponent<AnimationComponent>();
+
+				int numFrames = animationTable["num_frames"].get_or(1);
+				int speedRate = animationTable["speed_rate"].get_or(1);
+
+				if (numFrames <= 0) {
+					Logger::Warn("animation: num_frames <= 0 :" + std::to_string(numFrames) + " ,which is not allowed changing it to 1");
+					numFrames = 1;
+				}
+
+				if (speedRate < 0) {
+					Logger::Warn("animation: speed_rate < 0 :" + std::to_string(speedRate) + " ,which is not allowed changing it to 0");
+					speedRate = 0;
+				}
+
+
+				anim.numFrames = numFrames;
+				anim.frameSpeedRate = speedRate;
+				anim.isLoop = animationTable["is_loop"].get_or(true);
+				anim.onlyWhenMoving = animationTable["only_when_moving"].get_or(false);
+				
+				sol::optional<sol::table> attack = animationTable["attack"];
+				if (attack != sol::nullopt) {
+					sol::table attackTable = attack.value();
+
+					std::string attackTexture = attackTable["attack_texture_asset_id"].get_or(std::string(""));
+					int attackFrames = attackTable["attack_frames"].get_or(1);
+					int attackSpeed = attackTable["attack_speed_rate"].get_or(1);
+
+					if (attackTexture.empty()) {
+						Logger::Warn("animation: attack_texture_asset_id is empty, may be a typo");
+					}
+
+					if (attackFrames <= 0) {
+						Logger::Warn("animation: attack_frames <= 0 :" + std::to_string(attackFrames) + " ,which is not allowed changing it to 1");
+						attackFrames = 1;
+					}
+
+					if (attackSpeed < 1) {
+						Logger::Warn("animation: attack_speed_rate < 1 :" + std::to_string(attackSpeed) + " ,which is not allowed changing it to 1");
+						attackSpeed = 1;
+					}
+
+					anim.attackAssetId = attackTexture;
+					anim.attackNumFrames = attackFrames;
+					anim.attackSpeedRate = attackSpeed;
+				}
+
 			}
 
 			//BoxCollider
 			sol::optional<sol::table> collider = entity["components"]["boxcollider"];
 			if (collider != sol::nullopt)
 			{
-				newEntity.AddComponent<BoxColliderComponent>(
-					entity["components"]["boxcollider"]["width"],
-					entity["components"]["boxcollider"]["height"],
-					glm::vec2(
-						entity["components"]["boxcollider"]["offset"]["x"].get_or(0),
-						entity["components"]["boxcollider"]["offset"]["y"].get_or(0)
-					)
-				);
+				sol::table colliderTable = collider.value();
+				newEntity.AddComponent<BoxColliderComponent>();
+
+				auto& colliderComp = newEntity.GetComponent<BoxColliderComponent>();
+
+				double scaleX = 1.0;
+				double scaleY = 1.0;
+				if (newEntity.HasComponent<TransformComponent>()) {
+					scaleX = newEntity.GetComponent<TransformComponent>().scale.x;
+					scaleY = newEntity.GetComponent<TransformComponent>().scale.y;
+				}
+
+				int collWidth = entity["components"]["boxcollider"]["width"].get_or(1);
+				int collHeight = entity["components"]["boxcollider"]["height"].get_or(1);
+				int collOffsetX = static_cast<int>(entity["components"]["boxcollider"]["offset"]["x"].get_or(0.0) * scaleX);
+				int collOffsetY = static_cast<int>(entity["components"]["boxcollider"]["offset"]["y"].get_or(0.0) * scaleY);
+
+				if (collWidth < 1) {
+					Logger::Warn("boxcollider: width < 1: " + std::to_string(collWidth) + " ,which is not allowed for boxcolliders changing it to 1");
+					collWidth = 1;
+				}
+
+				if (collHeight < 1) {
+					Logger::Warn("boxcollider: height < 1: " + std::to_string(collHeight) + " ,which is not allowed for boxcolliders changing it to 1");
+					collHeight = 1;
+				}
+
+				colliderComp.width = collWidth;
+				colliderComp.height = collHeight;
+				colliderComp.offset.x = collOffsetX;
+				colliderComp.offset.y = collOffsetY;
 			}
 
 			//Health
@@ -348,8 +511,8 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 
 				newEntity.AddComponent<ProjectileEmitterComponent>(
 					glm::vec2(
-						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"],
-						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"]
+						entity["components"]["projectile_emitter"]["projectile_velocity"]["x"].get_or(0.0),
+						entity["components"]["projectile_emitter"]["projectile_velocity"]["y"].get_or(0.0)
 					),
 					static_cast<int>(entity["components"]["projectile_emitter"]["repeat_frequency"].get_or(1.0) * 1000),
 					static_cast<int>(entity["components"]["projectile_emitter"]["projectile_duration"].get_or(10.0) * 1000),
@@ -360,6 +523,23 @@ void LevelLoader::LoadLevel(sol::state& lua,const std::unique_ptr<Registry>& reg
 					entity["components"]["projectile_emitter"]["projectile_texture"].get_or(std::string("bullet-texture")),
 					entity["components"]["projectile_emitter"]["shot_sound"].get_or(std::string(""))
 				);
+
+				auto& emitProject = newEntity.GetComponent<ProjectileEmitterComponent>();
+				int pelletCount = entity["components"]["projectile_emitter"]["pellet_count"].get_or(1);
+				float spreadDeg = entity["components"]["projectile_emitter"]["spread_degrees"].get_or(0.0f);
+
+				if (pelletCount < 1) {
+					Logger::Warn("projectile_emitter: pellet_count < 1:" + std::to_string(pelletCount) + " ,which is not allowed, changing it to 1");
+					pelletCount = 1;
+				}
+
+				if (spreadDeg < 0.0f || spreadDeg > 180.0f) {
+					Logger::Warn("projectile_emitter: spread_degrees < 0.0 or spread_degrees > 180.0: " + std::to_string(spreadDeg) + " ,which is not allowed, clamping it to (0.0, 180.0)");
+					spreadDeg = std::clamp(spreadDeg, 0.0f, 180.0f);
+				}
+
+				emitProject.pelletCount = pelletCount;
+				emitProject.spreadDegrees = spreadDeg;
 			}
 
 			//MovementType

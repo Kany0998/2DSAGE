@@ -165,12 +165,12 @@ class ProgressionSystem
 				std::to_string(progression.experienceToNextLevel) + " exp)");
 		}
 
-		static constexpr int SkillPointsPerLevel = 3;	//points handed out per level, spent into AttributesComponent
-		static constexpr int HealthPerLevel = 10;		//added to maxHealthPoints per level
-		static constexpr int ManaPerLevel = 10;			//added to maxManaPoints per level
+		static constexpr int SkillPointsPerLevel = 2;	//points handed out per level, spent into AttributesComponent
+		static constexpr int HealthPerLevel = 25;		//added to maxHealthPoints per level
+		static constexpr int ManaPerLevel = 25;			//added to maxManaPoints per level
 
 		static constexpr double MinExperienceRequirement = 1.0;
-		static constexpr double MaxExperienceRequirement = 1000000000.0;	//1e9, comfortably inside int range
+		static constexpr double MaxExperienceRequirement = 1000000.0;	//1e6, inside of int range
 		std::unique_ptr<EventBus>& eventBus;
 };
 

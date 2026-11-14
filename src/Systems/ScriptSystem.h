@@ -7,6 +7,7 @@
 #include "../Components/AnimationComponent.h"
 #include "../Components/ProjectileEmitterComponent.h"
 #include "../Components/AIComponent.h"
+#include "../Components/HealthComponent.h"
 #include "../Components/SpriteComponent.h"
 #include "../Utils/Projectile.h"
 #include "../Utils/EntityGeometry.h"
@@ -61,6 +62,17 @@ std::tuple<double, double> GetEntityCenter(Entity entity) {
 	}
 }
 
+std::tuple<int, int>GetEntityHealth (Entity entity){
+	if (entity.HasComponent<HealthComponent>()) {
+		const auto& healthComp = entity.GetComponent<HealthComponent>();
+		return std::make_tuple(healthComp.healthPoints, healthComp.maxHealthPoints);
+	}
+	else {
+		Logger::Err("get_health: your entity: "+ std::to_string(entity.GetId()) +" do not have health component return (0, 1)");
+		return std::make_tuple(0, 1);
+	}
+}
+
 void SetEntityPosition(Entity entity, double x, double y)
 {
 	if (entity.HasComponent<TransformComponent>())
@@ -72,6 +84,36 @@ void SetEntityPosition(Entity entity, double x, double y)
 	else
 	{
 		Logger::Err("Trying to set position of entity that do not have transform component");
+	}
+}
+
+void SetSpriteAnimation(Entity entity, const std::string& assetId, int frames, int speedRate, bool onlyWhenMoving) {
+	if (entity.HasComponent<SpriteComponent>() && entity.HasComponent<AnimationComponent>()) {
+		auto& sprite = entity.GetComponent<SpriteComponent>();
+		auto& animation = entity.GetComponent<AnimationComponent>();
+
+		sprite.assetId = assetId;
+		animation.numFrames = std::max(1, frames);
+		animation.frameSpeedRate = std::max(1, speedRate);
+		animation.onlyWhenMoving = onlyWhenMoving;
+		animation.isAttacking = false;		//end the pose right now
+		animation.walkAssetId = assetId;	//a pose ending later must not bring the old sheet back
+		animation.startTime = SDL_GetTicks();
+		sprite.srcRect.x = 0;
+	}
+
+	else {
+		Logger::Err("set_sprite_animation: entity " + std::to_string(entity.GetId()) +
+			" needs both a sprite and an animation component");
+	}
+}
+
+void SetEmitterPaused(Entity entity, bool paused) {
+	if (entity.HasComponent<ProjectileEmitterComponent>()) {
+		entity.GetComponent<ProjectileEmitterComponent>().paused = paused;
+	}
+	else {
+		Logger::Err("set_emitter_paused: entity " + std::to_string(entity.GetId()) + " has no projectile emitter");
 	}
 }
 
@@ -161,12 +203,25 @@ class ScriptSystem
 			lua.set_function("get_position", GetEntityPosisiton);
 			lua.set_function("get_velocity", GetEntityVelocity);
 			lua.set_function("get_center", GetEntityCenter);
+			lua.set_function("get_health", GetEntityHealth);
 			lua.set_function("set_position", SetEntityPosition);
 			lua.set_function("set_velocity", SetEntityVelocity);
 			lua.set_function("set_rotation", SetEntityRotation);
 			lua.set_function("set_animation_frame", SetAnimationFrame);
 			lua.set_function("set_projectile_velocity", SetProjectileVelocity);
 			lua.set_function("set_ai_paused", SetEntityAIPaused);
+			lua.set_function("set_sprite_animation", SetSpriteAnimation);
+			lua.set_function("set_emitter_paused", SetEmitterPaused);
+
+			lua.set_function("set_ai_movement", [&tileMap](Entity entity, double speed, double stopTiles) {
+				if (!entity.HasComponent<AIComponent>()) {
+					Logger::Err("set_ai_movement: your entity: "+std::to_string(entity.GetId()) + " doest have ai");
+					return;
+				}
+				auto& ai = entity.GetComponent<AIComponent>();
+				ai.movementSpeed = speed;
+				ai.stopRange = stopTiles * tileMap.TileWorldSize();
+				});
 
 			//roll_damage(caster, min, max): rolled and scaled by the caster's attack, like weapon shots
 			lua.set_function("roll_damage", [this](Entity caster, int minDamage, int maxDamage) {return RollScaledDamage(caster, minDamage, maxDamage, rng);});
@@ -196,6 +251,21 @@ class ScriptSystem
 					}
 
 					SpawnProjectile(registry, assetStore, *owner, glm::vec2(x, y), velocity, damage, lifetimeMs, texture);
+				});
+
+			lua.set_function("get_player_center", [&registry]() {
+				if (!registry.HasEntityWithTag("player")) {
+					Logger::Err("get_player_center: you do not have eneity with a tag 'player'");
+					return std::make_tuple(0.0f, 0.0f, false);
+				}
+				Entity player = registry.GetEntityByTag("player");
+				if (player.HasComponent<TransformComponent>() && player.HasComponent<SpriteComponent>()) {
+					glm::vec2 center = EntityCenter(player.GetComponent<TransformComponent>(), player.GetComponent<SpriteComponent>());
+					return std::make_tuple(center.x, center.y, true);
+				}
+				
+				Logger::Err("get_player_center: your player do not contain some of this components : transform , sprite");
+				return std::make_tuple(0.0f, 0.0f, false);
 				});
 		}
 

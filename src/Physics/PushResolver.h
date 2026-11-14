@@ -149,7 +149,7 @@ class PushResolver{
 
 	private:
 		//Maximum amount of pushed obsticles in one push, if not used the operations may become too expensive
-		static constexpr int maxPushCount = 4;
+		static constexpr int maxPushCount = 6;
 
 
 		//Whether this crate was already handled in the current walk

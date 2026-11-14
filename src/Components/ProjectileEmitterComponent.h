@@ -17,6 +17,9 @@ struct ProjectileEmitterComponent
 	double attackRange;			//Stored In pixels convent from tiles
 	std::string projectileTexture;		//texture of the projectile
 	std::string shotSound;				//Shot sound
+	int pelletCount = 1;           // 1 = single shot
+	float spreadDegrees = 0.0f;    // total width of the fan
+	bool paused = false;		   // set from Lua: no automatic shots while true
 
 	ProjectileEmitterComponent(glm::vec2 projectileVelocity = glm::vec2(0), int repeatRate = 0, int projectileDuration = 10000, int projectileDamage = 10,
 		bool aimAtPlayer = false, double attackRange = 0.0, bool isFriendly = false, std::string projectileTexture = "bullet-texture", std::string shotSound = "")

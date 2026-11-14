@@ -91,6 +91,8 @@ void ItemDatabase::Load(sol::state& lua, const std::string& path) {
 				w.projectileTexture = (*weapon)["projectile_texture"].get_or(w.projectileTexture);
 				w.shotSound = (*weapon)["shot_sound"].get_or(w.shotSound);
 				w.projectileSpeed = (*weapon)["projectile_speed"].get_or(w.projectileSpeed);
+				w.pelletCount = (*weapon)["pellet_count"].get_or(w.pelletCount);
+				w.spreadDegrees = (*weapon)["spread_degrees"].get_or(w.spreadDegrees);
 				w.shotPerSecond = (*weapon)["shots_per_second"].get_or(w.shotPerSecond);
 				w.rangeTiles = (*weapon)["range_tiles"].get_or(w.rangeTiles);
 
@@ -113,6 +115,16 @@ void ItemDatabase::Load(sol::state& lua, const std::string& path) {
 				if (w.rangeTiles <= 0) {
 					Logger::Warn("items: " + id + ": range_tiles must be > 0, using default");
 					w.rangeTiles = defaults.rangeTiles;
+				}
+
+				if (w.pelletCount < 1) {
+					Logger::Warn("items: " + id +  ": pellet_count < 1:" + std::to_string(w.pelletCount) + " ,which is not allowed, changing it to 1");
+					w.pelletCount = 1;
+				}
+
+				if (w.spreadDegrees < 0.0f || w.spreadDegrees > 180.0f) {
+					Logger::Warn("items: " + id +  ": spread_degrees < 0.0 or spread_degrees > 180.0: " + std::to_string(w.spreadDegrees) + " ,which is not allowed, clamping it to (0.0, 180.0)");
+					w.spreadDegrees = std::clamp(w.spreadDegrees, 0.0f, 180.0f);
 				}
 			}
 		}

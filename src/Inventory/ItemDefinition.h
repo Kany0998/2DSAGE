@@ -12,6 +12,8 @@ struct  WeaponStats {
 	float shotPerSecond = 2.0f;
 	float rangeTiles = 6.0f;
 	std::string shotSound;
+	int pelletCount = 1;          // 1 = single shot
+	float spreadDegrees = 0.0f;   // total width of the cone
 };
 
 
