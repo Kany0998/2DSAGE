@@ -11,7 +11,7 @@
 // same alpha handling - three copies of that would drift.
 namespace BarText
 {
-	static constexpr const char* FontAssetId = "charriot-font";
+	static constexpr const char* FontAssetId = "bar-font";
 
 	// Alpha is spelled out on purpose: SDL_Color's three-value aggregate init leaves
 	// a = 0, and blended text at zero alpha renders completely invisible.

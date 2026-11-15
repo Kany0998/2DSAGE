@@ -120,7 +120,7 @@ return {
 
 
 	-- fonts
-	{type = "font", id = "charriot-font", file = "./assets/fonts/charriot.ttf", font_size = 10},
+	{type = "font", id = "bar-font", file = "./assets/fonts/Kenney-Pixel.ttf", font_size = 16},
 
 
 	-- sounds
