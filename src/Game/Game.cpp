@@ -44,6 +44,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_sdl.h>
 #include <imgui/imgui_impl_sdl.h>
+#include <algorithm>
 
 
 int Game::windowWidth;
@@ -109,7 +110,7 @@ void Game::Initialize()
 		return;
 	}
 
-	renderer = SDL_CreateRenderer(window, -1, 0);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (!renderer)
 	{
 		Logger::Err("Error creating SDL renderer.");
@@ -325,6 +326,8 @@ void Game::Setup()
 	audioSystem = std::make_unique<AudioSystem>(*registry, *assetStore, audioSettings, camera, tileMap, lootDatabase, eventBus, audioStats, audioReady);
 	audioSystem->PlayMusic(lua["Level"]["music"].get_or(std::string("")));
 	audioSystem->StartAmbience(LevelAmbience::Load(lua));
+
+	previousFrameCounter = SDL_GetPerformanceCounter();
 }
 
 
@@ -360,17 +363,13 @@ void Game::Update()
 		restartRequested = false;
 		RestartLevel();
 	}
-	// initial position and velocity // Fps
-	int timeToWait = frameDelay - (SDL_GetTicks() - millisecondsPreviousFrame);
-	if (timeToWait > 0 && timeToWait <= frameDelay)
-	{
-		SDL_Delay(timeToWait);
-	}
 
-	//differnace in ticks since last frame conveted to seconds
-	double deltaTime = (SDL_GetTicks() - millisecondsPreviousFrame) / 1000.0;
-	//Time stored
-	millisecondsPreviousFrame = SDL_GetTicks();
+	//time since the last frame, from the high-resolution counter (V-sync paces the frames)
+	const Uint64 now = SDL_GetPerformanceCounter();
+	double deltaTime = static_cast<double>(now - previousFrameCounter) / SDL_GetPerformanceFrequency();
+	previousFrameCounter = now;
+
+	deltaTime = std::min(deltaTime, MaxDeltaTime);
 
 	//Reset all event Handlers for the current frame
 	eventBus->Reset();
@@ -497,7 +496,7 @@ void Game::Render()
 	//Invoke all the systems that need to render
 
 	//In debug mode the map and sprite rendering is timed and averaged over a batch of frames -
-	//the measurement behind the tilemap refactor. FPS is capped, so the work itself is timed
+	//the measurement behind the tilemap refactor. frame rate follows V-sync, so the work itself is timed
 	const Uint64 renderStart = isDebug ? SDL_GetPerformanceCounter() : 0;
 	renderTileMapSystem->Update(renderer, assetStore, camera, tileMap);
 	renderSystem->Update(*registry, renderer, assetStore, camera);

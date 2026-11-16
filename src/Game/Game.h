@@ -19,9 +19,6 @@
 #include "Controls.h"
 #include <sol/sol.hpp>
 
-const int FPS = 60;
-const int frameDelay = 1000 / FPS;
-
 // Forward-declared only: their Update() bodies reference Game::mapWidth/windowWidth
 // etc., so their headers must be included from Game.cpp (after `class Game` is
 // fully defined there), not from here.
@@ -73,9 +70,11 @@ class Game
 		bool audioReady = false;     //false = no audio device, the game runs silently
 		SDL_Window* window;
 		SDL_Renderer* renderer;
-		int millisecondsPreviousFrame = 0;
+		Uint64 previousFrameCounter = 0;   //SDL_GetPerformanceCounter ticks of the previous frame
 		SDL_Rect camera;
 		Uint32 currentTick;
+		static constexpr double MaxDeltaTime = 0.05;
+
 
 		double aiTimeSumMs = 0.0;
 		double aiTimeMaxMs = 0.0;
@@ -90,7 +89,7 @@ class Game
 		//Render-time measurement (debug mode only): summed over a batch of frames, then averaged
 		double renderTimeSumMs = 0.0;
 		int renderTimeFrames = 0;
-		static constexpr int renderTimeBatch = 300;	//about 5 s at 60 FPS
+		static constexpr int renderTimeBatch = 300;	//about 5 s at 60 FPS, shorther on faster monitors (V-Sync)
 
 		//entt-backed registry (component storage/sparse sets); see ECS.h
 		std::unique_ptr<Registry> registry;
