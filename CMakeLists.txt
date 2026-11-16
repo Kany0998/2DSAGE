@@ -105,3 +105,31 @@ if(WIN32)
         COMMAND_EXPAND_LISTS
     )
 endif()
+
+# ECS benchmark (thesis measurement): the custom ECS from branch legacy-custom-ecs
+# against the current EnTT-based Registry on the same workloads. A separate
+# executable - the game does not include any of it. Run it in Release from the
+# folder of the exe; results go to ./benchmarks/ecs_*.csv.
+option(SAGE_BUILD_ECS_BENCHMARK "Build the ECS benchmark tool (tools/ecs_benchmark)" ON)
+if(SAGE_BUILD_ECS_BENCHMARK)
+    add_executable(ecs_benchmark
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/ecs_benchmark/main.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/ecs_benchmark/NullLogger.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/ecs_benchmark/legacy/LegacyECS.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/ECS/ECS.cpp"
+    )
+
+    target_include_directories(ecs_benchmark PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/ecs_benchmark"
+    )
+
+    target_link_libraries(ecs_benchmark PRIVATE
+        glm::glm-header-only
+        EnTT::EnTT
+    )
+
+    if(MSVC)
+        target_compile_options(ecs_benchmark PRIVATE /W3 /permissive- /Zc:__cplusplus)
+    endif()
+endif()
